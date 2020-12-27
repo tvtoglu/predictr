@@ -30,10 +30,10 @@ Analysis(df: list = None, ds: list = None, show: bool = False, plot_style='ggplo
                  cl=0.9, bcm=None, bs_size=5000, est_type='median', unit='-'))<br>
 
 **Step 1: Create an instance of the class Analysis** <br>
-The class ibject is some prototype data, so we will call it "prototype_test". You can name it whatever you want.<br>
+The class object is some prototype data, so we will call it "prototype_test". You can name it whatever you want.<br>
 prototype_test = Analysis(df = [200, 300, 400], show=True)<br>
 
-**Step 2: Use either the mle() or mrr() method of the class Analysis**<br>
+**Step 2: Use one of the instance methods (mle() or mrr()) of class Analysis**<br>
 prototype_test.mle() -> MLE or prototype_test.mrr() -> MRR<br>
 
 ### Default Parameter values
