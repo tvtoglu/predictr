@@ -21,6 +21,19 @@ pip install predictr
 ```python
 from predictr import Analysis
 ```
+### How to use the Analysis class after importing
+If both df and ds are None, an error will be raised. Configure all needed arguments that fits your use case.<br>
+Arguments to pass in Analysis class:<br>
+Analysis(df: list = None, ds: list = None, show: bool = False, plot_style='ggplot', bounds=None, bounds_type='2s',
+                 cl=0.9, bcm=None, bs_size=5000, est_type='median', unit='-'))<br>
+
+**Step 1: Create an instance of the class Analysis** <br>
+The class ibject is some prototype data, so we will call it "prototype_test". You can name it whatever you want.<br>
+prototype_test = Analysis(df = [200, 300, 400], show=True)<br>
+
+**Step 2: Use either the mle() or mrr() method of the class Analysis**<br>
+prototype_test.mle() -> MLE or prototype_test.mrr() -> MRR<br>
+
 ### Default Parameter values
 df: list = None -> failures in seconds, days, no. of cycles etc., e.g. df = [100, 120, 80, 300]<br>
 ds: list = None -> suspensions (right-censored) in seconds, days, no. of cycles etc., e.g. ds = [300, 400, 400]<br>
@@ -40,7 +53,7 @@ bounds=None -> Use following table to configure everything related to confidence
 bounds_type = '2s' -> '2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. E.g. bounds_type = '1sl'.<br>
 cl=0.9 -> configure the confidence level in the intervall (0, 1.0)<br>
 bcm=None -> Define the bias-correction method when the MLE is being used. Bootstrap bias-corrections are dependent on the number of bootstrap replication and the chosen statistic, e.g. if bcm = 'np_bs': bs_size = 5000 and est_type = 'median'.<br>
-bs_size = 5000 -> Resampling/Bootstrap sample size (number of replication). bs_size should be greater than or equal to 2000 for accurate results. The higher the nuber of replication, the longer it takes to compute the bias-correction.<br>
+bs_size = 5000 -> Resampling/Bootstrap sample size (number of replication). bs_size should be greater than or equal to 2000 for accurate results. The higher the number of replication, the longer it takes to compute the bias-correction.<br>
 est_type = 'median' -> When using bootstrap bias-corrections, this argument decides which statistic to compute from the bootstrap samples.<br>
 The following table provides possible configurations. Bias-corrections for mrr() are not supported, yet.<br>
 
@@ -63,7 +76,7 @@ Example:
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 prototype_a = Analysis(df=failures, bounds='fisher',show=True).mle()
 ```
-<img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_Fisher_Bounds_uncensored.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" height="700" />
 
 #### Censored sample
 Example: 
@@ -73,7 +86,7 @@ failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.628763
 suspensions = [1.9, 2.0, 2.0]
 prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb',show=True).mle()
 ```
-<img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_LRB_censored.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored.png" height="700" />
 
 ### How to use the Median Rank Regression (MRR)
 Just add '.mrr()' after Analysis() <br>
@@ -85,7 +98,7 @@ Example:
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 prototype_a = Analysis(df=failures, bounds='bbb',show=True).mrr()
 ```
-<img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MRR_BBB_uncensored.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_BBB_uncensored.png" height="700" />
 
 #### Censored sample
 Example: 
@@ -95,7 +108,7 @@ failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.628763
 suspensions = [1.9, 2.0, 2.0]
 prototype_a = Analysis(df=failures, ds=suspensions, bounds='mcpb',show=True).mrr()
 ```
-<img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MRR_MCPB_censored.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_MCPB_censored.png" height="700" />
 
 ## To Do
 I will add a homepage with more detailed examples and guidelines for non-experts in the field of reliability engineering.
