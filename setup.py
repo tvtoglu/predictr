@@ -7,15 +7,19 @@ Created on Sat Dec 26 21:21:17 2020
 """
 from setuptools import setup
 
+with open("README.md", "r") as fh:
+          long_description = fh.read()
+
 setup(
       name='predictr',
-      version='0.1.1',
+      version='0.1.2',
       description='Weibull Analysis Utilities',
       author='Tamer Tevetoglu',
       author_email="tamer.tevetoglu@ima.uni-stuttgart.de",
       url="https://github.com/tvtoglu/predictr",
       py_modules=["predictr"],
       package_dir={'': 'src'},
+      long_description=long_description
       long_description_content_type='text/markdown',
       classifiers=[
           "Programming Language :: Python :: 3",
