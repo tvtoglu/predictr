@@ -40,8 +40,8 @@ bs_size = 5000 -> Resampling/Bootstrap sample size (number of replication). bs_s
 est_type = 'median' -> When using bootstrap bias-corrections, this argument decides which statistic to compute from the bootstrap samples.<br>
 The following table provides possible configurations. Bias-corrections for mrr() are not supported, yet.<br>
 
-| Bias-correction method              | mle() | mrr() | argument value | config. | statistic                        |
-|-------------------------------------|:-----:|:-----:|:--------------:|---------|----------------------------------|
+| Bias-correction method              | mle() | mrr() | argument value | config. |             statistic            |
+|-------------------------------------|:-----:|:-----:|:--------------:|:-------:|:--------------------------------:|
 | C4                                  |   x   |   -   |      'c4'      |    -    |                 -                |
 | hrbu                                |   x   |   -   |     'hrbu'     |    -    |                 -                |
 | non-parametric Bootstrap correction |   x   |   -   |     'np_bs'    | bs_size | 'mean', 'median', 'trimmed_mean' |
@@ -50,13 +50,14 @@ The following table provides possible configurations. Bias-corrections for mrr()
 unit = '-' -> Unit of the elements in df and ds, e.g. unit = 'seconds', unit = 'days', unit = 'ms' etc.
 
 ### How to use the Maximum Likelihood Estimation (MLE)
+Just add '.mle()' after Analysis()
 object = Analysis()**.mle()**
+
 #### Uncensored sample
 Example: 
-
 ```python
 uncen_sample = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
-prototype_a = pr.Analysis(df=uncen_sample, bounds='fisher',show=True).mle()
+prototype_a = Analysis(df=uncen_sample, bounds='fisher',show=True).mle()
 ```
 <img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_Fisher_Bounds_uncensored.png" height="700" />
 
@@ -66,11 +67,9 @@ Example:
 ```python
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 suspensions = [1.9, 2.0, 2.0]
-prototype_a = pr.Analysis(df=uncen_sample, bounds='fisher',show=True).mle()
+prototype_a = Analysis(df=uncen_sample, bounds='lrb',show=True).mle()
 ```
+<img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_LRB_censored.png" height="700" />
 
-
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
+## To Do
+I will add a homepage with more detailed examples and guidelines for non-experts in the field of reliability engineering.
