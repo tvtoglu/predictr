@@ -79,7 +79,7 @@ object = Analysis()**.mrr()**
 #### Uncensored sample
 Example: 
 ```python
-uncen_sample = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 prototype_a = Analysis(df=failures, bounds='bbb',show=True).mrr()
 ```
 <img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MRR_BBB_uncensored.png" height="700" />
