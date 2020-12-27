@@ -75,7 +75,7 @@ prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb',show=True).mle(
 ```
 <img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_LRB_censored.png" height="700" />
 
-### How to use the Maximum Rank Regression (MRR)
+### How to use the Median Rank Regression (MRR)
 Just add '.mrr()' after Analysis() <br>
 object = Analysis()**.mrr()**
 
