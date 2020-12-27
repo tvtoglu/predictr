@@ -1,7 +1,6 @@
 # predictr
-Weibull Analysis Utilities
 
-predictr: prediction + reliability
+predictr: prediction + reliability <br>
 The aim of this package is to provide state of the art tools for all kinds of Weibull analyses. <br>
 predictr already includes many methods (see tables below). A guideline when to use which method will be added soon.
 
