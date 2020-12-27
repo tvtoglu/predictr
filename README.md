@@ -5,7 +5,7 @@ The aim of this package is to provide state of the art tools for all kinds of We
 predictr already includes many methods (see tables below). A guideline when to use which method will be added soon.
 
 ![](https://img.shields.io/pypi/v/predictr?color=blue&style=flat-square&label=pypi)
-![](https://img.shields.io/pypi/dm/predictr?color=blue&style=flat-square)
+[![Downloads](https://pepy.tech/badge/predictr)](https://pepy.tech/project/predictr)
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat-square)
 
 ## Installation
