@@ -22,8 +22,8 @@ pip install predictr
 from predictr import Analysis
 ```
 ### Default Parameter values
-df: list = None -> failures in seconds, days, bo. of cycles etc., e.g. df = [100, 120, 80, 300]<br>
-ds: list = None -> suspensions (right-censored) in seconds, days, bo. of cycles etc., e.g. ds = [300, 400, 400]<br>
+df: list = None -> failures in seconds, days, no. of cycles etc., e.g. df = [100, 120, 80, 300]<br>
+ds: list = None -> suspensions (right-censored) in seconds, days, no. of cycles etc., e.g. ds = [300, 400, 400]<br>
 show: bool = False -> If True, the Weibull probability plot will be plotted.<br>
 plot_style = 'ggplot' -> Choose a style according to your needs. See https://matplotlib.org/3.1.0/gallery/style_sheets/style_sheets_reference.html for styles.<br>
 bounds=None -> Use following table to configure everything related to confidence bounds, e.g. if you want to use Monte-Carlo pivotal bounds for the Median Rank Regression: bounds = 'mcpb'.<br>
@@ -71,7 +71,7 @@ Example:
 ```python
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 suspensions = [1.9, 2.0, 2.0]
-prototype_a = Analysis(df=uncen_sample, bounds='lrb',show=True).mle()
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb',show=True).mle()
 ```
 <img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_LRB_censored.png" height="700" />
 
