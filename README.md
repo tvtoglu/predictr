@@ -58,6 +58,8 @@ Example:
 uncen_sample = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 prototype_a = pr.Analysis(df=uncen_sample, bounds='fisher',show=True).mle()
 ```
+<img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_Fisher_Bounds_uncensored.png" height="700" />
+
 #### Censored sample
 Example: 
 
@@ -66,7 +68,7 @@ failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.628763
 suspensions = [1.9, 2.0, 2.0]
 prototype_a = pr.Analysis(df=uncen_sample, bounds='fisher',show=True).mle()
 ```
-![GitHub Logo](/docs/images/MLE_Fisher_Bounds_uncensored.png)
+
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
