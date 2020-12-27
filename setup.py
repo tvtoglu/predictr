@@ -12,7 +12,7 @@ with open("README.md", "r") as fh:
 
 setup(
       name='predictr',
-      version='0.1.2',
+      version='0.1.4',
       description='Weibull Analysis Utilities',
       author='Tamer Tevetoglu',
       author_email="tamer.tevetoglu@ima.uni-stuttgart.de",
