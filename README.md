@@ -1,4 +1,4 @@
-# predictr
+# predictr - Predict the Reliability
 
 predictr: predict + reliability, in other words: A tool to predict the reliability.<br>
 The aim of this package is to provide state of the art tools for all kinds of Weibull analyses. <br>
