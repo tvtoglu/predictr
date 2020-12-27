@@ -1,6 +1,10 @@
 # predictr
 Weibull Analysis Utilities
 
+predictr: prediction + reliability
+The aim of this package is to provide state of the art tools for all kinds of Weibull analyses. <br>
+predictr already includes many methods (see tables below). A guideline when to use which method will be added soon.
+
 ![](https://img.shields.io/pypi/v/predictr?color=blue&style=flat-square&label=pypi)
 ![](https://img.shields.io/pypi/dm/predictr?color=blue&style=flat-square)
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat-square)
@@ -51,7 +55,7 @@ The following table provides possible configurations. Bias-corrections for mrr()
 unit = '-' -> Unit of the elements in df and ds, e.g. unit = 'seconds', unit = 'days', unit = 'ms' etc.
 
 ### How to use the Maximum Likelihood Estimation (MLE)
-Just add '.mle()' after Analysis()
+Just add '.mle()' after Analysis() <br>
 object = Analysis()**.mle()**
 
 #### Uncensored sample
@@ -73,7 +77,7 @@ prototype_a = Analysis(df=uncen_sample, bounds='lrb',show=True).mle()
 <img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_LRB_censored.png" height="700" />
 
 ### How to use the Maximum Rank Regression (MRR)
-Just add '.mrr()' after Analysis()
+Just add '.mrr()' after Analysis() <br>
 object = Analysis()**.mrr()**
 
 #### Uncensored sample
