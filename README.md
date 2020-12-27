@@ -69,14 +69,15 @@ The following table provides possible configurations. Bias-corrections for mrr()
 unit = '-' -> Unit of the elements in df and ds, e.g. unit = 'seconds', unit = 'days', unit = 'ms' etc.
 
 ### How to use the Maximum Likelihood Estimation (MLE)
-Just add '.mle()' after Analysis() <br>
-object = Analysis()**.mle()**
+object = Analysis()
+object.**.mle()**
 
 #### Uncensored sample
 Example: 
 ```python
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
-prototype_a = Analysis(df=failures, bounds='fisher',show=True).mle()
+prototype_a = Analysis(df=failures, bounds='fisher',show=True)
+prototype_a.mle()
 ```
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" height="700" />
 
@@ -86,19 +87,21 @@ Example:
 ```python
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 suspensions = [1.9, 2.0, 2.0]
-prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb',show=True).mle()
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb',show=True)
+prototype_a.mle()
 ```
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored.png" height="700" />
 
 ### How to use the Median Rank Regression (MRR)
-Just add '.mrr()' after Analysis() <br>
-object = Analysis()**.mrr()**
+object = Analysis()
+object**.mrr()**
 
 #### Uncensored sample
 Example: 
 ```python
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
-prototype_a = Analysis(df=failures, bounds='bbb',show=True).mrr()
+prototype_a = Analysis(df=failures, bounds='bbb',show=True)
+prototype_a.mrr()
 ```
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_BBB_uncensored.png" height="700" />
 
@@ -108,7 +111,8 @@ Example:
 ```python
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 suspensions = [1.9, 2.0, 2.0]
-prototype_a = Analysis(df=failures, ds=suspensions, bounds='mcpb',show=True).mrr()
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='mcpb',show=True)
+prototype_a.mrr()
 ```
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_MCPB_censored.png" height="700" />
 
