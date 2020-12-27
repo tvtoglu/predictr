@@ -2,6 +2,7 @@
 Weibull Analysis Utilities
 
 ![](https://img.shields.io/pypi/v/predictr?color=blue&label=pypi)
+![](https://img.shields.io/pypi/dm/predictr?color=blue?style=flat-square)
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat-square)
 
 ## Installation
