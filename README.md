@@ -13,6 +13,10 @@ pip install predictr
 ```
 
 ## Usage
+### Import predictr in python
+```python
+from predictr import Analysis
+```
 ### Default Parameter values
 df: list = None -> failures in seconds, days, bo. of cycles etc., e.g. df = [100, 120, 80, 300]<br>
 ds: list = None -> suspensions (right-censored) in seconds, days, bo. of cycles etc., e.g. ds = [300, 400, 400]<br>
@@ -45,15 +49,24 @@ The following table provides possible configurations. Bias-corrections for mrr()
 
 unit = '-' -> Unit of the elements in df and ds, e.g. unit = 'seconds', unit = 'days', unit = 'ms' etc.
 
-### To use the Maximum Likelihood Estimation (MLE)
+### How to use the Maximum Likelihood Estimation (MLE)
+object = Analysis()**.mle()**
 #### Uncensored sample
-example:
-sample = 
+Example: 
+
 ```python
-import predictr
-
-
+uncen_sample = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = pr.Analysis(df=uncen_sample, bounds='fisher',show=True).mle()
 ```
+#### Censored sample
+Example: 
+
+```python
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+suspensions = [1.9, 2.0, 2.0]
+prototype_a = pr.Analysis(df=uncen_sample, bounds='fisher',show=True).mle()
+```
+![GitHub Logo](/docs/images/MLE_Fisher_Bounds_uncensored.png)
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
