@@ -9,13 +9,14 @@ from setuptools import setup
 
 setup(
       name='predictr',
-      version='0.1.0',
+      version='0.1.1',
       description='Weibull Analysis Utilities',
       author='Tamer Tevetoglu',
       author_email="tamer.tevetoglu@ima.uni-stuttgart.de",
       url="https://github.com/tvtoglu/predictr",
       py_modules=["predictr"],
       package_dir={'': 'src'},
+      long_description_content_type='text/markdown',
       classifiers=[
           "Programming Language :: Python :: 3",
           "Programming Language :: Python :: 3.6",
