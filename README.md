@@ -15,7 +15,9 @@ pip install predictr
 ## Usage
 ### Default Parameter values
 df: list = None -> failures, e.g. df = [100, 120, 80, 300]<br>
+
 ds: list = None -> suspensions (right-censored), ds = [300, 400, 400]<br>
+
 show: bool = False -> If True, the Weibull probability plot will be plotted.<br>
 plot_style = 'ggplot' -> Choose a style according to your needs. See https://matplotlib.org/3.1.0/gallery/style_sheets/style_sheets_reference.html for styles.<br>
 bounds=None -> Use following table to configure everything related to confidence bounds, e.g. if you want to use Monte-Carlo pivotal bounds for the Median Rank Regression: bounds = 'mcpb'.<br>
