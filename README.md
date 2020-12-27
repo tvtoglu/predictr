@@ -1,8 +1,8 @@
 # predictr
 Weibull Analysis Utilities
 
-![](https://img.shields.io/pypi/v/predictr?color=blue&label=pypi)
-![](https://img.shields.io/pypi/dm/predictr?color=blue?style=flat-square)
+![](https://img.shields.io/pypi/v/predictr?color=blue&style=flat-square&label=pypi)
+![](https://img.shields.io/pypi/dm/predictr?color=blue&style=flat-square)
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat-square)
 
 ## Installation
@@ -57,8 +57,8 @@ object = Analysis()**.mle()**
 #### Uncensored sample
 Example: 
 ```python
-uncen_sample = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
-prototype_a = Analysis(df=uncen_sample, bounds='fisher',show=True).mle()
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='fisher',show=True).mle()
 ```
 <img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_Fisher_Bounds_uncensored.png" height="700" />
 
@@ -71,6 +71,28 @@ suspensions = [1.9, 2.0, 2.0]
 prototype_a = Analysis(df=uncen_sample, bounds='lrb',show=True).mle()
 ```
 <img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MLE_LRB_censored.png" height="700" />
+
+### How to use the Maximum Rank Regression (MRR)
+Just add '.mrr()' after Analysis()
+object = Analysis()**.mrr()**
+
+#### Uncensored sample
+Example: 
+```python
+uncen_sample = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='bbb',show=True).mrr()
+```
+<img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MRR_BBB_uncensored.png" height="700" />
+
+#### Censored sample
+Example: 
+
+```python
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+suspensions = [1.9, 2.0, 2.0]
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='mcpb',show=True).mrr()
+```
+<img src="https://github.com/tvtoglu/predictr/blob/main/docs/images/MRR_MCPB_censored.png" height="700" />
 
 ## To Do
 I will add a homepage with more detailed examples and guidelines for non-experts in the field of reliability engineering.
