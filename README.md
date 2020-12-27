@@ -6,6 +6,8 @@ predictr already includes many methods (see tables below). A guideline when to u
 
 ![](https://img.shields.io/pypi/v/predictr?color=blue&style=flat&label=pypi)
 [![Downloads](https://pepy.tech/badge/predictr)](https://pepy.tech/project/predictr)
+![](https://img.shields.io/pypi/pyversions/predictr)
+![](https://img.shields.io/pypi/l/predictr)
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat)
 
 ## Installation
