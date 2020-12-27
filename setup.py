@@ -19,7 +19,7 @@ setup(
       url="https://github.com/tvtoglu/predictr",
       py_modules=["predictr"],
       package_dir={'': 'src'},
-      long_description=long_description
+      long_description=long_description,
       long_description_content_type='text/markdown',
       classifiers=[
           "Programming Language :: Python :: 3",
