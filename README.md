@@ -94,7 +94,7 @@ prototype_a.mle()
 
 ### How to use the Median Rank Regression (MRR)
 object = Analysis()<br>
-object**.mrr()**
+object.**mrr()**
 
 #### Uncensored sample
 Example: 
