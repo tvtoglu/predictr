@@ -69,7 +69,7 @@ The following table provides possible configurations. Bias-corrections for mrr()
 unit = '-' -> Unit of the elements in df and ds, e.g. unit = 'seconds', unit = 'days', unit = 'ms' etc.
 
 ### How to use the Maximum Likelihood Estimation (MLE)
-object = Analysis()
+object = Analysis()<br>
 object.**.mle()**
 
 #### Uncensored sample
@@ -93,7 +93,7 @@ prototype_a.mle()
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored.png" height="700" />
 
 ### How to use the Median Rank Regression (MRR)
-object = Analysis()
+object = Analysis()<br>
 object**.mrr()**
 
 #### Uncensored sample
