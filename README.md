@@ -70,7 +70,7 @@ unit = '-' -> Unit of the elements in df and ds, e.g. unit = 'seconds', unit = '
 
 ### How to use the Maximum Likelihood Estimation (MLE)
 object = Analysis()<br>
-object**.mle()**
+object.**mle()**
 
 #### Uncensored sample
 Example: 
