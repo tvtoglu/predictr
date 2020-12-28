@@ -55,7 +55,7 @@ bounds=None -> Use following table to configure everything related to confidence
 bounds_type = '2s' -> '2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. E.g. bounds_type = '1sl'.<br>
 cl=0.9 -> configure the confidence level in the intervall (0, 1.0)<br>
 bcm=None -> Define the bias-correction method when the MLE is being used. Bootstrap bias-corrections are dependent on the number of bootstrap replication and the chosen statistic, e.g. if bcm = 'np_bs': bs_size = 5000 and est_type = 'median'.<br>
-bs_size = 5000 -> Resampling/Bootstrap sample size (number of replication). bs_size should be greater than or equal to 2000 for accurate results. The higher the number of replication, the longer it takes to compute the bias-correction.<br>
+bs_size = 5000 -> Resampling/Bootstrap sample size (number of replication). bs_size should be greater than or equal to 2000 for accurate results. The higher the number of replications, the longer it takes to compute the bias-correction.<br>
 est_type = 'median' -> When using bootstrap bias-corrections, this argument decides which statistic to compute from the bootstrap samples.<br>
 The following table provides possible configurations. Bias-corrections for mrr() are not supported, yet.<br>
 
