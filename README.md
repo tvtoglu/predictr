@@ -24,10 +24,10 @@ pip install predictr
 from predictr import Analysis
 ```
 ### How to use the Analysis class after importing
-If both df and ds are None, an error will be raised. Configure all needed arguments that fits your use case.<br>
+If both df and ds are None, an error will be raised. Configure all needed arguments that fit your use case.<br>
 Arguments to pass in Analysis class:<br>
 Analysis(df: list = None, ds: list = None, show: bool = False, plot_style='ggplot', bounds=None, bounds_type='2s',
-                 cl=0.9, bcm=None, bs_size=5000, est_type='median', unit='-'))<br>
+                 cl=0.9, bcm=None, bs_size=5000, est_type='median', unit='-')<br>
 
 **Step 1: Create an instance of the class Analysis** <br>
 The class object is some prototype data, so we will call it "prototype_test". You can name it whatever you want.<br>
@@ -37,8 +37,8 @@ prototype_test = Analysis(df = [200, 300, 400], show=True)<br>
 prototype_test.mle() -> MLE or prototype_test.mrr() -> MRR<br>
 
 ### Default Parameter values
-df: list = None -> failures in seconds, days, no. of cycles etc., e.g. df = [100, 120, 80, 300]<br>
-ds: list = None -> suspensions (right-censored) in seconds, days, no. of cycles etc., e.g. ds = [300, 400, 400]<br>
+df: list = None -> list of failures in seconds, days, no. of cycles etc., e.g. df = [100, 120, 80, 300]<br>
+ds: list = None -> list of suspensions (right-censored) in seconds, days, no. of cycles etc., e.g. ds = [300, 400, 400]<br>
 show: bool = False -> If True, the Weibull probability plot will be plotted.<br>
 plot_style = 'ggplot' -> Choose a style according to your needs. See https://matplotlib.org/3.1.0/gallery/style_sheets/style_sheets_reference.html for styles.<br>
 bounds=None -> Use following table to configure everything related to confidence bounds, e.g. if you want to use Monte-Carlo pivotal bounds for the Median Rank Regression: bounds = 'mcpb'.<br>
