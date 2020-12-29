@@ -11,7 +11,12 @@ Template for next changes
 ### Changed
  
 ### Fixed
- 
+
+## [0.1.7] - 2020-12-29
+  
+### Changed
+ - changed get_bx_percentile() to a classmethod
+
 ## [0.1.6] - 2020-12-29
  
 ### Added
