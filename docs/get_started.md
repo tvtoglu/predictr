@@ -11,8 +11,8 @@ Anaconda comes with a bunch of pre-installed packages. Spyder is a very good IDE
 
 - Open the Anaconda Navigator and install Spyder if necessary.
 - Open Spyder and createa new file
-- Import Spyder using:
+- Import predictr in Spyder using:
 ```python
 from predictr import Analysis
 ```
-Now you're able to use the Analysis class in predictr. For now, Analysis is the only class you can import. However, I will add new classes to predictr in the future.
+Now you're able to use the Analysis class from predictr. For now, Analysis is the only class you can import. However, I will add new classes to predictr in the future.
