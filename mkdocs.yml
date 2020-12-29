@@ -3,5 +3,6 @@ theme:
   name: material
 nav:
     - Home: index.md
+    - Get started: get_started.md
     - Overview: overview.md
     - About: about.md
