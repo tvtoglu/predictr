@@ -2013,8 +2013,8 @@ class Analysis():
         plt.grid(True, which='both')
         plt.show()
 
-    @staticmethod
-    def get_bx_percentile(time, beta_, eta_):
+    @classmethod
+    def get_bx_percentile(cls, time, beta_, eta_):
         """
         Computes the unreliability at given input time.
 
@@ -2048,3 +2048,7 @@ class Analysis():
             percentiles = unrel_func(time, beta_, eta_)
 
         return percentiles
+
+
+if __name__ == '__main__':
+    print(Analysis.get_bx_percentile(0.1, 2, 1))
