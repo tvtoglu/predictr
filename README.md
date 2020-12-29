@@ -49,7 +49,7 @@ bounds=None -> Use following table to configure everything related to confidence
 | Monte-Carlo Pivotal Bounds      |   -   |   x   |        x        |       x       | '2s', '1sl', '1su' |     'mcpb'     |
 | Non-Parametric Bootstrap Bounds |   x   |   x   |        x        |       -       | '2s', '1sl', '1su' |     'npbb'     |
 | Parametric Bootstrap Bounds     |   x   |   x   |        x        |       -       | '2s', '1sl', '1su' |      'pbb'     |
-| Fisher Bounds                   |   x   |   -   |        x        |       x       | '2s', '1sl', '1su' |    'fisher'    |
+| Fisher Bounds                   |   x   |   -   |        x        |       x       | '2s', '1sl', '1su' |      'fb'      |
 | Likelihood Ratio Bounds         |   x   |   -   |        x        |       x       | '2s', '1sl', '1su' |      'lrb'     |
 
 bounds_type = '2s' -> '2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. E.g. bounds_type = '1sl'.<br>
@@ -76,7 +76,7 @@ object.**mle()**
 Example: 
 ```python
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
-prototype_a = Analysis(df=failures, bounds='fisher',show=True)
+prototype_a = Analysis(df=failures, bounds='fb',show=True)
 prototype_a.mle()
 ```
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" height="700" />
