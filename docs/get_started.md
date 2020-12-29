@@ -6,7 +6,7 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install predict
 ```bash
 pip install predictr
 ```
-### Step 2: How to use predictr 
+### Step 3: Use predictr in an IDE or text editor
 Anaconda comes with a bunch of pre-installed packages. Spyder is a very good IDE you can use to get started using Python.
 - Open the Anaconda Navigator and install Spyder if necessary.
 - Open Spyder and createa new file
