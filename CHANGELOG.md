@@ -16,7 +16,7 @@ Template for next changes
  
 ### Added
 - Official changelog
-- New static method get_bx() for Analysis class. You can now get the time values for given BX-lives
+- New static method get_bx_percentile() for Analysis class. You can now get the time values for given BX-lives
 
 ### Changed
   
