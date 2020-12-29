@@ -1,0 +1,750 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      <link rel="shortcut icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-6.2.3">
+    
+    
+      
+        <title>Overview - predictr - Predict the Reliability</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.3b61ea93.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.39b8e14a.min.css">
+        
+      
+    
+    
+    
+      
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>body,input{font-family:"Roboto",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono",SFMono-Regular,Consolas,Menlo,monospace}</style>
+      
+    
+    
+    
+    
+      
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="none" data-md-color-accent="none">
+      
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#predictr-predict-the-reliability" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid" aria-label="Header">
+    <a href=".." title="predictr - Predict the Reliability" class="md-header-nav__button md-logo" aria-label="predictr - Predict the Reliability">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header-nav__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header-nav__title" data-md-component="header-title">
+      <div class="md-header-nav__ellipsis">
+        <div class="md-header-nav__topic">
+          <span class="md-ellipsis">
+            predictr - Predict the Reliability
+          </span>
+        </div>
+        <div class="md-header-nav__topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      <label class="md-header-nav__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" data-md-state="active" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <button type="reset" class="md-search__icon md-icon" aria-label="Clear" data-md-component="search-reset" tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="predictr - Predict the Reliability" class="md-nav__button md-logo" aria-label="predictr - Predict the Reliability">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    predictr - Predict the Reliability
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+
+  <li class="md-nav__item">
+    <a href=".." class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="__toc">
+        Overview
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+    
+    <a href="./" class="md-nav__link md-nav__link--active">
+      Overview
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    Usage
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#import-predictr-in-python" class="md-nav__link">
+    Import predictr in python
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-use-the-analysis-class-after-importing" class="md-nav__link">
+    How to use the Analysis class after importing
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-parameter-values" class="md-nav__link">
+    Default Parameter values
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-use-the-maximum-likelihood-estimation-mle" class="md-nav__link">
+    How to use the Maximum Likelihood Estimation (MLE)
+  </a>
+  
+    <nav class="md-nav" aria-label="How to use the Maximum Likelihood Estimation (MLE)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uncensored-sample" class="md-nav__link">
+    Uncensored sample
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#censored-sample" class="md-nav__link">
+    Censored sample
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-use-the-median-rank-regression-mrr" class="md-nav__link">
+    How to use the Median Rank Regression (MRR)
+  </a>
+  
+    <nav class="md-nav" aria-label="How to use the Median Rank Regression (MRR)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uncensored-sample_1" class="md-nav__link">
+    Uncensored sample
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#censored-sample_1" class="md-nav__link">
+    Censored sample
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#to-do" class="md-nav__link">
+    To Do
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+    
+      
+      
+      
+
+
+
+  <li class="md-nav__item">
+    <a href="../about/" class="md-nav__link">
+      About
+    </a>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    Usage
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#import-predictr-in-python" class="md-nav__link">
+    Import predictr in python
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-use-the-analysis-class-after-importing" class="md-nav__link">
+    How to use the Analysis class after importing
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-parameter-values" class="md-nav__link">
+    Default Parameter values
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-use-the-maximum-likelihood-estimation-mle" class="md-nav__link">
+    How to use the Maximum Likelihood Estimation (MLE)
+  </a>
+  
+    <nav class="md-nav" aria-label="How to use the Maximum Likelihood Estimation (MLE)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uncensored-sample" class="md-nav__link">
+    Uncensored sample
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#censored-sample" class="md-nav__link">
+    Censored sample
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-to-use-the-median-rank-regression-mrr" class="md-nav__link">
+    How to use the Median Rank Regression (MRR)
+  </a>
+  
+    <nav class="md-nav" aria-label="How to use the Median Rank Regression (MRR)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uncensored-sample_1" class="md-nav__link">
+    Uncensored sample
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#censored-sample_1" class="md-nav__link">
+    Censored sample
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#to-do" class="md-nav__link">
+    To Do
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                
+                <h1 id="predictr-predict-the-reliability">predictr - Predict the Reliability</h1>
+<p>predictr: predict + reliability, in other words: A tool to predict the reliability.<br>
+The aim of this package is to provide state of the art tools for all kinds of Weibull analyses. <br>
+predictr already includes many methods (see tables below). A guideline on when to use which method will be added soon.</p>
+<p><img alt="" src="https://img.shields.io/pypi/v/predictr?color=blue&amp;style=flat&amp;label=pypi" />
+<a href="https://pepy.tech/project/predictr"><img alt="Downloads" src="https://pepy.tech/badge/predictr" /></a>
+<img alt="" src="https://img.shields.io/pypi/pyversions/predictr" />
+<img alt="" src="https://img.shields.io/pypi/l/predictr" />
+<img alt="" src="https://img.shields.io/github/stars/tvtoglu/predictr?style=flat" /></p>
+<h2 id="installation">Installation</h2>
+<p>Use the package manager <a href="https://pip.pypa.io/en/stable/">pip</a> to install predictr.</p>
+<pre><code class="language-bash">pip install predictr
+</code></pre>
+<h2 id="usage">Usage</h2>
+<h3 id="import-predictr-in-python">Import predictr in python</h3>
+<pre><code class="language-python">from predictr import Analysis
+</code></pre>
+<h3 id="how-to-use-the-analysis-class-after-importing">How to use the Analysis class after importing</h3>
+<p>If both df and ds are None, an error will be raised. Configure all needed arguments that fit your use case.<br>
+Arguments to pass in Analysis class:<br>
+Analysis(df: list = None, ds: list = None, show: bool = False, plot_style='ggplot', bounds=None, bounds_type='2s',
+                 cl=0.9, bcm=None, bs_size=5000, est_type='median', unit='-')<br></p>
+<p><strong>Step 1: Create an instance of the class Analysis</strong> <br>
+The class object is some prototype data, so we will call it "prototype_test". You can name it whatever you want.<br>
+prototype_test = Analysis(df = [200, 300, 400], show=True)<br></p>
+<p><strong>Step 2: Use one of the instance methods (mle() or mrr()) of class Analysis</strong><br>
+prototype_test.mle() -&gt; MLE or prototype_test.mrr() -&gt; MRR<br></p>
+<h3 id="default-parameter-values">Default Parameter values</h3>
+<p>df: list = None -&gt; list of failures in seconds, days, no. of cycles etc., e.g. df = [100, 120, 80, 300]<br>
+ds: list = None -&gt; list of suspensions (right-censored) in seconds, days, no. of cycles etc., e.g. ds = [300, 400, 400]<br>
+show: bool = False -&gt; If True, the Weibull probability plot will be plotted.<br>
+plot_style = 'ggplot' -&gt; Choose a style according to your needs. See https://matplotlib.org/3.1.0/gallery/style_sheets/style_sheets_reference.html for styles.<br>
+bounds=None -&gt; Use following table to configure everything related to confidence bounds, e.g. if you want to use Monte-Carlo pivotal bounds for the Median Rank Regression: bounds = 'mcpb'.<br></p>
+<table>
+<thead>
+<tr>
+<th>confidence bounds</th>
+<th align="center">mle()</th>
+<th align="center">mrr()</th>
+<th align="center">uncensored data</th>
+<th align="center">censored data</th>
+<th align="center">type</th>
+<th align="center">argument value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Beta-Binomial Bounds</td>
+<td align="center">-</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">'2s', '1sl', '1su'</td>
+<td align="center">'bbb'</td>
+</tr>
+<tr>
+<td>Monte-Carlo Pivotal Bounds</td>
+<td align="center">-</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">'2s', '1sl', '1su'</td>
+<td align="center">'mcpb'</td>
+</tr>
+<tr>
+<td>Non-Parametric Bootstrap Bounds</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'2s', '1sl', '1su'</td>
+<td align="center">'npbb'</td>
+</tr>
+<tr>
+<td>Parametric Bootstrap Bounds</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'2s', '1sl', '1su'</td>
+<td align="center">'pbb'</td>
+</tr>
+<tr>
+<td>Fisher Bounds</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">'2s', '1sl', '1su'</td>
+<td align="center">'fb'</td>
+</tr>
+<tr>
+<td>Likelihood Ratio Bounds</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">x</td>
+<td align="center">x</td>
+<td align="center">'2s', '1sl', '1su'</td>
+<td align="center">'lrb'</td>
+</tr>
+</tbody>
+</table>
+<p>bounds_type = '2s' -&gt; '2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. E.g. bounds_type = '1sl'.<br>
+cl=0.9 -&gt; configure the confidence level in the intervall (0, 1.0)<br>
+bcm=None -&gt; Define the bias-correction method when the MLE is being used. Bootstrap bias-corrections are dependent on the number of bootstrap replication and the chosen statistic, e.g. if bcm = 'np_bs': bs_size = 5000 and est_type = 'median'.<br>
+bs_size = 5000 -&gt; Resampling/Bootstrap sample size (number of replication). bs_size should be greater than or equal to 2000 for accurate results. The higher the number of replications, the longer it takes to compute the bias-correction.<br>
+est_type = 'median' -&gt; When using bootstrap bias-corrections, this argument decides which statistic to compute from the bootstrap samples.<br>
+The following table provides possible configurations. Bias-corrections for mrr() are not supported, yet.<br></p>
+<table>
+<thead>
+<tr>
+<th>Bias-correction method</th>
+<th align="center">mle()</th>
+<th align="center">mrr()</th>
+<th align="center">argument value</th>
+<th align="center">config.</th>
+<th align="center">statistic</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C4</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'c4'</td>
+<td align="center">-</td>
+<td align="center">-</td>
+</tr>
+<tr>
+<td>hrbu</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'hrbu'</td>
+<td align="center">-</td>
+<td align="center">-</td>
+</tr>
+<tr>
+<td>non-parametric Bootstrap correction</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'np_bs'</td>
+<td align="center">bs_size</td>
+<td align="center">'mean', 'median', 'trimmed_mean'</td>
+</tr>
+<tr>
+<td>Parametric Bootstrap correction</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'p_bs'</td>
+<td align="center">bs_size</td>
+<td align="center">'mean', 'median', 'trimmed_mean'</td>
+</tr>
+</tbody>
+</table>
+<p>unit = '-' -&gt; Unit of the elements in df and ds, e.g. unit = 'seconds', unit = 'days', unit = 'ms' etc.</p>
+<h3 id="how-to-use-the-maximum-likelihood-estimation-mle">How to use the Maximum Likelihood Estimation (MLE)</h3>
+<p>object = Analysis()<br>
+object.<strong>mle()</strong></p>
+<h4 id="uncensored-sample">Uncensored sample</h4>
+<p>Example: </p>
+<pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='fb',show=True)
+prototype_a.mle()
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" height="700" /></p>
+<h4 id="censored-sample">Censored sample</h4>
+<p>Example: </p>
+<pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+suspensions = [1.9, 2.0, 2.0]
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb',show=True)
+prototype_a.mle()
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored.png" height="700" /></p>
+<h3 id="how-to-use-the-median-rank-regression-mrr">How to use the Median Rank Regression (MRR)</h3>
+<p>object = Analysis()<br>
+object.<strong>mrr()</strong></p>
+<h4 id="uncensored-sample_1">Uncensored sample</h4>
+<p>Example: </p>
+<pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='bbb',show=True)
+prototype_a.mrr()
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_BBB_uncensored.png" height="700" /></p>
+<h4 id="censored-sample_1">Censored sample</h4>
+<p>Example: </p>
+<pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+suspensions = [1.9, 2.0, 2.0]
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='mcpb',show=True)
+prototype_a.mrr()
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_MCPB_censored.png" height="700" /></p>
+<h2 id="to-do">To Do</h2>
+<p>I will add a homepage with more detailed examples and guidelines for non-experts in the field of reliability engineering.</p>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid" aria-label="Footer">
+        
+          <a href=".." class="md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-footer-nav__button md-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+            </div>
+            <div class="md-footer-nav__title">
+              <div class="md-ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                Home
+              </div>
+            </div>
+          </a>
+        
+        
+          <a href="../about/" class="md-footer-nav__link md-footer-nav__link--next" rel="next">
+            <div class="md-footer-nav__title">
+              <div class="md-ellipsis">
+                <span class="md-footer-nav__direction">
+                  Next
+                </span>
+                About
+              </div>
+            </div>
+            <div class="md-footer-nav__button md-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../assets/javascripts/vendor.08c56446.min.js"></script>
+      <script src="../assets/javascripts/bundle.6ced434e.min.js"></script><script id="__lang" type="application/json">{"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing"}</script>
+      
+      <script>
+        app = initialize({
+          base: "..",
+          features: [],
+          search: Object.assign({
+            worker: "../assets/javascripts/worker/search.8c7e0a7e.min.js"
+          }, typeof search !== "undefined" && search)
+        })
+      </script>
+      
+    
+  </body>
+</html>
