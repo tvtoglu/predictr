@@ -4,5 +4,5 @@ theme:
 nav:
     - Home: index.md
     - Get started: get_started.md
-    - Overview: overview.md
-    - About: about.md
+    - Available classes: classes.md
+
