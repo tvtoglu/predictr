@@ -4,6 +4,7 @@ Currently, there is only one class available in the predictr package. I will con
 Analysis contains all necessary methods for the Weibull analysis.  
 ### Default arguments and values
 This table provides information on alle arguments that are passed to the Analysis class.
+
 |  Parameter  | default value |      type      |                                                description                                               |
 |:-----------:|:-------------:|:--------------:|:--------------------------------------------------------------------------------------------------------:|
 | df          |      None     | list of floats | List of failures                                                                                         |
