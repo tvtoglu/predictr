@@ -1,0 +1,17 @@
+# Installation
+### Step 1: Download Anaconda
+The easiest way to install Python is by downloading Anaconda (https://www.anaconda.com) for free. Anaconda comes with all essential packages and Python. You need Python 3 (3.6, 3.7, or 3.8 )
+### Step 2: Install predictr package
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install predictr.
+```bash
+pip install predictr
+```
+# How to use predictr 
+Anaconda comes with a bunch of pre-installed packages. Spyder is a very good IDE you can use to get started using Python.
+- Open the Anaconda Navigator and install Spyder if necessary.
+- Open Spyder and createa new file
+- Import Spyder using:
+```python
+from predictr import Analysis
+```
+Now you're able to use the Analysis class in predictr. For now, Analysis is the only class you can import. However, I will add new classes to predictr in the future.
