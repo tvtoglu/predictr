@@ -105,7 +105,7 @@ class Analysis():
         """
         # Check for configuration errors
         if (self.bounds is not None
-            and self.bounds != 'fisher'
+            and self.bounds != 'fb'
             and self.bounds != 'lrb'
             and self.bounds != 'pbb'
             and self.bounds != 'npbb'):
@@ -410,7 +410,7 @@ class Analysis():
                                                                 self.est_type)
 
         # Compute confidence bounds
-        if self.bounds == 'fisher':
+        if self.bounds == 'fb':
             self.fisher_bounds()
         elif self.bounds == 'lrb':
             self.lrb()
@@ -1552,7 +1552,7 @@ class Analysis():
 
             if self.bounds is not None:
                 # Adapt bounds' name for legend, if bounds are applied
-                if self.bounds == 'fisher':
+                if self.bounds == 'fb':
                     bounds_legend = 'Fisher bounds'
                 elif self.bounds == 'lrb':
                     bounds_legend = 'LRB'
@@ -1644,7 +1644,7 @@ class Analysis():
 
             if self.bounds is not None:
                 # Adapt bounds' name for legend, if bounds are applied
-                if self.bounds == 'fisher':
+                if self.bounds == 'fb':
                     bounds_legend = 'Fisher bounds'
                 elif self.bounds == 'lrb':
                     bounds_legend = 'LRB'
@@ -1738,7 +1738,7 @@ class Analysis():
 
             if self.bounds is not None:
                 # Adapt bounds' name for legend, if bounds are applied
-                if self.bounds == 'fisher':
+                if self.bounds == 'fb':
                     bounds_legend = 'Fisher bounds'
                 elif self.bounds == 'lrb':
                     bounds_legend = 'LRB'
@@ -1837,7 +1837,7 @@ class Analysis():
 
             if self.bounds is not None:
                 # Adapt bounds' name for legend, if bounds are applied
-                if self.bounds == 'fisher':
+                if self.bounds == 'fb':
                     bounds_legend = 'Fisher bounds'
                 elif self.bounds == 'lrb':
                     bounds_legend = 'LRB'
@@ -1932,7 +1932,7 @@ class Analysis():
 
             if self.bounds is not None:
                 # Adapt bounds' name for legend, if bounds are applied
-                if self.bounds == 'fisher':
+                if self.bounds == 'fb':
                     bounds_legend = 'Fisher bounds'
                 elif self.bounds == 'lrb':
                     bounds_legend = 'LRB'
