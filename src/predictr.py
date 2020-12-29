@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-
 @author: tamertevetoglu
 """
+
 from math import floor, ceil
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,21 +16,8 @@ from scipy.stats.distributions import weibull_min
 
 class Analysis():
     """
-    Analysis is able to conduct parameter estimations, confidence bounds
-    computations, bias corrections, and plotting of the data
-    INPUT:
-    df: failure times (type:list or array)
-    ds: suspension times (type:list or array)
-    t_c: censoring time (time of last failure and Typpe II censored suspensions)
-    log_likelihood_w_cens: currently only works for Type II censored data, where
-    the test is being stoppped right after the last observed failure.
-    Likelihood functions are validated with Minitab.
-    Indexes:
-        mle: estimated using maximum likelihood estimation
-        c: censored
-        unc: uncensored
-        c4: reduced bias adjustment for Weibull distributions (Weibull Handbook)
-        hrbu: Hirose and Ross Beta-Unbias adjustments (Reliasoft)
+    Analysis provides parameter estimations, confidence bounds
+    computations, bias corrections, and plotting of the data.
     """
 
     def __init__(self, df: list = None, ds: list = None, show: bool = False,
@@ -2025,3 +2012,39 @@ class Analysis():
         plt.tight_layout()
         plt.grid(True, which='both')
         plt.show()
+
+    @staticmethod
+    def get_bx_percentile(time, beta_, eta_):
+        """
+        Computes the unreliability at given input time.
+
+        Parameters
+        ----------
+        time : float or list of floats
+            Lifetime for which the percentiles are computed. If time is a list, the percentiles for
+            each element of the list will be computed and returned.
+        beta_ : float
+            Weibull shape parameter.
+        eta_ : float
+            Weibull scale parameter.
+        eta_ : float
+            Weibull scale parameter.
+        Returns
+        -------
+        unrel : float or list of floats
+            Percentiles for the given BXlife.
+
+        """
+
+        # Weibull function
+        def unrel_func(time, beta_, eta_):
+            unrel = (1 - np.exp(-(time / eta_) ** beta_))
+            return unrel
+
+        # Check if bx is of type: list
+        if isinstance(time, list):
+            percentiles = [unrel_func(i, beta_, eta_) for i in time]
+        else:
+            percentiles = unrel_func(time, beta_, eta_)
+
+        return percentiles
