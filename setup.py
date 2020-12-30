@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Dec 26 21:21:17 2020
-
-@author: tamertevetoglu
-"""
 from setuptools import setup
 
 with open("README.md", "r") as fh:
@@ -16,7 +9,7 @@ setup(
       description='Weibull Analysis Utilities',
       author='Tamer Tevetoglu',
       author_email="tamer.tevetoglu@ima.uni-stuttgart.de",
-      url="https://github.com/tvtoglu/predictr",
+      url="https://tvtoglu.github.io/predictr/",
       py_modules=["predictr"],
       package_dir={'': 'src'},
       long_description=long_description,
