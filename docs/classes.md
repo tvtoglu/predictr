@@ -1,6 +1,6 @@
 # Available classes
 Currently, there is only one class available in the predictr package. I will continue to add new classes in the near future.
-## 1. Analysis
+## Analysis
 Analysis contains all necessary methods for the Weibull analysis.  
 ### Default arguments and values
 This table provides information on alle arguments that are passed to the Analysis class.
