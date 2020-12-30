@@ -9,6 +9,7 @@ predictr already includes many methods (see tables below). A guideline on when t
 ![](https://img.shields.io/pypi/pyversions/predictr)
 ![](https://img.shields.io/pypi/l/predictr)
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat)
+![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https%3A%2F%2Ftvtoglu.github.io%2Fpredictr%2F)
 
 ### Main Features
 #### Parameter Estimation
