@@ -5,4 +5,5 @@ nav:
     - Home: index.md
     - Get started: get_started.md
     - Available classes: classes.md
+    - Changelog: CHANGELOG.md
 
