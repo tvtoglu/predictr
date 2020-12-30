@@ -22,8 +22,35 @@ This table provides information on alle arguments that are passed to the Analysi
 **Important**:
 
 - df = None will raise an error. There has to be at least one failure.
-- mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table below to check, whether a combination of parameter estimation and confidence bounds method is supported.
 
+## Parameter estimation methods:
+One can use either the Maximum Likelihoof Estimation or Median Rank Regression.
+
+**Maximum likelihood estimation (MLE):** 
+```python
+from predictr import Analysis
+prototype_a = Analysis(...) # create an instance
+prototype_a.mle() # use instance methods
+```
+**Median Rank Regression (MRR)**
+```python
+from predictr import Analysis
+prototype_a = Analysis(...) # create an instance
+prototype_a.mrr() # use instance methods
+```
+## Bias-correction methods
+Since parameter estimation methods are only asymptotically unbiased (sample sizes -> "infinity"), bias-correction methods are useful when you have only a few failures. These methods correct the Weibull shape and scale parameter.
+The following table provides possible configurations. Bias-corrections for mrr() are not supported, yet.<br>
+
+| Bias-correction method              | mle() | mrr() | argument value | config. |             statistic            |
+|-------------------------------------|:-----:|:-----:|:--------------:|:-------:|:--------------------------------:|
+| C4 aka 'reduced bias adjustment     |   x   |   -   |      'c4'      |    -    |                 -                |
+| Hirose and Ross method              |   x   |   -   |     'hrbu'     |    -    |                 -                |
+| Non-parametric Bootstrap correction |   x   |   -   |     'np_bs'    | bs_size | 'mean', 'median', 'trimmed_mean' |
+| Parametric Bootstrap correction     |   x   |   -   |     'p_bs'     | bs_size | 'mean', 'median', 'trimmed_mean' |
+
+## Confidence bounds methods
+Analysis supports nearly all state of the art confidence bounds methods. Ever
 | confidence bounds               | mle() | mrr() | uncensored data | censored data |    bounds_type     | argument value |
 |---------------------------------|:-----:|:-----:|:---------------:|:-------------:|:------------------:|:--------------:|
 | Beta-Binomial Bounds            |   -   |   x   |        x        |       x       | '2s', '1sl', '1su' |      'bbb'     |
@@ -33,16 +60,7 @@ This table provides information on alle arguments that are passed to the Analysi
 | Fisher Bounds                   |   x   |   -   |        x        |       x       | '2s', '1sl', '1su' |      'fb'      |
 | Likelihood Ratio Bounds         |   x   |   -   |        x        |       x       | '2s', '1sl', '1su' |      'lrb'     |
 
-Following parameter estimation methods are supported:
-**Maximum likelihood estimation (MLE):** 
-```python
-from predictr import Analysis
-prototype_a = Analysis(...) # create an instance
-prototype_a.mle() # use instance methods
-```
-**Median Rank Regression**
-```python
-from predictr import Analysis
-prototype_a = Analysis(...) # create an instance
-prototype_a.mrr() # use instance methods
-```
+**Important**:
+- mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table below to check, whether a combination of parameter estimation and confidence bounds method is supported.
+- '2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. If Beta-Binomial Bounds are used, the lower bound represents the lower percentile bound at a specific time ((pctl) is added in the plot legend). If Fisher Bounds are used, the lower bound represents the lower time bound at a specific percentile.
+
