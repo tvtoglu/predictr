@@ -14,7 +14,7 @@
     
     
       
-        <title>Overview - predictr - Predict the Reliability</title>
+        <title>Available classes - predictr - Predict the Reliability</title>
       
     
     
@@ -58,7 +58,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#predictr-predict-the-reliability" class="md-skip">
+        <a href="#available-classes" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +90,7 @@
         <div class="md-header-nav__topic">
           <span class="md-ellipsis">
             
-              Overview
+              Available classes
             
           </span>
         </div>
@@ -169,8 +169,21 @@
 
 
   <li class="md-nav__item">
-    <a href=".." class="md-nav__link">
+    <a href="../home/" class="md-nav__link">
       Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+
+  <li class="md-nav__item">
+    <a href="../get_started/" class="md-nav__link">
+      Get started
     </a>
   </li>
 
@@ -191,12 +204,12 @@
     
     
       <label class="md-nav__link md-nav__link--active" for="__toc">
-        Overview
+        Available classes
         <span class="md-nav__icon md-icon"></span>
       </label>
     
     <a href="./" class="md-nav__link md-nav__link--active">
-      Overview
+      Available classes
     </a>
     
       
@@ -213,47 +226,55 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    Installation
+  <a href="#analysis" class="md-nav__link">
+    Analysis
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
-    Usage
-  </a>
-  
-    <nav class="md-nav" aria-label="Usage">
+    <nav class="md-nav" aria-label="Analysis">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#import-predictr-in-python" class="md-nav__link">
-    Import predictr in python
+  <a href="#default-arguments-and-values" class="md-nav__link">
+    Default arguments and values
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#how-to-use-the-analysis-class-after-importing" class="md-nav__link">
-    How to use the Analysis class after importing
+  <a href="#parameter-estimation-methods" class="md-nav__link">
+    Parameter estimation methods
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#default-parameter-values" class="md-nav__link">
-    Default Parameter values
+  <a href="#bias-correction-methods" class="md-nav__link">
+    Bias-correction methods
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#how-to-use-the-maximum-likelihood-estimation-mle" class="md-nav__link">
-    How to use the Maximum Likelihood Estimation (MLE)
+  <a href="#confidence-bounds-methods" class="md-nav__link">
+    Confidence bounds methods
   </a>
   
-    <nav class="md-nav" aria-label="How to use the Maximum Likelihood Estimation (MLE)">
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    Examples
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#maximum-likelihood-estimation-mle" class="md-nav__link">
+    Maximum Likelihood Estimation (MLE)
+  </a>
+  
+    <nav class="md-nav" aria-label="Maximum Likelihood Estimation (MLE)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -276,11 +297,11 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#how-to-use-the-median-rank-regression-mrr" class="md-nav__link">
-    How to use the Median Rank Regression (MRR)
+  <a href="#median-rank-regression-mrr" class="md-nav__link">
+    Median Rank Regression (MRR)
   </a>
   
-    <nav class="md-nav" aria-label="How to use the Median Rank Regression (MRR)">
+    <nav class="md-nav" aria-label="Median Rank Regression (MRR)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -302,15 +323,40 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#bias-corrections" class="md-nav__link">
+    Bias-corrections
+  </a>
+  
+    <nav class="md-nav" aria-label="Bias-corrections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uncensored-sample_2" class="md-nav__link">
+    Uncensored sample
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#censored-sample_2" class="md-nav__link">
+    Censored sample
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#to-do" class="md-nav__link">
-    To Do
-  </a>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -318,19 +364,6 @@
   
 </nav>
     
-  </li>
-
-    
-      
-      
-      
-
-
-
-  <li class="md-nav__item">
-    <a href="../about/" class="md-nav__link">
-      About
-    </a>
   </li>
 
     
@@ -359,47 +392,55 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    Installation
+  <a href="#analysis" class="md-nav__link">
+    Analysis
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
-    Usage
-  </a>
-  
-    <nav class="md-nav" aria-label="Usage">
+    <nav class="md-nav" aria-label="Analysis">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#import-predictr-in-python" class="md-nav__link">
-    Import predictr in python
+  <a href="#default-arguments-and-values" class="md-nav__link">
+    Default arguments and values
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#how-to-use-the-analysis-class-after-importing" class="md-nav__link">
-    How to use the Analysis class after importing
+  <a href="#parameter-estimation-methods" class="md-nav__link">
+    Parameter estimation methods
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#default-parameter-values" class="md-nav__link">
-    Default Parameter values
+  <a href="#bias-correction-methods" class="md-nav__link">
+    Bias-correction methods
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#how-to-use-the-maximum-likelihood-estimation-mle" class="md-nav__link">
-    How to use the Maximum Likelihood Estimation (MLE)
+  <a href="#confidence-bounds-methods" class="md-nav__link">
+    Confidence bounds methods
   </a>
   
-    <nav class="md-nav" aria-label="How to use the Maximum Likelihood Estimation (MLE)">
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    Examples
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#maximum-likelihood-estimation-mle" class="md-nav__link">
+    Maximum Likelihood Estimation (MLE)
+  </a>
+  
+    <nav class="md-nav" aria-label="Maximum Likelihood Estimation (MLE)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -422,11 +463,11 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#how-to-use-the-median-rank-regression-mrr" class="md-nav__link">
-    How to use the Median Rank Regression (MRR)
+  <a href="#median-rank-regression-mrr" class="md-nav__link">
+    Median Rank Regression (MRR)
   </a>
   
-    <nav class="md-nav" aria-label="How to use the Median Rank Regression (MRR)">
+    <nav class="md-nav" aria-label="Median Rank Regression (MRR)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -448,15 +489,40 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#bias-corrections" class="md-nav__link">
+    Bias-corrections
+  </a>
+  
+    <nav class="md-nav" aria-label="Bias-corrections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uncensored-sample_2" class="md-nav__link">
+    Uncensored sample
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#censored-sample_2" class="md-nav__link">
+    Censored sample
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#to-do" class="md-nav__link">
-    To Do
-  </a>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -473,39 +539,157 @@
               
                 
                 
-                <h1 id="predictr-predict-the-reliability">predictr - Predict the Reliability</h1>
-<p>predictr: predict + reliability, in other words: A tool to predict the reliability.<br>
-The aim of this package is to provide state of the art tools for all kinds of Weibull analyses. <br>
-predictr already includes many methods (see tables below). A guideline on when to use which method will be added soon.</p>
-<p><img alt="" src="https://img.shields.io/pypi/v/predictr?color=blue&amp;style=flat&amp;label=pypi" />
-<a href="https://pepy.tech/project/predictr"><img alt="Downloads" src="https://pepy.tech/badge/predictr" /></a>
-<img alt="" src="https://img.shields.io/pypi/pyversions/predictr" />
-<img alt="" src="https://img.shields.io/pypi/l/predictr" />
-<img alt="" src="https://img.shields.io/github/stars/tvtoglu/predictr?style=flat" /></p>
-<h2 id="installation">Installation</h2>
-<p>Use the package manager <a href="https://pip.pypa.io/en/stable/">pip</a> to install predictr.</p>
-<pre><code class="language-bash">pip install predictr
-</code></pre>
-<h2 id="usage">Usage</h2>
-<h3 id="import-predictr-in-python">Import predictr in python</h3>
+                <h1 id="available-classes">Available classes</h1>
+<p>Currently, there is only one class available in the predictr package. I will continue to add new classes in the near future.</p>
+<h2 id="analysis">Analysis</h2>
+<p>Analysis contains all necessary methods for the Weibull analysis.  </p>
+<h3 id="default-arguments-and-values">Default arguments and values</h3>
+<p>This table provides information on alle arguments that are passed to the Analysis class.</p>
+<table>
+<thead>
+<tr>
+<th align="center">Parameter</th>
+<th align="center">default value</th>
+<th align="center">type</th>
+<th align="center">description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">df</td>
+<td align="center">None</td>
+<td align="center">list of floats</td>
+<td align="center">List of failures</td>
+</tr>
+<tr>
+<td align="center">ds</td>
+<td align="center">None</td>
+<td align="center">list of floats</td>
+<td align="center">List of suspensions<br>(right-censored only)</td>
+</tr>
+<tr>
+<td align="center">bounds</td>
+<td align="center">None</td>
+<td align="center">str</td>
+<td align="center">Confidence bounce method to<br>be used in mle() or mrr()</td>
+</tr>
+<tr>
+<td align="center">bounds_type</td>
+<td align="center">None</td>
+<td align="center">str</td>
+<td align="center">Setting for the bounds:<br>either two-sided or one-sided</td>
+</tr>
+<tr>
+<td align="center">show</td>
+<td align="center">None</td>
+<td align="center">bool</td>
+<td align="center">If True, the Weibull probability<br>plot will be plotted</td>
+</tr>
+<tr>
+<td align="center">bcm</td>
+<td align="center">None</td>
+<td align="center">str</td>
+<td align="center">Defines the bias-correction<br>method in mle()</td>
+</tr>
+<tr>
+<td align="center">cl</td>
+<td align="center">0.9</td>
+<td align="center">float</td>
+<td align="center">Sets the confidence level<br>when bounds are used</td>
+</tr>
+<tr>
+<td align="center">bs_size</td>
+<td align="center">5000</td>
+<td align="center">int</td>
+<td align="center">Number of bootstrap samples</td>
+</tr>
+<tr>
+<td align="center">est_type</td>
+<td align="center">'median'</td>
+<td align="center">str</td>
+<td align="center">Sets the statistic to compute <br>from the bootstrap samples</td>
+</tr>
+<tr>
+<td align="center">plot_style</td>
+<td align="center">'ggplot'</td>
+<td align="center">str</td>
+<td align="center">Choose a style according to your needs.<br>See matplotlib style references for more<br>available styles.</td>
+</tr>
+<tr>
+<td align="center">unit</td>
+<td align="center">'-'</td>
+<td align="center">str</td>
+<td align="center">Unit of failures and suspensions, e.g.<br>'s', 'ms', 'no. of cycle' etc.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Important</strong>:</p>
+<ul>
+<li>df = None will raise an error. There has to be at least one failure.</li>
+</ul>
+<h3 id="parameter-estimation-methods">Parameter estimation methods</h3>
+<p>One can use either the Maximum Likelihoof Estimation or Median Rank Regression.</p>
+<p><strong>Maximum likelihood estimation (MLE):</strong> </p>
 <pre><code class="language-python">from predictr import Analysis
+prototype_a = Analysis(...) # create an instance
+prototype_a.mle() # use instance methods
 </code></pre>
-<h3 id="how-to-use-the-analysis-class-after-importing">How to use the Analysis class after importing</h3>
-<p>If both df and ds are None, an error will be raised. Configure all needed arguments that fit your use case.<br>
-Arguments to pass in Analysis class:<br>
-Analysis(df: list = None, ds: list = None, show: bool = False, plot_style='ggplot', bounds=None, bounds_type='2s',
-                 cl=0.9, bcm=None, bs_size=5000, est_type='median', unit='-')<br></p>
-<p><strong>Step 1: Create an instance of the class Analysis</strong> <br>
-The class object is some prototype data, so we will call it "prototype_test". You can name it whatever you want.<br>
-prototype_test = Analysis(df = [200, 300, 400], show=True)<br></p>
-<p><strong>Step 2: Use one of the instance methods (mle() or mrr()) of class Analysis</strong><br>
-prototype_test.mle() -&gt; MLE or prototype_test.mrr() -&gt; MRR<br></p>
-<h3 id="default-parameter-values">Default Parameter values</h3>
-<p>df: list = None -&gt; list of failures in seconds, days, no. of cycles etc., e.g. df = [100, 120, 80, 300]<br>
-ds: list = None -&gt; list of suspensions (right-censored) in seconds, days, no. of cycles etc., e.g. ds = [300, 400, 400]<br>
-show: bool = False -&gt; If True, the Weibull probability plot will be plotted.<br>
-plot_style = 'ggplot' -&gt; Choose a style according to your needs. See https://matplotlib.org/3.1.0/gallery/style_sheets/style_sheets_reference.html for styles.<br>
-bounds=None -&gt; Use following table to configure everything related to confidence bounds, e.g. if you want to use Monte-Carlo pivotal bounds for the Median Rank Regression: bounds = 'mcpb'.<br></p>
+<p><strong>Median Rank Regression (MRR)</strong></p>
+<pre><code class="language-python">from predictr import Analysis
+prototype_a = Analysis(...) # create an instance
+prototype_a.mrr() # use instance methods
+</code></pre>
+<h3 id="bias-correction-methods">Bias-correction methods</h3>
+<p>Since parameter estimation methods are only asymptotically unbiased (sample sizes -&gt; "infinity"), bias-correction methods are useful when you have only a few failures. These methods correct the Weibull shape and scale parameter.
+The following table provides possible configurations. Bias-corrections for mrr() are not supported, yet.<br></p>
+<table>
+<thead>
+<tr>
+<th>Bias-correction method</th>
+<th align="center">mle()</th>
+<th align="center">mrr()</th>
+<th align="center">argument value</th>
+<th align="center">config.</th>
+<th align="center">statistic</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C4 aka 'reduced bias adjustment</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'c4'</td>
+<td align="center">-</td>
+<td align="center">-</td>
+</tr>
+<tr>
+<td>Hirose and Ross method</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'hrbu'</td>
+<td align="center">-</td>
+<td align="center">-</td>
+</tr>
+<tr>
+<td>Non-parametric Bootstrap correction</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'np_bs'</td>
+<td align="center">bs_size</td>
+<td align="center">'mean', 'median', 'trimmed_mean'</td>
+</tr>
+<tr>
+<td>Parametric Bootstrap correction</td>
+<td align="center">x</td>
+<td align="center">-</td>
+<td align="center">'p_bs'</td>
+<td align="center">bs_size</td>
+<td align="center">'mean', 'median', 'trimmed_mean'</td>
+</tr>
+</tbody>
+</table>
+<h3 id="confidence-bounds-methods">Confidence bounds methods</h3>
+<p>Analysis supports nearly all state of the art confidence bounds methods.</p>
 <table>
 <thead>
 <tr>
@@ -514,7 +698,7 @@ bounds=None -&gt; Use following table to configure everything related to confide
 <th align="center">mrr()</th>
 <th align="center">uncensored data</th>
 <th align="center">censored data</th>
-<th align="center">type</th>
+<th align="center">bounds_type</th>
 <th align="center">argument value</th>
 </tr>
 </thead>
@@ -575,70 +759,21 @@ bounds=None -&gt; Use following table to configure everything related to confide
 </tr>
 </tbody>
 </table>
-<p>bounds_type = '2s' -&gt; '2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. E.g. bounds_type = '1sl'.<br>
-cl=0.9 -&gt; configure the confidence level in the intervall (0, 1.0)<br>
-bcm=None -&gt; Define the bias-correction method when the MLE is being used. Bootstrap bias-corrections are dependent on the number of bootstrap replication and the chosen statistic, e.g. if bcm = 'np_bs': bs_size = 5000 and est_type = 'median'.<br>
-bs_size = 5000 -&gt; Resampling/Bootstrap sample size (number of replication). bs_size should be greater than or equal to 2000 for accurate results. The higher the number of replications, the longer it takes to compute the bias-correction.<br>
-est_type = 'median' -&gt; When using bootstrap bias-corrections, this argument decides which statistic to compute from the bootstrap samples.<br>
-The following table provides possible configurations. Bias-corrections for mrr() are not supported, yet.<br></p>
-<table>
-<thead>
-<tr>
-<th>Bias-correction method</th>
-<th align="center">mle()</th>
-<th align="center">mrr()</th>
-<th align="center">argument value</th>
-<th align="center">config.</th>
-<th align="center">statistic</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>C4</td>
-<td align="center">x</td>
-<td align="center">-</td>
-<td align="center">'c4'</td>
-<td align="center">-</td>
-<td align="center">-</td>
-</tr>
-<tr>
-<td>hrbu</td>
-<td align="center">x</td>
-<td align="center">-</td>
-<td align="center">'hrbu'</td>
-<td align="center">-</td>
-<td align="center">-</td>
-</tr>
-<tr>
-<td>non-parametric Bootstrap correction</td>
-<td align="center">x</td>
-<td align="center">-</td>
-<td align="center">'np_bs'</td>
-<td align="center">bs_size</td>
-<td align="center">'mean', 'median', 'trimmed_mean'</td>
-</tr>
-<tr>
-<td>Parametric Bootstrap correction</td>
-<td align="center">x</td>
-<td align="center">-</td>
-<td align="center">'p_bs'</td>
-<td align="center">bs_size</td>
-<td align="center">'mean', 'median', 'trimmed_mean'</td>
-</tr>
-</tbody>
-</table>
-<p>unit = '-' -&gt; Unit of the elements in df and ds, e.g. unit = 'seconds', unit = 'days', unit = 'ms' etc.</p>
-<h3 id="how-to-use-the-maximum-likelihood-estimation-mle">How to use the Maximum Likelihood Estimation (MLE)</h3>
-<p>object = Analysis()<br>
-object.<strong>mle()</strong></p>
-<h4 id="uncensored-sample">Uncensored sample</h4>
+<p><strong>Important</strong>:</p>
+<ul>
+<li>mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table above to check, whether a combination of parameter estimation and confidence bounds method is supported.</li>
+<li>'2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. If Beta-Binomial Bounds are used, the lower bound represents the lower percentile bound at a specific time ((pctl) is added in the plot legend). If Fisher Bounds are used, the lower bound represents the lower time bound at a specific percentile.</li>
+</ul>
+<h3 id="examples">Examples</h3>
+<h4 id="maximum-likelihood-estimation-mle">Maximum Likelihood Estimation (MLE)</h4>
+<h5 id="uncensored-sample">Uncensored sample</h5>
 <p>Example: </p>
 <pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 prototype_a = Analysis(df=failures, bounds='fb',show=True)
 prototype_a.mle()
 </code></pre>
 <p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" height="700" /></p>
-<h4 id="censored-sample">Censored sample</h4>
+<h5 id="censored-sample">Censored sample</h5>
 <p>Example: </p>
 <pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 suspensions = [1.9, 2.0, 2.0]
@@ -646,17 +781,15 @@ prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb',show=True)
 prototype_a.mle()
 </code></pre>
 <p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored.png" height="700" /></p>
-<h3 id="how-to-use-the-median-rank-regression-mrr">How to use the Median Rank Regression (MRR)</h3>
-<p>object = Analysis()<br>
-object.<strong>mrr()</strong></p>
-<h4 id="uncensored-sample_1">Uncensored sample</h4>
+<h4 id="median-rank-regression-mrr">Median Rank Regression (MRR)</h4>
+<h5 id="uncensored-sample_1">Uncensored sample</h5>
 <p>Example: </p>
 <pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 prototype_a = Analysis(df=failures, bounds='bbb',show=True)
 prototype_a.mrr()
 </code></pre>
 <p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_BBB_uncensored.png" height="700" /></p>
-<h4 id="censored-sample_1">Censored sample</h4>
+<h5 id="censored-sample_1">Censored sample</h5>
 <p>Example: </p>
 <pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
 suspensions = [1.9, 2.0, 2.0]
@@ -664,8 +797,26 @@ prototype_a = Analysis(df=failures, ds=suspensions, bounds='mcpb',show=True)
 prototype_a.mrr()
 </code></pre>
 <p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_MCPB_censored.png" height="700" /></p>
-<h2 id="to-do">To Do</h2>
-<p>I will add a homepage with more detailed examples and guidelines for non-experts in the field of reliability engineering.</p>
+<h4 id="bias-corrections">Bias-corrections</h4>
+<p>As already mentioned, only mle() support bias-corrections. The samples in these examples are drawn from a two-parameter Weibull distribution with a shape parameter of 2.0 and a scale parameter of 1.0.</p>
+<h5 id="uncensored-sample_2">Uncensored sample</h5>
+<p>It is appearent that the estimates of beta and eta are now closer to the ground truth values. The dotted grey line in the plot is the "biased" MLE line, the bia-corrected line is blue. The legend contains all needed information.</p>
+<pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='fb', show=True, bcm='c4')
+prototype_a.mle()
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored_c4.png" height="700" /></p>
+<p>The estimates can for the Weibull parameters can be compared directly, since they are available as attributes</p>
+<pre><code class="language-python">print(f'biased beta: {prototype_a.beta:4f} --&gt; bias-corrected beta: {prototype_a.beta_c4:4f}')
+</code></pre>
+<h5 id="censored-sample_2">Censored sample</h5>
+<p>The data is type II right-censored.</p>
+<pre><code class="language-python">failures = [0.38760099164906514, 0.5867052007217437, 0.5878056753744406, 0.602290402929083, 0.6754829518358306, 0.7520219855697948]
+suspensions = [0.7520219855697948, 0.7520219855697948]
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb', show=True, bcm='hrbu')
+prototype_a.mle()
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored_hrbu.png" height="700" /></p>
                 
               
               
@@ -684,7 +835,7 @@ prototype_a.mrr()
     <div class="md-footer-nav">
       <nav class="md-footer-nav__inner md-grid" aria-label="Footer">
         
-          <a href=".." class="md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+          <a href="../get_started/" class="md-footer-nav__link md-footer-nav__link--prev" rel="prev">
             <div class="md-footer-nav__button md-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
             </div>
@@ -693,25 +844,11 @@ prototype_a.mrr()
                 <span class="md-footer-nav__direction">
                   Previous
                 </span>
-                Home
+                Get started
               </div>
             </div>
           </a>
         
-        
-          <a href="../about/" class="md-footer-nav__link md-footer-nav__link--next" rel="next">
-            <div class="md-footer-nav__title">
-              <div class="md-ellipsis">
-                <span class="md-footer-nav__direction">
-                  Next
-                </span>
-                About
-              </div>
-            </div>
-            <div class="md-footer-nav__button md-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
-            </div>
-          </a>
         
       </nav>
     </div>
