@@ -62,7 +62,8 @@ Analysis supports nearly all state of the art confidence bounds methods.
 | Likelihood Ratio Bounds         |   x   |   -   |        x        |       x       | '2s', '1sl', '1su' |      'lrb'     |
 
 **Important**:
-- mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table below to check, whether a combination of parameter estimation and confidence bounds method is supported.
+
+- mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table abovr to check, whether a combination of parameter estimation and confidence bounds method is supported.
 - '2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. If Beta-Binomial Bounds are used, the lower bound represents the lower percentile bound at a specific time ((pctl) is added in the plot legend). If Fisher Bounds are used, the lower bound represents the lower time bound at a specific percentile.
 
 ### Examples
