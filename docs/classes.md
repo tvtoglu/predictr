@@ -65,3 +65,45 @@ Analysis supports nearly all state of the art confidence bounds methods.
 - mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table below to check, whether a combination of parameter estimation and confidence bounds method is supported.
 - '2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. If Beta-Binomial Bounds are used, the lower bound represents the lower percentile bound at a specific time ((pctl) is added in the plot legend). If Fisher Bounds are used, the lower bound represents the lower time bound at a specific percentile.
 
+### Examples
+#### How to use the Maximum Likelihood Estimation (MLE)
+##### Uncensored sample
+Example: 
+```python
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='fb',show=True)
+prototype_a.mle()
+```
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" height="700" />
+
+##### Censored sample
+Example: 
+
+```python
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+suspensions = [1.9, 2.0, 2.0]
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb',show=True)
+prototype_a.mle()
+```
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored.png" height="700" />
+
+#### How to use the Median Rank Regression (MRR)
+##### Uncensored sample
+Example: 
+```python
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='bbb',show=True)
+prototype_a.mrr()
+```
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_BBB_uncensored.png" height="700" />
+
+##### Censored sample
+Example: 
+
+```python
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+suspensions = [1.9, 2.0, 2.0]
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='mcpb',show=True)
+prototype_a.mrr()
+```
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_MCPB_censored.png" height="700" />
