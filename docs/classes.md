@@ -24,7 +24,7 @@ This table provides information on alle arguments that are passed to the Analysi
 - df = None will raise an error. There has to be at least one failure.
 - mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table below to check, whether a combination of parameter estimation and confidence bounds method is supported.
 
-| confidence bounds               | mle() | mrr() | uncensored data | censored data |        type        | argument value |
+| confidence bounds               | mle() | mrr() | uncensored data | censored data |    bounds_type     | argument value |
 |---------------------------------|:-----:|:-----:|:---------------:|:-------------:|:------------------:|:--------------:|
 | Beta-Binomial Bounds            |   -   |   x   |        x        |       x       | '2s', '1sl', '1su' |      'bbb'     |
 | Monte-Carlo Pivotal Bounds      |   -   |   x   |        x        |       x       | '2s', '1sl', '1su' |     'mcpb'     |
