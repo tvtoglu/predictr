@@ -13,7 +13,8 @@ predictr already includes many methods (see tables below). A guideline on when t
 ### Main Features
 #### Parameter Estimation
 
-- Uncensored and right-censored type I and type II two-parameter Weibull distribution
+- Uncensored two-parameter Weibull distribution
+- Type I and type II right-censored two-parameter Weibull distribution
 - Maximum Likelihood Estimation (MLE)
 - Median Rank Regression (MRR)
 
