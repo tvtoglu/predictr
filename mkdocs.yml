@@ -2,7 +2,7 @@ site_name: predictr - Predict the Reliability
 theme:
   name: material
 nav:
-    - Home: home.md
+    - Home: index.md
     - Get started: get_started.md
     - Available classes: classes.md
 
