@@ -38,7 +38,7 @@ predictr already includes many methods (see tables below). A guideline on when t
 
 - Weibull Probability Plots with all needed information on them
 
-### Important Links:
+### Important Links
 [PyPi](https://pypi.org/project/predictr/)
 
 [Github Repository](https://github.com/tvtoglu/predictr)
