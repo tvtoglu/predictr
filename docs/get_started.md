@@ -10,7 +10,7 @@ pip install predictr
 Anaconda comes with a bunch of pre-installed packages. Spyder is a very good IDE you can use to get started using Python.
 
 - Open the Anaconda Navigator and install Spyder if necessary.
-- Open Spyder and createa new file
+- Open Spyder and create a new file
 - Import predictr in Spyder using:
 ```python
 from predictr import Analysis
