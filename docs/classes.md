@@ -23,7 +23,7 @@ This table provides information on alle arguments that are passed to the Analysi
 
 - df = None will raise an error. There has to be at least one failure.
 
-## Parameter estimation methods:
+### Parameter estimation methods
 One can use either the Maximum Likelihoof Estimation or Median Rank Regression.
 
 **Maximum likelihood estimation (MLE):** 
@@ -38,7 +38,7 @@ from predictr import Analysis
 prototype_a = Analysis(...) # create an instance
 prototype_a.mrr() # use instance methods
 ```
-## Bias-correction methods
+### Bias-correction methods
 Since parameter estimation methods are only asymptotically unbiased (sample sizes -> "infinity"), bias-correction methods are useful when you have only a few failures. These methods correct the Weibull shape and scale parameter.
 The following table provides possible configurations. Bias-corrections for mrr() are not supported, yet.<br>
 
@@ -49,8 +49,9 @@ The following table provides possible configurations. Bias-corrections for mrr()
 | Non-parametric Bootstrap correction |   x   |   -   |     'np_bs'    | bs_size | 'mean', 'median', 'trimmed_mean' |
 | Parametric Bootstrap correction     |   x   |   -   |     'p_bs'     | bs_size | 'mean', 'median', 'trimmed_mean' |
 
-## Confidence bounds methods
-Analysis supports nearly all state of the art confidence bounds methods. Ever
+### Confidence bounds methods
+Analysis supports nearly all state of the art confidence bounds methods.
+
 | confidence bounds               | mle() | mrr() | uncensored data | censored data |    bounds_type     | argument value |
 |---------------------------------|:-----:|:-----:|:---------------:|:-------------:|:------------------:|:--------------:|
 | Beta-Binomial Bounds            |   -   |   x   |        x        |       x       | '2s', '1sl', '1su' |      'bbb'     |
