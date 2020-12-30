@@ -1,17 +1,11 @@
-# Welcome to MkDocs
+# predictr - Predict the Reliability
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+predictr: predict + reliability, in other words: A tool to predict the reliability.<br>
+The aim of this package is to provide state of the art tools for all kinds of Weibull analyses. <br>
+predictr already includes many methods (see tables below). A guideline on when to use which method will be added soon.
 
-## Commands
-
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
-
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+![](https://img.shields.io/pypi/v/predictr?color=blue&style=flat&label=pypi)
+[![Downloads](https://pepy.tech/badge/predictr)](https://pepy.tech/project/predictr)
+![](https://img.shields.io/pypi/pyversions/predictr)
+![](https://img.shields.io/pypi/l/predictr)
+![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat)
