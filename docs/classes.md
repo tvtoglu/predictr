@@ -63,11 +63,11 @@ Analysis supports nearly all state of the art confidence bounds methods.
 
 **Important**:
 
-- mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table abovr to check, whether a combination of parameter estimation and confidence bounds method is supported.
+- mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table above to check, whether a combination of parameter estimation and confidence bounds method is supported.
 - '2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. If Beta-Binomial Bounds are used, the lower bound represents the lower percentile bound at a specific time ((pctl) is added in the plot legend). If Fisher Bounds are used, the lower bound represents the lower time bound at a specific percentile.
 
 ### Examples
-#### How to use the Maximum Likelihood Estimation (MLE)
+#### Maximum Likelihood Estimation (MLE)
 ##### Uncensored sample
 Example: 
 ```python
@@ -88,7 +88,7 @@ prototype_a.mle()
 ```
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored.png" height="700" />
 
-#### How to use the Median Rank Regression (MRR)
+#### Median Rank Regression (MRR)
 ##### Uncensored sample
 Example: 
 ```python
@@ -108,3 +108,31 @@ prototype_a = Analysis(df=failures, ds=suspensions, bounds='mcpb',show=True)
 prototype_a.mrr()
 ```
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_MCPB_censored.png" height="700" />
+
+#### Bias-corrections
+As already mentioned, only mle() support bias-corrections. The samples in these examples are drawn from a two-parameter Weibull distribution with a shape parameter of 2.0 and a scale parameter of 1.0.
+
+##### Uncensored sample
+It is appearent that the estimates of beta and eta are now closer to the ground truth values. The dotted grey line in the plot is the "biased" MLE line, the bia-corrected line is blue. The legend contains all needed information.
+
+```python
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='fb', show=True, bcm='c4')
+prototype_a.mle()
+```
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored_c4.png" height="700" />
+
+The estimates can for the Weibull parameters can be compared directly, since they are available as attributes
+```python
+print(f'biased beta: {prototype_a.beta:4f} --> bias-corrected beta: {prototype_a.beta_c4:4f}')
+```
+
+##### Censored sample
+The data is type II right-censored.
+```python
+failures = [0.38760099164906514, 0.5867052007217437, 0.5878056753744406, 0.602290402929083, 0.6754829518358306, 0.7520219855697948]
+suspensions = [0.7520219855697948, 0.7520219855697948]
+prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb', show=True, bcm='hrbu')
+prototype_a.mle()
+```
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored_hrbu.png" height="700" />
