@@ -140,7 +140,7 @@ prototype_a.mle()
 
 ## PlotAll
 PlotAll plots class objects from Analysis in one figure. Currently, only data from mle() is supported.
-theoretically, you can plot as many objects as you like -> provide a list of colors as a kwarg in PlotAll(objects, **kwargs).mult_weibull(). <b>
+Theoretically, you can plot as many objects as you like -> provide a list of colors as a kwarg in PlotAll(objects, **kwargs).mult_weibull(). <b>
 For now, six colors are supported by default, but you can pass an infinit amount of colors to the mult_weibull() method.
 
 ### Examples
