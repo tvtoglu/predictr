@@ -553,6 +553,7 @@ class Analysis:
         eta_0 = self.eta
 
         # Create empty panda DataFrame
+        global df
         df = pd.DataFrame(columns=list(self.unrel))
 
         # Check if MRR or MLE is being used
@@ -588,7 +589,7 @@ class Analysis:
             upper_perc_position = floor(self.bs_size * self.cl) - 1
             self.bounds_upper = df.iloc[upper_perc_position].values.tolist()
         elif self.bounds_type == '1sl':
-            lower_perc_position = ceil(self.bs_size * self.cl) - 1
+            lower_perc_position = ceil(self.bs_size * (1 - self.cl)) - 1
             self.bounds_lower = df.iloc[lower_perc_position].values.tolist()
 
     def npbb_bounds(self, method_call):
@@ -653,7 +654,7 @@ class Analysis:
             upper_perc_position = floor(self.bs_size * self.cl) - 1
             self.bounds_upper = df.iloc[upper_perc_position].values.tolist()
         elif self.bounds_type == '1sl':
-            lower_perc_position = ceil(self.bs_size * self.cl) - 1
+            lower_perc_position = ceil(self.bs_size * (1 - self.cl)) - 1
             self.bounds_lower = df.iloc[lower_perc_position].values.tolist()
 
     def mcp_bounds(self):
@@ -2442,4 +2443,8 @@ class PlotAll:
         plt.show()
 
 if __name__ == '__main__':
-    print(Analysis.get_bx_percentile(0.1, 2, 1))
+    failures_b = [1.8506941739639076, 2.2685555679846954, 2.380993183650987, 2.642404955035375,
+                  2.777082863078587, 2.89527127055147, 2.9099992138728927, 3.1425481097241,
+                  3.3758727398694406, 3.8274990886889997]
+    prototype_b = Analysis(df=failures_b, bounds='npbb', bounds_type='1sl', show=True)
+    prototype_b.mle()
