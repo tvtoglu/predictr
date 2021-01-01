@@ -12,6 +12,12 @@ Template for next changes
  
 ### Fixed
 
+## [0.1.9] - 2021-01-01
+ 
+### Added
+ - new GithubPage: https://tvtoglu.github.io/predictr/
+ - new Class: PlotAll -> plot multiple Weibull plots in one figure
+
 ## [0.1.7] - 2020-12-29
   
 ### Changed
