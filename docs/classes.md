@@ -171,7 +171,7 @@ PlotAll(objects).mult_weibull()
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_2s.png" height="500" />
 
 #### One object with a one-sided lower bound, the other one has two-sided bounds - default colors
-You can plot every bounds_type ('2s', '1sl', '1sl') and combine them.
+You can plot every bounds_type ('2s', '1sl', '1su') and combine them.
 ```python
 from predictr import Analysis, PlotAll
 
