@@ -12,6 +12,11 @@ Template for next changes
  
 ### Fixed
 
+## [0.1.10] - 2021-01-01
+ 
+### Fixed
+ - Minor fix and code restructuring
+
 ## [0.1.9] - 2021-01-01
  
 ### Added
