@@ -5,15 +5,16 @@ with open("README.md", "r") as fh:
 
 setup(
       name='predictr',
-      version='0.1.8',
+      version='0.1.9',
       description='Weibull Analysis Utilities',
       author='Tamer Tevetoglu',
       author_email="tamer.tevetoglu@ima.uni-stuttgart.de",
       url="https://tvtoglu.github.io/predictr/",
-      py_modules=["predictr"],
+      py_modules=["predictr", "plot_all"],
       package_dir={'': 'src'},
       long_description=long_description,
       long_description_content_type='text/markdown',
+      keywords = 'reliability, weibull, bias'
       classifiers=[
           "Programming Language :: Python :: 3",
           "Programming Language :: Python :: 3.6",
