@@ -6,6 +6,8 @@ theme:
   language: en
   palette:
     scheme: slate
+  features:
+    - toc.integrate
 nav:
     - Home: index.md
     - Getting started: get_started.md
@@ -17,3 +19,5 @@ repo_name: tvtoglu/predictr
 repo_url: https://github.com/tvtoglu/predictr
 edit_uri: ""
 
+markdown_extensions:
+  - attr_list
