@@ -2,15 +2,10 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
  
-## [Unreleased] - yyyy-mm-dd
- 
-Template for next changes
- 
-### Added
- 
-### Changed
+## [0.1.11] - 2021-01-01
  
 ### Fixed
+ - When using npbb and pbb as bounds, bounds types 1sl and 1su would return the same bounds limits. Fixed the percentile method.
 
 ## [0.1.10] - 2021-01-01
  
