@@ -2074,22 +2074,14 @@ class PlotAll:
             raise ValueError('mult_weibull only support up to six instances being plotted.')
 
     def mult_weibull(self):
-        #print(getattr(self.arg, 'bounds_lower'))
-        pass
-        # Differentiate bewteen percentile and time bounds
-        #if
-        # Get t_min and t_max to plot
-        temp_list = []
-        for key, val in self.objects.items():
-            if (getattr(val, 'bounds_lower')) is not None:
-                temp_list.append(min(getattr(val, 'bounds_lower')))
-            if (getattr(val, 'bounds_upper')) is not None:
-                temp_list.append(max(getattr(val, 'bounds_upper')))
-        x_axis_min = min(temp_list)
-        x_axis_max = max(temp_list)
+        """
+        Plots multiple Analysis class objects in one figure
 
-        # plot everthing
-                # Some needed functions:
+        """
+
+        def inverse_weibull(perc, beta, eta):
+            return ((-np.log(1 -perc)) ** (1 / beta)) * eta
+
         def weibull_prob_paper(x):
             """
             Needed to adjust figure to the Weibull probability plot.
@@ -2112,9 +2104,47 @@ class PlotAll:
             y_est = (1 - np.exp(-(x_est / eta) ** beta_))
             y_est_lnln = weibull_prob_paper(y_est)
             return y_est_lnln
-
-        def inverse_weibull(perc, beta, eta):
-            return ((-np.log(1 -perc)) ** (1 / beta)) * eta
+        # Get t_min and t_max to plot
+        temp_list = []
+        for key, val in self.objects.items():
+            if (getattr(val, 'bounds_lower')) is not None:
+                temp_list.append(min(getattr(val, 'bounds_lower')))
+            if (getattr(val, 'bounds_upper')) is not None:
+                temp_list.append(max(getattr(val, 'bounds_upper')))
+            if ((getattr(val, 'bounds_lower')) is None
+                and (getattr(val, 'bounds_upper')) is None):
+                if getattr(val, 'beta_c4') is not None:
+                    dat = list(inverse_weibull(np.array([0.001, 0.9999]),
+                                               getattr(val, 'beta_c4'),
+                                               getattr(val, 'eta_c4')))
+                    temp_list.append(min(dat))
+                    temp_list.append(max(dat))
+                elif getattr(val, 'beta_hrbu') is not None:
+                    dat = list(inverse_weibull(np.array([0.001, 0.9999]),
+                                               getattr(val, 'beta_hrbu'),
+                                               getattr(val, 'eta_hrbu')))
+                    temp_list.append(min(dat))
+                    temp_list.append(max(dat))
+                elif getattr(val, 'beta_np_bs') is not None:
+                    dat = list(inverse_weibull(np.array([0.001, 0.9999]),
+                                               getattr(val, 'beta_np_bs'),
+                                               getattr(val, 'eta_np_bs')))
+                    temp_list.append(min(dat))
+                    temp_list.append(max(dat))
+                elif getattr(val, 'beta_p_bs') is not None:
+                    dat = list(inverse_weibull(np.array([0.001, 0.9999]),
+                                               getattr(val, 'beta_p_bs'),
+                                               getattr(val, 'eta_p_bs')))
+                    temp_list.append(min(dat))
+                    temp_list.append(max(dat))
+                else:
+                    dat = list(inverse_weibull(np.array([0.001, 0.9999]),
+                                               getattr(val, 'beta'),
+                                               getattr(val, 'eta')))
+                    temp_list.append(min(dat))
+                    temp_list.append(max(dat))
+        x_axis_min = min(temp_list)
+        x_axis_max = max(temp_list)
 
         # Generate Weibull Plot Figure
         plt.style.use(self.plot_style)
