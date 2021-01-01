@@ -75,7 +75,7 @@ failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.628763
 prototype_a = Analysis(df=failures, bounds='fb',show=True)
 prototype_a.mle()
 ```
-<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" height="500" />
 
 ##### Censored sample
 Example: 
@@ -86,7 +86,7 @@ suspensions = [1.9, 2.0, 2.0]
 prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb',show=True)
 prototype_a.mle()
 ```
-<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored.png" height="500" />
 
 #### Median Rank Regression (MRR)
 ##### Uncensored sample
@@ -96,7 +96,7 @@ failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.628763
 prototype_a = Analysis(df=failures, bounds='bbb',show=True)
 prototype_a.mrr()
 ```
-<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_BBB_uncensored.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_BBB_uncensored.png" height="500" />
 
 ##### Censored sample
 Example: 
@@ -107,7 +107,7 @@ suspensions = [1.9, 2.0, 2.0]
 prototype_a = Analysis(df=failures, ds=suspensions, bounds='mcpb',show=True)
 prototype_a.mrr()
 ```
-<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_MCPB_censored.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MRR_MCPB_censored.png" height="500" />
 
 #### Bias-corrections
 As already mentioned, only mle() support bias-corrections. The samples in these examples are drawn from a two-parameter Weibull distribution with a shape parameter of 2.0 and a scale parameter of 1.0.
@@ -120,7 +120,7 @@ failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.628763
 prototype_a = Analysis(df=failures, bounds='fb', show=True, bcm='c4')
 prototype_a.mle()
 ```
-<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored_c4.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored_c4.png" height="500" />
 
 The estimates can for the Weibull parameters can be compared directly, since they are available as attributes
 ```python
@@ -135,4 +135,4 @@ suspensions = [0.7520219855697948, 0.7520219855697948]
 prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb', show=True, bcm='hrbu')
 prototype_a.mle()
 ```
-<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored_hrbu.png" height="700" />
+<img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored_hrbu.png" height="500" />
