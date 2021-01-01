@@ -1,9 +1,22 @@
 site_name: predictr - Predict the Reliability
 theme:
   name: material
+
+  # Default values, taken from mkdocs_theme.yml
+  language: en
+  palette:
+    scheme: slate
 nav:
     - Home: index.md
     - Getting started: get_started.md
     - Available classes: classes.md
     - Changelog: CHANGELOG.md
+
+# Repository
+repo_name: tvtoglu/predictr
+repo_url: https://github.com/tvtoglu/predictr
+edit_uri: ""
+
+
+
 
