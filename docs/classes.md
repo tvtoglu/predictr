@@ -11,7 +11,7 @@ This table provides information on alle arguments that are passed to the Analysi
 | ds          |      None     | list of floats | List of suspensions (right-censored only)                                                             |
 | bounds      |      None     |       str      | Confidence bounce method to be used in mle() or mrr()                                                 |
 | bounds_type |      None     |       str      | Setting for the bounds: either two-sided or one-sided                                                 |
-| show        |      None     |      bool      | If True, the Weibull probability plot will be plotted                                                 |
+| show        |      False    |      bool      | If True, the Weibull probability plot will be plotted                                                 |
 | bcm         |      None     |       str      | Defines the bias-correction method in mle()                                                           |
 | cl          |      0.9      |      float     | Sets the confidence level when bounds are used                                                        |
 | bs_size     |      5000     |       int      | Number of bootstrap samples                                                                              |
