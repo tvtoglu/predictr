@@ -24,7 +24,7 @@ This table provides information on alle arguments that are passed to the Analysi
 - df = None will raise an error. There has to be at least one failure.
 
 ### Parameter estimation methods
-One can use either the Maximum Likelihoof Estimation or Median Rank Regression.
+One can use either the Maximum Likelihood Estimation or Median Rank Regression.
 
 **Maximum likelihood estimation (MLE):** 
 ```python
