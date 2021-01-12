@@ -13,6 +13,7 @@ nav:
     - Getting started: get_started.md
     - Available classes: classes.md
     - Changelog: CHANGELOG.md
+    - Cite predictr: citation.md
 
 # Repository
 repo_name: tvtoglu/predictr
