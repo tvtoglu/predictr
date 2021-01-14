@@ -270,7 +270,6 @@ prototype_c.mle()
 # Create dictionary with Analysis objects
 # Keys will be used in figure legend. Name them as you please.
 objects = {'initial design': prototype_a, 'final design': prototype_c}
-colors = ['green', 'red', 'blue']
 PlotAll(objects).contour_plot()
 ```
 ![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_LRB_multiple.png){: width="500" }
