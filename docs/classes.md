@@ -143,7 +143,14 @@ PlotAll plots class objects from Analysis in one figure. Currently, only data fr
 Theoretically, you can plot as many objects as you like -> provide a list of colors as a kwarg in PlotAll(objects, **kwargs).mult_weibull(). <b>
 For now, six colors are supported by default, but you can pass an infinit amount of colors to the mult_weibull() method.
 
-### Examples
+**Available methods**:
+
+| Methods        	| Description                                                           	|
+|----------------	|-----------------------------------------------------------------------	|
+| mult_weibull() 	| Plots multiple Analysis class instances in one Weibull plot           	|
+| contour_plot() 	| Plots contour plots when likelihood ratio bounds are used in Analysis 	|
+
+### mult_weibull()
 #### Both with two-sided bounds - default colors
 ```python
 from predictr import Analysis, PlotAll
@@ -227,3 +234,43 @@ PlotAll(objects, set_cmap = colors).mult_weibull()
 ```
 ![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_2s_custom_colors.png){: width="500" }
 
+### contour_plot()
+contour_plot() only works for likelihood ratio bounds. Hence, you have to use bounds='lrb' in the Analysis class. This method supports all bounds types and all confidence levels. You can pass as many objects as you want to.
+
+#### Plot a single Analysis object
+```python
+from predictr import Analysis, PlotAll
+
+# Create new objects
+failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+              0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+              1.3201853093496474, 1.492172669340363]
+prototype_a = Analysis(df=failures_a, bounds='lrb', bounds_type='2s')
+prototype_a.mle()
+
+objects = {'initial design': prototype_a}
+PlotAll(objects).contour_plot()
+```
+![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_LRB.png){: width="500" }
+
+#### Plot a multiple Analysis objects
+```python
+failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+              0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+              1.3201853093496474, 1.492172669340363]
+prototype_a = Analysis(df=failures_a, bounds='lrb', bounds_type='2s')
+prototype_a.mle()
+
+failures_c = [0.04675399107295282, 0.31260891592041457, 0.32121232576015757, 0.6013488316204837,
+              0.7755159796641791, 0.8994041575114923, 0.956417788622185, 1.1967354178170764,
+              1.6115311492838604, 2.1120891587523793]
+prototype_c = Analysis(df=failures_c, bounds='lrb', bcm = 'hrbu', bounds_type='2s')
+prototype_c.mle()
+
+# Create dictionary with Analysis objects
+# Keys will be used in figure legend. Name them as you please.
+objects = {'initial design': prototype_a, 'final design': prototype_c}
+colors = ['green', 'red', 'blue']
+PlotAll(objects).contour_plot()
+```
+![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_LRB_multiple.png){: width="500" }
