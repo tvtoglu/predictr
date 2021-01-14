@@ -2458,10 +2458,11 @@ class PlotAll:
             eta = getattr(val, 'eta_lrb')
             conf_level = getattr(val, 'cl')
             plt.scatter(beta, eta, s=3, c=next(self.color),
-                        label=f'{key}: {conf_level}%')
+                        label=f'{key}: {conf_level*100}%')
 
         plt.xlabel(r'$\widehat\beta$')
         plt.ylabel(r'$\widehat\eta$')
         plt.grid(True, which='both')
-        plt.legend()
         plt.tight_layout()
+        plt.legend()
+
