@@ -17,6 +17,7 @@ predictr already includes many methods (see list below). A guideline on when to 
 
 - Uncensored two-parameter Weibull distribution
 - Type I and type II right-censored two-parameter Weibull distribution
+- Bx-life calculator
 - Maximum Likelihood Estimation (MLE)
 - Median Rank Regression (MRR)
 
@@ -39,6 +40,8 @@ predictr already includes many methods (see list below). A guideline on when to 
 #### Plots
 
 - Weibull Probability Plots with all needed information on them
+- Multiple Weibull plots in one figure
+- Contour plots
 
 ### Important Links
 [PyPi](https://pypi.org/project/predictr/)

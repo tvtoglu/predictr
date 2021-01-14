@@ -2,21 +2,22 @@
 
 predictr: predict + reliability, in other words: A tool to predict the reliability.<br>
 The aim of this package is to provide state of the art tools for all kinds of Weibull analyses. <br>
-predictr already includes many methods (see tables below). A guideline on when to use which method will be added soon.
+predictr already includes many methods (see list below). A guideline on when to use which method will be added soon.
 
 ![](https://img.shields.io/pypi/v/predictr?color=blue&style=flat&label=pypi)
 [![Downloads](https://pepy.tech/badge/predictr)](https://pepy.tech/project/predictr)
 ![](https://img.shields.io/pypi/pyversions/predictr)
 ![](https://img.shields.io/pypi/l/predictr)
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat)
-![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https%3A%2F%2Ftvtoglu.github.io%2Fpredictr%2F)
 ![](https://zenodo.org/badge/DOI/10.5281/zenodo.4433165.svg)
+
 
 ### Main Features
 #### Parameter Estimation
 
 - Uncensored two-parameter Weibull distribution
 - Type I and type II right-censored two-parameter Weibull distribution
+- Bx-life calculator
 - Maximum Likelihood Estimation (MLE)
 - Median Rank Regression (MRR)
 
@@ -39,6 +40,8 @@ predictr already includes many methods (see tables below). A guideline on when t
 #### Plots
 
 - Weibull Probability Plots with all needed information on them
+- Multiple Weibull plots in one figure
+- Contour plots
 
 ### Important Links
 [PyPi](https://pypi.org/project/predictr/)
