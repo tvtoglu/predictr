@@ -2,6 +2,11 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
  
+## [0.1.12] - 2021-01-14
+ 
+### Added
+ - contour_plot() method in PlotAll class: Plots likelihood ratio contours for Analysis class instances
+
 ## [0.1.11] - 2021-01-01
  
 ### Fixed

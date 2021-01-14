@@ -2442,9 +2442,26 @@ class PlotAll:
         plt.legend()
         plt.show()
 
-if __name__ == '__main__':
-    failures_b = [1.8506941739639076, 2.2685555679846954, 2.380993183650987, 2.642404955035375,
-                  2.777082863078587, 2.89527127055147, 2.9099992138728927, 3.1425481097241,
-                  3.3758727398694406, 3.8274990886889997]
-    prototype_b = Analysis(df=failures_b, bounds='npbb', bounds_type='1sl', show=True)
-    prototype_b.mle()
+    def contour_plot(self):
+        """
+        Plots the contour plot when likelihood ratio bounds are being used.
+        Multiple objects can be used as well.
+
+        """
+        # Configure plot
+        plt.style.use(self.plot_style)
+        plt.title('Contour Plot')
+
+        # Get beta and eta pairs from object
+        for key, val in self.objects.items():
+            beta = getattr(val, 'beta_lrb')
+            eta = getattr(val, 'eta_lrb')
+            conf_level = getattr(val, 'cl')
+            plt.scatter(beta, eta, s=3, c=next(self.color),
+                        label=f'{key}: {conf_level}%')
+
+        plt.xlabel(r'$\widehat\beta$')
+        plt.ylabel(r'$\widehat\eta$')
+        plt.grid(True, which='both')
+        plt.legend()
+        plt.tight_layout()
