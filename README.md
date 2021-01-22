@@ -9,7 +9,7 @@ predictr already includes many methods (see list below). A guideline on when to 
 ![](https://img.shields.io/pypi/pyversions/predictr)
 ![](https://img.shields.io/pypi/l/predictr)
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4441401.svg)](https://doi.org/10.5281/zenodo.4441401)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4456183.svg)](https://doi.org/10.5281/zenodo.4456183)
 
 
 ### Main Features
