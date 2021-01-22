@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
       name='predictr',
-      version='0.1.12',
+      version='0.1.13',
       description='Weibull Analysis Utilities',
       author='Tamer Tevetoglu',
       author_email="tamer.tevetoglu@ima.uni-stuttgart.de",
@@ -17,6 +17,7 @@ setup(
       keywords = 'reliability, weibull, bias',
       classifiers=[
           "Programming Language :: Python :: 3",
+          "Programming Language :: Python :: 3.6",
           "Programming Language :: Python :: 3.7",
           "Programming Language :: Python :: 3.8",
           "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",

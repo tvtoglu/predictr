@@ -2247,7 +2247,7 @@ class PlotAll:
                     col = next(self.color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
-                                               getattr(val, 'eta_chrbu'))))
+                                               getattr(val, 'eta_hrbu'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
@@ -2332,7 +2332,7 @@ class PlotAll:
                     col = next(self.color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
-                                               getattr(val, 'eta_chrbu'))))
+                                               getattr(val, 'eta_hrbu'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
@@ -2393,7 +2393,7 @@ class PlotAll:
                     col = next(self.color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
-                                               getattr(val, 'eta_chrbu'))))
+                                               getattr(val, 'eta_hrbu'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
@@ -2442,7 +2442,7 @@ class PlotAll:
         plt.legend()
         plt.show()
 
-    def contour_plot(self):
+    def contour_plot(self, plot_legend=True):
         """
         Plots the contour plot when likelihood ratio bounds are being used.
         Multiple objects can be used as well.
@@ -2464,5 +2464,30 @@ class PlotAll:
         plt.ylabel(r'$\widehat\eta$')
         plt.grid(True, which='both')
         plt.tight_layout()
-        plt.legend()
 
+        if plot_legend:
+            plt.legend()
+
+if __name__ == '__main__':
+    failures_c = [0.04675399107295282, 0.31260891592041457, 0.32121232576015757, 0.6013488316204837,
+              0.7755159796641791, 0.8994041575114923, 0.956417788622185, 1.1967354178170764,
+              1.6115311492838604, 2.1120891587523793]
+    a99 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.99)
+    a99.mle()
+
+    a95 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.95)
+    a95.mle()
+
+    a90 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.90)
+    a90.mle()
+
+    a80 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.80)
+    a80.mle()
+
+    a90_bcm = Analysis(df=failures_c, bounds='lrb', bcm='hrbu', bounds_type='2s', cl=0.90)
+    a90_bcm.mle()
+
+    # Create dictionary with Analysis objects
+    # Keys will be used in figure legend. Name them as you please.
+    objects = {'lrb99': a99, 'lrb95': a95, 'lrb90': a90, 'lrb80': a80, 'lrb bias corrected': a90_bcm}
+    PlotAll(objects).contour_plot()

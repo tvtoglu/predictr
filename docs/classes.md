@@ -44,7 +44,7 @@ The following table provides possible configurations. Bias-corrections for mrr()
 
 | Bias-correction method              | mle() | mrr() | argument value | config. |             statistic            |
 |-------------------------------------|:-----:|:-----:|:--------------:|:-------:|:--------------------------------:|
-| C4 aka 'reduced bias adjustment     |   x   |   -   |      'c4'      |    -    |                 -                |
+| C4 aka 'reduced bias adjustment'    |   x   |   -   |      'c4'      |    -    |                 -                |
 | Hirose and Ross method              |   x   |   -   |     'hrbu'     |    -    |                 -                |
 | Non-parametric Bootstrap correction |   x   |   -   |     'np_bs'    | bs_size | 'mean', 'median', 'trimmed_mean' |
 | Parametric Bootstrap correction     |   x   |   -   |     'p_bs'     | bs_size | 'mean', 'median', 'trimmed_mean' |
