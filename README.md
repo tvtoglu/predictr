@@ -48,5 +48,6 @@ predictr already includes many methods (see list below). A guideline on when to 
 
 [Github Repository](https://github.com/tvtoglu/predictr)
 
-
 [Documentation](https://tvtoglu.github.io/predictr/)
+
+[Zenodo](https://doi.org/10.5281/zenodo.4441401)
