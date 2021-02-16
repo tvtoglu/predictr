@@ -2,6 +2,16 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
  
+ ## [0.1.14] - 2021-02-16
+ 
+### Fixed
+ - temporary fix for instances in Analysis where the Weibull probability line disappears when two-sided bounds are used
+ 
+## [0.1.13] - 2021-01-23
+ 
+### Fixed
+ - hrbu was misspelled in the code and raised an error when calling this bias-correction method
+
 ## [0.1.12] - 2021-01-14
  
 ### Added
