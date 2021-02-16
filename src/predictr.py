@@ -1408,7 +1408,7 @@ class Analysis:
             x = np.asarray(x)
 
             # Prevent np.log(0) error raise
-            x[x > .9999] = np.nan
+            x[x > 0.999999999999999] = np.nan
             return np.log(-np.log(1 - x))
 
         # Just for y_tickslabel on the y-axis
@@ -1421,6 +1421,7 @@ class Analysis:
         def unrel_func(x_est, beta_, eta):
             y_est = (1 - np.exp(-(x_est / eta) ** beta_))
             y_est_lnln = weibull_prob_paper(y_est)
+
             return y_est_lnln
 
         # Generate Weibull Plot Figure
@@ -2469,25 +2470,37 @@ class PlotAll:
             plt.legend()
 
 if __name__ == '__main__':
-    failures_c = [0.04675399107295282, 0.31260891592041457, 0.32121232576015757, 0.6013488316204837,
-              0.7755159796641791, 0.8994041575114923, 0.956417788622185, 1.1967354178170764,
-              1.6115311492838604, 2.1120891587523793]
-    a99 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.99)
-    a99.mle()
+    # failures_c = [0.04675399107295282, 0.31260891592041457, 0.32121232576015757, 0.6013488316204837,
+    #           0.7755159796641791, 0.8994041575114923, 0.956417788622185, 1.1967354178170764,
+    #           1.6115311492838604, 2.1120891587523793]
+    # a99 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.99)
+    # a99.mle()
 
-    a95 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.95)
-    a95.mle()
+    # a95 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.95)
+    # a95.mle()
 
-    a90 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.90)
-    a90.mle()
+    # a90 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.90)
+    # a90.mle()
 
-    a80 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.80)
-    a80.mle()
+    # a80 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.80)
+    # a80.mle()
 
-    a90_bcm = Analysis(df=failures_c, bounds='lrb', bcm='hrbu', bounds_type='2s', cl=0.90)
-    a90_bcm.mle()
+    # a90_bcm = Analysis(df=failures_c, bounds='lrb', bcm='hrbu', bounds_type='2s', cl=0.90)
+    # a90_bcm.mle()
 
-    # Create dictionary with Analysis objects
-    # Keys will be used in figure legend. Name them as you please.
-    objects = {'lrb99': a99, 'lrb95': a95, 'lrb90': a90, 'lrb80': a80, 'lrb bias corrected': a90_bcm}
-    PlotAll(objects).contour_plot()
+    # # Create dictionary with Analysis objects
+    # # Keys will be used in figure legend. Name them as you please.
+    # objects = {'lrb99': a99, 'lrb95': a95, 'lrb90': a90, 'lrb80': a80, 'lrb bias corrected': a90_bcm}
+    # PlotAll(objects).contour_plot()
+
+    #%%
+    failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
+    failures2 = [191, 196, 470, 1208, 6637]
+    failures3 = [15062, 19124, 20813, 22436, 23244, 23753, 27784, 29308, 35388, 35539, 45126, 68478, 71946, 72401, 111562, 138925, 151032]
+
+    suspensions_1 = failures1 + failures3
+
+
+
+    ana1 = Analysis(df=failures2, bounds='fb', ds= suspensions_1, bounds_type='2s', show=True, unit= 'min')
+    ana1.mle()
