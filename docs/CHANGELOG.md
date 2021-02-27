@@ -2,7 +2,16 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
  
- ## [0.1.14] - 2021-02-16
+## [0.1.15] - 2021-02-27
+ 
+### Fixed
+ - fixed wrong percentile values for adjusted ranks when suspenions have lower time to failure values than actual failures
+ - permanent fix for the disappearing Weibull probability line (see changelog for version 0.1.14)
+
+### Added
+ - raise ValueError when np_bs and p_bs bias-correction methods are applied for data that has suspensions
+
+## [0.1.14] - 2021-02-16
  
 ### Fixed
  - temporary fix for instances in Analysis where the Weibull probability line disappears when two-sided bounds are used

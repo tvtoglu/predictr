@@ -378,8 +378,7 @@ class Analysis:
                 it = (x ** self.beta_c4 for x in self.df)
                 self.eta_c4 = (1 / len(self.df)
                                      * np.sum(np.fromiter(it, float))) ** (1 / self.beta_c4)
-
-            if self.bcm == 'hrbu':
+            elif self.bcm == 'hrbu':
                 if self.ds is None:
                     self.beta_hrbu = (self.beta / (1.0115 + (1.278 / len(self.df))
                                                    + (2.001 / len(self.df) ** 2)
@@ -396,19 +395,22 @@ class Analysis:
                     iter_eta = (x ** self.beta_hrbu for x in self.df + self.ds)
                     self.eta_hrbu = ((1 / len(self.df))
                                      * np.sum(np.fromiter(iter_eta, float))) ** (1 / self.beta_hrbu)
-
-            if self.bcm == 'np_bs':
+            elif self.bcm == 'np_bs':
                 if self.ds is None:
                     self.beta_np_bs, self.eta_np_bs = np_bootstrap(self.df,
                                                                    self.bs_size,
                                                                    self.est_type)
-
-            if self.bcm == 'p_bs':
+                else:
+                    raise ValueError(f'"{self.bcm}" does not support suspensions yet')
+            elif self.bcm == 'p_bs':
                 if self.ds is None:
                     self.beta_p_bs, self.eta_p_bs = p_bootstrap(self.df,
                                                                 self.bs_size,
                                                                 self.est_type)
-
+                else:
+                    raise ValueError(f'"{self.bcm}" does not support suspensions yet')
+            else:
+                raise ValueError(f'"{self.bcm}" is not supported by mle')
         # Compute confidence bounds
         if self.bounds == 'fb':
             self.fisher_bounds()
@@ -447,9 +449,14 @@ class Analysis:
             return [beta.ppf(cl, i, len(self.df+self.ds)-i+1) for i in adj_r]
 
         n = len(self.df + self.ds)
+        # Reverse ranks need to consider suspensions and their order
+        all_ = self.df + self.ds
+        rev_rank = []
+        for j in self.df:
+            count = sum(map(lambda x : x < j, all_))
+            rev_rank.append(len(all_) - count)
 
         #Calculate adjusted rank
-        rev_rank = np.arange(n, 0, -1)
         adj_ranks = []
         prev_rank = 0
         for i in range(1, len(self.df)+1):
@@ -738,6 +745,29 @@ class Analysis:
             y_est_lnln = weibull_prob_paper(y_est)
             return y_est_lnln
 
+
+        def inverse_weibull(perc, beta, eta):
+            """
+            Computes time to failure data points.
+            This function is being used to plot Weibull lines.
+
+            Parameters
+            ----------
+            perc : float
+                Percentage points fo which time to failure data should be computed.
+            beta : float
+                Weibull shape parameter.
+            eta : float
+                Weibull scale parameter.
+
+            Returns
+            -------
+            float
+                Time to failure data points.
+
+            """
+            return ((-np.log(1 -perc)) ** (1 / beta)) * eta
+
         # Generate Weibull Plot Figure
         plt.style.use(self.plot_style)
         plt.figure(figsize=(6, 7))
@@ -812,10 +842,10 @@ class Analysis:
             susp_num = len(self.ds)
 
         # Plot median MRR line
-        plt.semilogx(self.xplot,
-                     unrel_func(self.xplot, self.beta, self.eta),
+        xvals = list(inverse_weibull(np.array([0.001, 0.9999]), self.beta, self.eta))
+        plt.semilogx(xvals, unrel_func(xvals, self.beta,self.eta),
                      color='mediumblue', linestyle='-',
-                     linewidth=1.5, zorder = 2)
+                     linewidth=1.5, zorder=2)
 
         # Adapt legend strings
         if self.bounds == 'bbb':
@@ -1408,7 +1438,7 @@ class Analysis:
             x = np.asarray(x)
 
             # Prevent np.log(0) error raise
-            x[x > 0.999999999999999] = np.nan
+            x[x > .9999] = np.nan
             return np.log(-np.log(1 - x))
 
         # Just for y_tickslabel on the y-axis
@@ -1423,6 +1453,28 @@ class Analysis:
             y_est_lnln = weibull_prob_paper(y_est)
 
             return y_est_lnln
+
+        def inverse_weibull(perc, beta, eta):
+            """
+            Computes time to failure data points.
+            This function is being used to plot Weibull lines.
+
+            Parameters
+            ----------
+            perc : float
+                Percentage points fo which time to failure data should be computed.
+            beta : float
+                Weibull shape parameter.
+            eta : float
+                Weibull scale parameter.
+
+            Returns
+            -------
+            float
+                Time to failure data points.
+
+            """
+            return ((-np.log(1 -perc)) ** (1 / beta)) * eta
 
         # Generate Weibull Plot Figure
         plt.style.use(self.plot_style)
@@ -1539,15 +1591,17 @@ class Analysis:
         # Check if bias-corrections are applied
         if self.bcm == 'c4':
             # Plot corrected line
-            plt.semilogx(self.xplot,
-                         unrel_func(self.xplot, self.beta_c4, self.eta_c4),
-                         color='mediumblue',
-                         linestyle='-', linewidth=1.5, zorder = 2)
+            xvals_c4 = list(inverse_weibull(np.array([0.001, 0.9999]), self.beta_c4, self.eta_c4))
+            plt.semilogx(xvals_c4, unrel_func(xvals_c4, self.beta_c4,self.eta_c4),
+                         color='mediumblue', linestyle='-',
+                         linewidth=1.5, zorder=2)
 
             # Plot biased line
-            plt.semilogx(self.xplot,
-                         unrel_func(self.xplot, self.beta, self.eta),
-                         color='grey', linestyle='--', linewidth=1.5, zorder=1)
+            xvals = list(inverse_weibull(np.array([0.001, 0.9999]), self.beta, self.eta))
+            plt.semilogx(xvals, unrel_func(xvals, self.beta,self.eta),
+                         color='grey', linestyle='--',
+                         linewidth=1.5, zorder=1)
+
 
             # Define title in legend
             leg_title = 'MLE C4'
@@ -1631,15 +1685,17 @@ class Analysis:
                            fontsize=9, title=leg_title)
         elif self.bcm == 'hrbu':
             # Plot corrected line
-            plt.semilogx(self.xplot,
-                         unrel_func(self.xplot, self.beta_hrbu, self.eta_hrbu),
-                         color='mediumblue',
-                         linestyle='-', linewidth=1.5, zorder = 2)
+            xvals_hrbu = list(inverse_weibull(np.array([0.001, 0.9999]),
+                                              self.beta_hrbu, self.eta_hrbu))
+            plt.semilogx(xvals_hrbu, unrel_func(xvals_hrbu, self.beta_hrbu,self.eta_hrbu),
+                         color='mediumblue', linestyle='-',
+                         linewidth=1.5, zorder=2)
 
             # Plot biased line
-            plt.semilogx(self.xplot,
-                         unrel_func(self.xplot, self.beta, self.eta),
-                         color='grey', linestyle='--', linewidth=1.5, zorder=1)
+            xvals = list(inverse_weibull(np.array([0.001, 0.9999]), self.beta, self.eta))
+            plt.semilogx(xvals, unrel_func(xvals, self.beta,self.eta),
+                         color='grey', linestyle='--',
+                         linewidth=1.5, zorder=1)
 
             # Define title in legend
             leg_title = 'MLE HRBU'
@@ -1725,15 +1781,17 @@ class Analysis:
                            fontsize=9, title=leg_title)
         elif self.bcm == 'np_bs':
             # Plot corrected line
-            plt.semilogx(self.xplot,
-                         unrel_func(self.xplot, self.beta_np_bs, self.eta_np_bs),
-                         color='mediumblue',
-                         linestyle='-', linewidth=1.5, zorder = 2)
+            xvals_np_bs = list(inverse_weibull(np.array([0.001, 0.9999]),
+                                              self.beta_np_bs, self.eta_np_bs))
+            plt.semilogx(xvals_np_bs, unrel_func(xvals_np_bs, self.beta_np_bs,self.eta_np_bs),
+                         color='mediumblue', linestyle='-',
+                         linewidth=1.5, zorder=2)
 
             # Plot biased line
-            plt.semilogx(self.xplot,
-                         unrel_func(self.xplot, self.beta, self.eta),
-                         color='grey', linestyle='--', linewidth=1.5, zorder=1)
+            xvals = list(inverse_weibull(np.array([0.001, 0.9999]), self.beta, self.eta))
+            plt.semilogx(xvals, unrel_func(xvals, self.beta,self.eta),
+                         color='grey', linestyle='--',
+                         linewidth=1.5, zorder=1)
 
             # Define title in legend
             leg_title = 'MLE n.-p. Bootstrap'
@@ -1824,15 +1882,17 @@ class Analysis:
                            fontsize=9, title=leg_title)
         elif self.bcm == 'p_bs':
             # Plot corrected line
-            plt.semilogx(self.xplot,
-                         unrel_func(self.xplot, self.beta_p_bs, self.eta_p_bs),
-                         color='mediumblue',
-                         linestyle='-', linewidth=1.5, zorder = 2)
+            xvals_p_bs = list(inverse_weibull(np.array([0.001, 0.9999]),
+                                              self.beta_p_bs, self.eta_p_bs))
+            plt.semilogx(xvals_p_bs, unrel_func(xvals_p_bs, self.beta_p_bs,self.eta_p_bs),
+                         color='mediumblue', linestyle='-',
+                         linewidth=1.5, zorder=2)
 
             # Plot biased line
-            plt.semilogx(self.xplot,
-                         unrel_func(self.xplot, self.beta, self.eta),
-                         color='grey', linestyle='--', linewidth=1.5, zorder=1)
+            xvals = list(inverse_weibull(np.array([0.001, 0.9999]), self.beta, self.eta))
+            plt.semilogx(xvals, unrel_func(xvals, self.beta,self.eta),
+                         color='grey', linestyle='--',
+                         linewidth=1.5, zorder=1)
 
             # Define title in legend
             leg_title = 'MLE par. Bootstrap'
@@ -1924,10 +1984,10 @@ class Analysis:
                            fontsize=9, title=leg_title)
         else:
             # Plot biased line
-            plt.semilogx(self.xplot,
-                         unrel_func(self.xplot, self.beta, self.eta),
-                         color='mediumblue',
-                         linestyle='-', linewidth=1.5)
+            xvals = list(inverse_weibull(np.array([0.001, 0.9999]), self.beta, self.eta))
+            plt.semilogx(xvals, unrel_func(xvals, self.beta,self.eta),
+                         color='mediumblue', linestyle='-',
+                         linewidth=1.5)
 
             # Define title in legend
             leg_title = 'MLE'
@@ -2092,7 +2152,6 @@ class PlotAll:
 
             # Prevent np.log(0) error raise
             x[x > .9999] = np.nan
-            x[x < .001] = np.nan
             return np.log(-np.log(1 - x))
 
         # Just for y_tickslabel on the y-axis
@@ -2106,6 +2165,7 @@ class PlotAll:
             y_est = (1 - np.exp(-(x_est / eta) ** beta_))
             y_est_lnln = weibull_prob_paper(y_est)
             return y_est_lnln
+
         # Get t_min and t_max to plot
         temp_list = []
         for key, val in self.objects.items():
@@ -2494,13 +2554,31 @@ if __name__ == '__main__':
     # PlotAll(objects).contour_plot()
 
     #%%
+    # failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
+    # failures2 = [191, 196, 470, 1208, 6637]
+    # failures3 = [15062, 19124, 20813, 22436, 23244, 23753, 27784, 29308, 35388, 35539, 45126, 68478, 71946, 72401, 111562, 138925, 151032]
+
+    # suspensions_1 = failures1 + failures3
+
+
+
+    # ana1 = Analysis(df=failures2, bounds='lrb', ds= suspensions_1, bounds_type='2s', show=True, unit= 'min')
+    # ana1.mle()
+
+    # PlotAll({'test': ana1}).mult_weibull()
+
+    # ana2 = Analysis(df=failures2, bounds='mcpb', ds= suspensions_1, bounds_type='2s', show=True, unit= 'min')
+    # ana2.mrr()
+
+    # PlotAll({'test': ana2}).mult_weibull()
+
+    #%%
     failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
     failures2 = [191, 196, 470, 1208, 6637]
     failures3 = [15062, 19124, 20813, 22436, 23244, 23753, 27784, 29308, 35388, 35539, 45126, 68478, 71946, 72401, 111562, 138925, 151032]
 
-    suspensions_1 = failures1 + failures3
+    suspensions_3 = failures1 + failures2
 
-
-
-    ana1 = Analysis(df=failures2, bounds='fb', ds= suspensions_1, bounds_type='2s', show=True, unit= 'min')
-    ana1.mle()
+    ana3 = Analysis(df=failures3, bounds='lrb', bcm='np_bs', bounds_type='2s', show = True, unit= 'min')
+    ana3.mle()
+    #%%
