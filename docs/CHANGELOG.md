@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
  - permanent fix for the disappearing Weibull probability line (see changelog for version 0.1.14)
 
 ### Added
- - raise ValueError when np_bs and p_bs bias-correction methods are applied for data that has suspensions
+ - raise ValueError when np_bs and p_bs bias-correction methods are applied to data that has suspensions
 
 ## [0.1.14] - 2021-02-16
  
