@@ -1,7 +1,18 @@
 
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
+
+## [0.1.16] - 2021-03-03
  
+### Fixed
+ - fixed last bug in the median rank computation. Bug occured when multiple failure times were identical
+
+### Added
+ - PlotAll().simple_weibull(): Plots Weibull probability plot according to input (Weibull parameters) without calculations
+ - PlotAll().weibull_pdf: Plots one or more Weibull probability density functions with fully customizable figure attributes (color, labels, width, height, fontsize etc.)
+ - Added ability to customize axis labels, title, fontsize etc for Analysis() and PlotAll
+ - Added ability to hide legend in Weibull plot
+
 ## [0.1.15] - 2021-02-27
  
 ### Fixed
