@@ -10,7 +10,7 @@
       
       
       <link rel="shortcut icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-7.0.3">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-7.0.5">
     
     
       
@@ -18,7 +18,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.1655a90d.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.77f3fd56.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.7fa14f5b.min.css">
@@ -277,6 +277,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#0117-2021-03-13" class="md-nav__link">
+    [0.1.17] - 2021-03-13
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.1.17] - 2021-03-13">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    Added
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#change" class="md-nav__link">
+    Change
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0116-2021-03-03" class="md-nav__link">
     [0.1.16] - 2021-03-03
   </a>
@@ -292,7 +319,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#added" class="md-nav__link">
+  <a href="#added_1" class="md-nav__link">
     Added
   </a>
   
@@ -319,7 +346,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#added_1" class="md-nav__link">
+  <a href="#added_2" class="md-nav__link">
     Added
   </a>
   
@@ -379,7 +406,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_2" class="md-nav__link">
+  <a href="#added_3" class="md-nav__link">
     Added
   </a>
   
@@ -439,7 +466,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_3" class="md-nav__link">
+  <a href="#added_4" class="md-nav__link">
     Added
   </a>
   
@@ -479,7 +506,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#added_4" class="md-nav__link">
+  <a href="#added_5" class="md-nav__link">
     Added
   </a>
   
@@ -535,12 +562,21 @@
                 
                 <h1 id="change-log-predictr">Change Log - predictr</h1>
 <p>All notable changes to this project will be documented in this file.</p>
+<h2 id="0117-2021-03-13">[0.1.17] - 2021-03-13</h2>
+<h3 id="added">Added</h3>
+<ul>
+<li>Better documentation in the code</li>
+</ul>
+<h3 id="change">Change</h3>
+<ul>
+<li>Minor changes to have more consistent nomenclature int the code</li>
+</ul>
 <h2 id="0116-2021-03-03">[0.1.16] - 2021-03-03</h2>
 <h3 id="fixed">Fixed</h3>
 <ul>
 <li>fixed last bug in the median rank computation. Bug occured when multiple failure times were identical</li>
 </ul>
-<h3 id="added">Added</h3>
+<h3 id="added_1">Added</h3>
 <ul>
 <li>PlotAll().simple_weibull(): Plots Weibull probability plot according to input (Weibull parameters) without calculations</li>
 <li>PlotAll().weibull_pdf: Plots one or more Weibull probability density functions with fully customizable figure attributes (color, labels, width, height, fontsize etc.)</li>
@@ -553,7 +589,7 @@
 <li>fixed wrong percentile values for adjusted ranks when suspenions have lower time to failure values than actual failures</li>
 <li>permanent fix for the disappearing Weibull probability line (see changelog for version 0.1.14)</li>
 </ul>
-<h3 id="added_1">Added</h3>
+<h3 id="added_2">Added</h3>
 <ul>
 <li>raise ValueError when np_bs and p_bs bias-correction methods are applied to data that has suspensions</li>
 </ul>
@@ -568,7 +604,7 @@
 <li>hrbu was misspelled in the code and raised an error when calling this bias-correction method</li>
 </ul>
 <h2 id="0112-2021-01-14">[0.1.12] - 2021-01-14</h2>
-<h3 id="added_2">Added</h3>
+<h3 id="added_3">Added</h3>
 <ul>
 <li>contour_plot() method in PlotAll class: Plots likelihood ratio contours for Analysis class instances</li>
 </ul>
@@ -583,7 +619,7 @@
 <li>Minor fix and code restructuring</li>
 </ul>
 <h2 id="019-2021-01-01">[0.1.9] - 2021-01-01</h2>
-<h3 id="added_3">Added</h3>
+<h3 id="added_4">Added</h3>
 <ul>
 <li>new GithubPage: https://tvtoglu.github.io/predictr/</li>
 <li>new Class: PlotAll -&gt; plot multiple Weibull plots in one figure</li>
@@ -594,7 +630,7 @@
 <li>changed get_bx_percentile() to a classmethod</li>
 </ul>
 <h2 id="016-2020-12-29">[0.1.6] - 2020-12-29</h2>
-<h3 id="added_4">Added</h3>
+<h3 id="added_5">Added</h3>
 <ul>
 <li>Official changelog</li>
 <li>New static method get_bx_percentile() for Analysis class. You can now get the time values for given BX-lives</li>
@@ -659,6 +695,7 @@
         <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
           Material for MkDocs
         </a>
+        
       </div>
       
     </div>
@@ -672,7 +709,7 @@
     <script id="__config" type="application/json">{"base": "..", "features": ["toc.integrate"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing"}, "search": "../assets/javascripts/workers/search.fb4a9340.min.js", "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.ca5457b8.min.js"></script>
+      <script src="../assets/javascripts/bundle.5cf3e710.min.js"></script>
       
     
   </body>

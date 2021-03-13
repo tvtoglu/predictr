@@ -10,7 +10,7 @@
       
       
       <link rel="shortcut icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-7.0.3">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-7.0.5">
     
     
       
@@ -18,7 +18,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.1655a90d.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.77f3fd56.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.7fa14f5b.min.css">
@@ -462,6 +462,20 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weibull_pdf" class="md-nav__link">
+    weibull_pdf()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#simple_weibull" class="md-nav__link">
+    simple_weibull()
+  </a>
   
 </li>
         
@@ -936,6 +950,54 @@ objects = {'initial design': prototype_a, 'final design': prototype_c}
 PlotAll(objects).contour_plot()
 </code></pre>
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_LRB_multiple.png" width="500" /></p>
+<h3 id="weibull_pdf">weibull_pdf()</h3>
+<p>This method plots one or more Weibull probability density functions. Axes are completely customizable.</p>
+<p>Arguments:
+weibull_pdf(self, beta=None, eta=None, linestyle=None, labels = None,
+                    x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8,
+                    plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None,
+                    fig_size=None, color=None, save=False, plot_style='ggplot', kwargs)</p>
+<pre><code class="language-python">from predictr import Analysis, PlotAll
+
+# Use analysis for the parameter estimation
+failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
+failures2 = [3, 3, 5, 6, 6, 4, 9]
+failures3 = [5, 6, 6, 6, 7, 9]
+
+a = Analysis(df=failures1, bounds='lrb', bounds_type='2s', show = False, unit= 'min')
+a.mle()
+
+b = Analysis(df=failures1, ds = failures2, bounds='fb', bounds_type='2s', show = False, unit= 'min')
+b.mle()
+
+c = Analysis(df=failures3, bounds='lrb', bcm='hrbu', bounds_type='2s', show = False, unit= 'min')
+c.mle()
+
+# Use weibull_pdf method in PlotAll to plot the Weibull pdfs
+# beta contains the Weibull shape parameters, which were estimated using Analysis class. Do the same for the Weibull scale parameter eta.
+# Cusomize the path directory in order to use this code
+PlotAll().weibull_pdf(beta = [a.beta, b.beta, c.beta], eta = [a.eta, b.eta, c.eta],
+                      linestyle=['-', '--', ':'], labels = ['A', 'B', 'C'],
+                x_bounds=[0, 20, 100], plot_title = 'Comparison of three Prototypes',
+                x_label='Time to Failure', y_label='Density Function',
+                save=True, color=['black', 'black', 'black'], path=r'/your/custom/path/test.pdf')
+</code></pre>
+<p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Weibull_PDF.png" width="500" /></p>
+<h3 id="simple_weibull">simple_weibull()</h3>
+<p>This method plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspenions are given, the median ranks are plotted as well.</p>
+<p>Arguments:
+simple_weibull(self, beta, eta, unit='-', x_label = 'Time to Failure',
+                       y_label = 'Unreliability', xy_fontsize=12,
+                       plot_title_fontsize=12, plot_title='Weibull Probability Plot',
+                       fig_size=(6, 7), show_legend=True, legend_fontsize=9,
+                       save=False, df=None, ds=None, kwargs):</p>
+<pre><code class="language-python">from predictr import Analysis, PlotAll
+
+# If save=True, you must set the path argument, e.g. path=r'/your/custom/path/test.pdf'
+PlotAll().simple_weibull(beta =2.0, eta=1, show_legend=True, x_label='Cycles until failure', plot_title='Simple Weibull')
+
+</code></pre>
+<p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Simple_Weibull.png" width="500" /></p>
                 
               
               
@@ -992,6 +1054,7 @@ PlotAll(objects).contour_plot()
         <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
           Material for MkDocs
         </a>
+        
       </div>
       
     </div>
@@ -1005,7 +1068,7 @@ PlotAll(objects).contour_plot()
     <script id="__config" type="application/json">{"base": "..", "features": ["toc.integrate"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing"}, "search": "../assets/javascripts/workers/search.fb4a9340.min.js", "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.ca5457b8.min.js"></script>
+      <script src="../assets/javascripts/bundle.5cf3e710.min.js"></script>
       
     
   </body>
