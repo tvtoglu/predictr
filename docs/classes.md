@@ -273,3 +273,57 @@ objects = {'initial design': prototype_a, 'final design': prototype_c}
 PlotAll(objects).contour_plot()
 ```
 ![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_LRB_multiple.png){: width="500" }
+
+### weibull_pdf()
+This method plots one or more Weibull probability density functions. Axes are completely customizable.
+
+Arguments:
+weibull_pdf(self, beta=None, eta=None, linestyle=None, labels = None,
+                    x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8,
+                    plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None,
+                    fig_size=None, color=None, save=False, plot_style='ggplot', kwargs)
+```python
+from predictr import Analysis, PlotAll
+
+# Use analysis for the parameter estimation
+failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
+failures2 = [3, 3, 5, 6, 6, 4, 9]
+failures3 = [5, 6, 6, 6, 7, 9]
+
+a = Analysis(df=failures1, bounds='lrb', bounds_type='2s', show = False, unit= 'min')
+a.mle()
+
+b = Analysis(df=failures1, ds = failures2, bounds='fb', bounds_type='2s', show = False, unit= 'min')
+b.mle()
+
+c = Analysis(df=failures3, bounds='lrb', bcm='hrbu', bounds_type='2s', show = False, unit= 'min')
+c.mle()
+
+# Use weibull_pdf method in PlotAll to plot the Weibull pdfs
+# beta contains the Weibull shape parameters, which were estimated using Analysis class. Do the same for the Weibull scale parameter eta.
+# Cusomize the path directory in order to use this code
+PlotAll().weibull_pdf(beta = [a.beta, b.beta, c.beta], eta = [a.eta, b.eta, c.eta],
+                      linestyle=['-', '--', ':'], labels = ['A', 'B', 'C'],
+                x_bounds=[0, 20, 100], plot_title = 'Comparison of three Prototypes',
+                x_label='Time to Failure', y_label='Density Function',
+                save=True, color=['black', 'black', 'black'], path=r'/your/custom/path/test.pdf')
+```
+![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Weibull_PDF.png){: width="500" }
+
+### simple_weibull()
+This method plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspenions are given, the median ranks are plotted as well.
+
+Arguments:
+simple_weibull(self, beta, eta, unit='-', x_label = 'Time to Failure',
+                       y_label = 'Unreliability', xy_fontsize=12,
+                       plot_title_fontsize=12, plot_title='Weibull Probability Plot',
+                       fig_size=(6, 7), show_legend=True, legend_fontsize=9,
+                       save=False, df=None, ds=None, kwargs):
+```python
+from predictr import Analysis, PlotAll
+
+# If save=True, you must set the path argument, e.g. path=r'/your/custom/path/test.pdf'
+PlotAll().simple_weibull(beta =2.0, eta=1, show_legend=True, x_label='Cycles until failure', plot_title='Simple Weibull')
+
+```
+![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Simple_Weibull.png){: width="500" }
