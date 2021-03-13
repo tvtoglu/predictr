@@ -174,3 +174,8 @@ dmypy.json
 # End of https://www.toptal.com/developers/gitignore/api/python,macos
 .Rhistory
 src/.idea/workspace.xml
+src/.idea/vcs.xml
+src/.idea/src.iml
+src/.idea/modules.xml
+src/.idea/misc.xml
+src/.idea/inspectionProfiles/profiles_settings.xml

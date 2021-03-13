@@ -23,16 +23,64 @@ class Analysis:
     def __init__(self, df: list = None, ds: list = None, show: bool = False,
                  plot_style='ggplot', bounds=None, bounds_type='2s',
                  cl=0.9, bcm=None, bs_size=5000, est_type='median',
-                 unit='-'):
+                 unit='-', x_label = 'Time to Failure',
+                 y_label = 'Unreliability', xy_fontsize=12, plot_title_fontsize=12,
+                 plot_title='Weibull Probability Plot',
+                 fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, **kwargs):
         """
-        __init__ analyses the given data for failure times, suspensions,
-        censoring type, and sets initial needed parameters for other methods.
-        Unit in kwargs must be string.
-        4 cases are currently supported:
-            1: No censoring: df = [...], ds = None
-            2/3: Type I/II censoring: df = [...], ds = [...]
-            4: No failure, all censored: df = None;  ds = [...]
+        Parameters
+        ----------
+        df : list
+            Contains failures. The default is None.
+        ds : list
+            Contains suspensions. The default is None.
+        show : bool, optional
+            If True, plot will be shown. The default is False.
+        plot_style : string, optional
+            Sets. The default is 'ggplot'.
+        bounds : string, optional
+            Sets the bounds method. The default is None.
+        bounds_type : string, optional
+            Sets the bounds type, e.g. two-sided, one-sided upper bound etc. The default is '2s'.
+        cl : float, optional
+            Stes confidence level between 0 and 1.0. The default is 0.9.
+        bcm : string, optional
+            Sets bias-correction method. The default is None.
+        bs_size : int, optional
+            Sets number of bootstrap samlpes. The default is 5000.
+        est_type : float, optional
+            Sets which statictic to compute from bootstrap samples. The default is 'median'.
+        unit : string, optional
+            Unit shown in the Weibull plot on the x-axis. The default is '-'.
+        x_label : string, optional
+            Label for the x-axis. The default is 'Time to Failure'.
+        y_label : string, optional
+            Label for the y-axis. The default is 'Unreliability'.
+        xy_fontsize : float, optional
+            Fontsize for the axes label and ticks. The default is 12.
+        legend_fontsize : float, optional
+            Fontsize for the legend. The default is 9.
+        plot_title : string, optional
+            Title for the plot. The default is 'Weibull PDF'.
+        plot_title_fontsize : float, optional
+            Fontsize of the plot title. The default is 12.
+        fig_size : tuple of floats, optional
+            Sets width and height in inches: (width, height)
+        color : list of string, optional
+            List containing the colormap for the plotted lines. Length of list must be equal to
+            the beta and eta length of lists.
+        save : boolean, optional
+            If True, the plot is saved according to the path. The default is False.
+        plot_style : TYPE, optional
+            DESCRIPTION. The default is 'ggplot'.
+        show_legend : boolean, optional
+            If True, the legend will be plotted. The default is True.
+        **kwargs :
+            path: string
+                Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'
+
         """
+
         # Raise error if no data is given
         if (df is None and ds is None):
             raise ValueError('No data given. Please enter failures \
@@ -58,8 +106,19 @@ class Analysis:
         else:
             self.ds = ds
 
+        # Plot related attributes
         self.show = show
         self.plot_style = plot_style
+        self.x_label, self.y_label, self.plot_title = x_label, y_label, plot_title
+        self.xy_fontsize, self.plot_title_fontsize = xy_fontsize, plot_title_fontsize
+        self.show_legend, self.legend_fontsize = show_legend, legend_fontsize
+        self.fig_size, self.save = fig_size, save
+        if self.save:
+            try:
+                self.save_path = kwargs['path']
+            except:
+                raise ValueError('Path is not defined.')
+
         self.bounds_type = bounds_type
         self.bounds = bounds
         self.cl = cl
@@ -441,20 +500,35 @@ class Analysis:
         Weibull Handbook. Returns a list with adjusted median ranks.
         """
 
-        def bernard(adj_r, cl):
+        def bernard(adj_r, n, cl):
             """
             Returns Bernards Approximation for the adjusted ranks
             """
             #return (np.array(i) - 0.3) / (len(self.df+self.ds) + 0.4)
-            return [beta.ppf(cl, i, len(self.df+self.ds)-i+1) for i in adj_r]
+            return [beta.ppf(cl, i, n-i+1) for i in adj_r]
 
         n = len(self.df + self.ds)
         # Reverse ranks need to consider suspensions and their order
         all_ = self.df + self.ds
         rev_rank = []
+        prev = 0
         for j in self.df:
-            count = sum(map(lambda x : x < j, all_))
-            rev_rank.append(len(all_) - count)
+            # Check if failure time is entered multiple times
+            if self.df.count(j) > 1:
+                # Ignore same elements after first time
+                if prev == j:
+                    pass
+                else:
+                    # Number of times element is in df
+                    count_element = self.df.count(j)
+                    # Loop through identical failure time
+                    for i in range(count_element):
+                        count = sum(map(lambda x : x < j, all_)) + i
+                        rev_rank.append(len(all_) - count)
+                prev = j
+            else:
+                count = sum(map(lambda x : x < j, all_))
+                rev_rank.append(len(all_) - count)
 
         #Calculate adjusted rank
         adj_ranks = []
@@ -462,7 +536,7 @@ class Analysis:
         for i in range(1, len(self.df)+1):
             adj_ranks.append((rev_rank[i-1] * prev_rank + n + 1) / (rev_rank[i-1] +1))
             prev_rank = adj_ranks[-1]
-        self.adj_ranks = bernard(adj_ranks, cl)
+        self.adj_ranks = bernard(adj_ranks, n, cl)
         return self.adj_ranks
 
     def mrr(self):
@@ -741,6 +815,8 @@ class Analysis:
             return '{:.1f}'.format((100 * (1 - np.exp(-np.exp(y_i)))))
 
         def unrel_func(x_est, beta_, eta):
+            if type(x_est) == list:
+                x_est = np.asarray(x_est)
             y_est = (1 - np.exp(-(x_est / eta) ** beta_))
             y_est_lnln = weibull_prob_paper(y_est)
             return y_est_lnln
@@ -770,7 +846,7 @@ class Analysis:
 
         # Generate Weibull Plot Figure
         plt.style.use(self.plot_style)
-        plt.figure(figsize=(6, 7))
+        plt.figure(figsize=self.fig_size)
 
         # Y-Axis
         ax = plt.gca()
@@ -831,9 +907,11 @@ class Analysis:
         plt.tick_params(axis='x', colors='black')
 
         # Set labels and legends
-        plt.title("Weibull Probability Plot", color='black', fontsize=12)
-        plt.xlabel(f'Time to Failure [{self.unit}]', color='black', fontsize=12)
-        plt.ylabel("Unreliability [%]", color='black', fontsize=12)
+        plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
+        plt.xlabel(self.x_label + f' [{self.unit}]', color='black', fontsize=self.xy_fontsize)
+        plt.xticks(fontsize=self.xy_fontsize)
+        plt.ylabel(self.y_label + ' [%]', color='black', fontsize=self.xy_fontsize)
+        plt.yticks(fontsize=self.xy_fontsize)
 
         # Plot legend
         if self.ds is None:
@@ -891,7 +969,7 @@ class Analysis:
                                 + 'pval={:.2e}'.format(self.pvalue),
                                 '\n{}:\n2s @{}% (pctl)'.format((bounds_legend), self.cl * 100)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
                 elif self.bounds == 'pbb':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
@@ -910,7 +988,7 @@ class Analysis:
                                 '\n{}:\n2s @{}% (pctl)'.format((bounds_legend), self.cl * 100)
                                 +'\nBS samples: {}'.format(self.bs_size)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
                 elif self.bounds == 'npbb':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
@@ -929,7 +1007,7 @@ class Analysis:
                                 '\n{}:\n2s @{}% (pctl)'.format((bounds_legend), self.cl * 100)
                                 +'\nBS samples: {}'.format(self.bs_size)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
                 elif self.bounds == 'mcpb':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
@@ -948,7 +1026,7 @@ class Analysis:
                                 '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)
                                 +'\nBS samples: {}'.format(self.bs_size)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
             elif self.bounds_type == '1su':
                 if self.bounds == 'bbb':
                     yerr_upper = (weibull_prob_paper(self.bounds_upper)
@@ -964,7 +1042,7 @@ class Analysis:
                                 + 'pval={:.2e}'.format(self.pvalue),
                                 '\n{}:\n1su @{}% (pctl)'.format((bounds_legend), self.cl * 100)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
                 elif self.bounds == 'pbb':
                     plt.semilogx(self.bounds_upper, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
@@ -978,7 +1056,7 @@ class Analysis:
                                 '\n{}:\n1su @{}% (pctl)'.format((bounds_legend), self.cl * 100)
                                 +'\nBS samples: {}'.format(self.bs_size)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
                 elif self.bounds == 'npbb':
                     plt.semilogx(self.bounds_upper, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
@@ -992,7 +1070,7 @@ class Analysis:
                                 '\n{}:\n1su @{}% (pctl)'.format((bounds_legend), self.cl * 100)
                                 +'\nBS samples: {}'.format(self.bs_size)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
                 elif self.bounds == 'mcpb':
                     plt.semilogx(self.bounds_upper, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
@@ -1006,7 +1084,7 @@ class Analysis:
                                 '\n{}:\n1su @{}%'.format((bounds_legend), self.cl * 100)
                                 +'\nBS samples: {}'.format(self.bs_size)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
             elif self.bounds_type == '1sl':
                 if self.bounds == 'bbb':
                     yerr_upper = (weibull_prob_paper(self.bounds_lower)
@@ -1023,7 +1101,7 @@ class Analysis:
                                     '\n{}:\n1sl @{}% (pctl)'.format((bounds_legend),
                                                                     self.cl * 100)],
                                    loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                                   fontsize=9, title=self.title)
+                                   fontsize=self.legend_fontsize, title=self.title)
                 elif self.bounds == 'pbb':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
@@ -1037,7 +1115,7 @@ class Analysis:
                                 '\n{}:\n1sl @{}% (pctl)'.format((bounds_legend), self.cl * 100)
                                 +'\nBS samples: {}'.format(self.bs_size)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
                 elif self.bounds == 'npbb':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
@@ -1051,7 +1129,7 @@ class Analysis:
                                 '\n{}:\n1sl @{}% (pctl)'.format((bounds_legend), self.cl * 100)
                                 +'\nBS samples: {}'.format(self.bs_size)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
                 elif self.bounds == 'mcpb':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
@@ -1065,7 +1143,7 @@ class Analysis:
                                 '\n{}:\n1sl @{}%'.format((bounds_legend), self.cl * 100)
                                 +'\nBS samples: {}'.format(self.bs_size)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=self.title)
+                               fontsize=self.legend_fontsize, title=self.title)
         else:
             plt.legend(['n = {} (f: {} | s: {})\n'.format(len(self.df) + susp_num,
                                                           len(self.df), susp_num)
@@ -1073,7 +1151,7 @@ class Analysis:
                         + r'$\widehat\eta={:.3f}$ '.format(self.eta)
                         + '\n$r^2={:.3f}$'.format(self.rvalue)],
                         loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                        fontsize=9, title=self.title)
+                        fontsize=self.legend_fontsize, title=self.title)
 
         # Plot discrete median ranks
         if self.ds is None:
@@ -1088,6 +1166,13 @@ class Analysis:
         plt.tight_layout()
         plt.grid(True, which='both')
         plt.show()
+
+        # Save plot
+        if self.save:
+            try:
+                plt.savefig(self.save_path)
+            except:
+                raise ValueError('Path is faulty.')
 
     def fisher_bounds(self):
         """
@@ -1449,6 +1534,8 @@ class Analysis:
             return '{:.1f}'.format((100 * (1 - np.exp(-np.exp(y_i)))))
 
         def unrel_func(x_est, beta_, eta):
+            if type(x_est) == list:
+                x_est = np.asarray(x_est)
             y_est = (1 - np.exp(-(x_est / eta) ** beta_))
             y_est_lnln = weibull_prob_paper(y_est)
 
@@ -1478,7 +1565,7 @@ class Analysis:
 
         # Generate Weibull Plot Figure
         plt.style.use(self.plot_style)
-        plt.figure(figsize=(6, 7))
+        plt.figure(figsize=self.fig_size)
 
         # Y-Axis
         ax = plt.gca()
@@ -1573,9 +1660,11 @@ class Analysis:
         plt.tick_params(axis='x', colors='black')
 
         # Set labels and legends
-        plt.title("Weibull Probability Plot", color='black', fontsize=12)
-        plt.xlabel('Time to Failure [{}]'.format(self.unit), color='black', fontsize=12)
-        plt.ylabel("Unreliability [%]", color='black', fontsize=12)
+        plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
+        plt.xlabel(self.x_label + f' [{self.unit}]', color='black', fontsize=self.xy_fontsize)
+        plt.xticks(fontsize=self.xy_fontsize)
+        plt.ylabel(self.y_label + ' [%]', color='black', fontsize=self.xy_fontsize)
+        plt.yticks(fontsize=self.xy_fontsize)
 
         # General style properties
         self.unrel = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01,
@@ -1627,62 +1716,64 @@ class Analysis:
                                      x1=self.bounds_lower,
                                      x2=self.bounds_upper,
                                      alpha=0.1, color = 'royalblue', label='_nolegend_')
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta_c4)
-                                + r'$\widehat\eta={:.3f}$ '.format(self.eta_c4),
-                                '\nuncorrected MLE:\n'
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_c4)
+                                    + r'$\widehat\eta={:.3f}$ '.format(self.eta_c4),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 elif self.bounds_type == '1su':
                     plt.semilogx(self.bounds_upper, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
-
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta_c4)
-                                + r'$\widehat\eta={:.3f}$ '.format(self.eta_c4),
-                                '\nuncorrected MLE:\n'
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\1su @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_c4)
+                                    + r'$\widehat\eta={:.3f}$ '.format(self.eta_c4),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\1su @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 elif self.bounds_type == '1sl':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
-
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_c4)
+                                    + r'$\widehat\eta={:.3f}$ '.format(self.eta_c4),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
+            else:
+                if self.show_legend:
                     plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
                                                                   + susp_num,
                                                                   len(self.df),
                                                                   susp_num)
                                 + r'$\widehat\beta={:.3f}$ | '.format(self.beta_c4)
-                                + r'$\widehat\eta={:.3f}$ '.format(self.eta_c4),
+                                + r'$\widehat\eta={:.3f}$ '.format(self.eta),
                                 '\nuncorrected MLE:\n'
                                 + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                + r'$\widehat\eta={:.3f}$'.format(self.eta)),
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
-            else:
-                plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                              + susp_num,
-                                                              len(self.df),
-                                                              susp_num)
-                            + r'$\widehat\beta={:.3f}$ | '.format(self.beta_c4)
-                            + r'$\widehat\eta={:.3f}$ '.format(self.eta),
-                            '\nuncorrected MLE:\n'
-                            + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                            + r'$\widehat\eta={:.3f}$'.format(self.eta)),
-                           loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                           fontsize=9, title=leg_title)
+                               fontsize=self.legend_fontsize, title=leg_title)
         elif self.bcm == 'hrbu':
             # Plot corrected line
             xvals_hrbu = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -1722,39 +1813,53 @@ class Analysis:
                                      x1=self.bounds_lower,
                                      x2=self.bounds_upper,
                                      alpha=0.1, color = 'royalblue', label='_nolegend_')
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta_hrbu)
-                                + r'$\widehat\eta={:.3f}$ '.format(self.eta_hrbu),
-                                '\nuncorrected MLE:\n'
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
-
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_hrbu)
+                                    + r'$\widehat\eta={:.3f}$ '.format(self.eta_hrbu),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 elif self.bounds_type == '1su':
                     plt.semilogx(self.bounds_upper, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
-
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta_hrbu)
-                                + r'$\widehat\eta={:.3f}$ '.format(self.eta_hrbu),
-                                '\nuncorrected MLE:\n'
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\n1su @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_hrbu)
+                                    + r'$\widehat\eta={:.3f}$ '.format(self.eta_hrbu),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\n1su @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 elif self.bounds_type == '1sl':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
-
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_hrbu)
+                                    + r'$\widehat\eta={:.3f}$ '.format(self.eta_hrbu),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
+            else:
+                if self.show_legend:
                     plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
                                                                   + susp_num,
                                                                   len(self.df),
@@ -1763,22 +1868,9 @@ class Analysis:
                                 + r'$\widehat\eta={:.3f}$ '.format(self.eta_hrbu),
                                 '\nuncorrected MLE:\n'
                                 + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                + r'$\widehat\eta={:.3f}$'.format(self.eta)),
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
-            else:
-                plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                              + susp_num,
-                                                              len(self.df),
-                                                              susp_num)
-                            + r'$\widehat\beta={:.3f}$ | '.format(self.beta_hrbu)
-                            + r'$\widehat\eta={:.3f}$ '.format(self.eta_hrbu),
-                            '\nuncorrected MLE:\n'
-                            + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                            + r'$\widehat\eta={:.3f}$'.format(self.eta)),
-                           loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                           fontsize=9, title=leg_title)
+                               fontsize=self.legend_fontsize, title=leg_title)
         elif self.bcm == 'np_bs':
             # Plot corrected line
             xvals_np_bs = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -1817,69 +1909,71 @@ class Analysis:
                                      x1=self.bounds_lower,
                                      x2=self.bounds_upper,
                                      alpha=0.1, color = 'royalblue', label='_nolegend_')
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta_np_bs)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta_np_bs)
-                                + '\nstatistic: {}'.format(self.est_type)
-                                +'\nBS samples: {}'.format(self.bs_size),
-                                '\nuncorrected MLE:\n'
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_np_bs)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta_np_bs)
+                                    + '\nstatistic: {}'.format(self.est_type)
+                                    +'\nBS samples: {}'.format(self.bs_size),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 elif self.bounds_type == '1su':
                     plt.semilogx(self.bounds_upper, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
-
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta_np_bs)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta_np_bs)
-                                + '\nstatistic: {}'.format(self.est_type)
-                                +'\nBS samples: {}'.format(self.bs_size),
-                                '\nuncorrected MLE:\n'
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\1su @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_np_bs)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta_np_bs)
+                                    + '\nstatistic: {}'.format(self.est_type)
+                                    +'\nBS samples: {}'.format(self.bs_size),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\1su @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 elif self.bounds_type == '1sl':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
-                                 color='royalblue',clinestyle='-', linewidth=1)
-
+                                 color='royalblue', linestyle='-', linewidth=1)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_np_bs)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta_np_bs)
+                                    + '\nstatistic: {}'.format(self.est_type)
+                                    +'\nBS samples: {}'.format(self.bs_size),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\n1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
+            else:
+                if self.show_legend:
                     plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
                                                                   + susp_num,
                                                                   len(self.df),
                                                                   susp_num)
                                 + r'$\widehat\beta={:.3f}$ | '.format(self.beta_np_bs)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta_np_bs)
+                                + r'$\widehat\eta={:.3f}$ '.format(self.eta_np_bs)
                                 + '\nstatistic: {}'.format(self.est_type)
                                 +'\nBS samples: {}'.format(self.bs_size),
-                                '\nuncorrected MLE:\n'
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\n1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                '\nuncorrected MLE:\n' + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                + r'$\widehat\eta={:.3f}$'.format(self.eta)),
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
-            else:
-                plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                              + susp_num,
-                                                              len(self.df),
-                                                              susp_num)
-                            + r'$\widehat\beta={:.3f}$ | '.format(self.beta_np_bs)
-                            + r'$\widehat\eta={:.3f}$ '.format(self.eta_np_bs)
-                            + '\nstatistic: {}'.format(self.est_type)
-                            +'\nBS samples: {}'.format(self.bs_size),
-                            '\nuncorrected MLE:\n' + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                            + r'$\widehat\eta={:.3f}$'.format(self.eta)),
-                           loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                           fontsize=9, title=leg_title)
+                               fontsize=self.legend_fontsize, title=leg_title)
         elif self.bcm == 'p_bs':
             # Plot corrected line
             xvals_p_bs = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -1918,70 +2012,72 @@ class Analysis:
                                      x1=self.bounds_lower,
                                      x2=self.bounds_upper,
                                      alpha=0.1, color = 'royalblue', label='_nolegend_')
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta_p_bs)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta_p_bs)
-                                + '\nstatistic: {}'.format(self.est_type)
-                                +'\nBS samples: {}'.format(self.bs_size),
-                                '\nuncorrected MLE:\n'
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_p_bs)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta_p_bs)
+                                    + '\nstatistic: {}'.format(self.est_type)
+                                    +'\nBS samples: {}'.format(self.bs_size),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 elif self.bounds_type == '1su':
                     plt.semilogx(self.bounds_upper, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
-
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta_p_bs)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta_p_bs)
-                                + '\nstatistic: {}'.format(self.est_type)
-                                +'\nBS samples: {}'.format(self.bs_size),
-                                '\nuncorrected MLE:\n'
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\n1su @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_p_bs)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta_p_bs)
+                                    + '\nstatistic: {}'.format(self.est_type)
+                                    +'\nBS samples: {}'.format(self.bs_size),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\n1su @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 elif self.bounds_type == '1sl':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
-
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta_p_bs)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta_p_bs)
+                                    + '\nstatistic: {}'.format(self.est_type)
+                                    +'\nBS samples: {}'.format(self.bs_size),
+                                    '\nuncorrected MLE:\n'
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$'.format(self.eta),
+                                    '\n{}:\n1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
+            else:
+                if self.show_legend:
                     plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
                                                                   + susp_num,
                                                                   len(self.df),
                                                                   susp_num)
                                 + r'$\widehat\beta={:.3f}$ | '.format(self.beta_p_bs)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta_p_bs)
+                                + r'$\widehat\eta={:.3f}$ '.format(self.eta_p_bs)
                                 + '\nstatistic: {}'.format(self.est_type)
                                 +'\nBS samples: {}'.format(self.bs_size),
                                 '\nuncorrected MLE:\n'
                                 + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                '\n{}:\n1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                + r'$\widehat\eta={:.3f}$'.format(self.eta)),
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
-            else:
-                plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                              + susp_num,
-                                                              len(self.df),
-                                                              susp_num)
-                            + r'$\widehat\beta={:.3f}$ | '.format(self.beta_p_bs)
-                            + r'$\widehat\eta={:.3f}$ '.format(self.eta_p_bs)
-                            + '\nstatistic: {}'.format(self.est_type)
-                            +'\nBS samples: {}'.format(self.bs_size),
-                            '\nuncorrected MLE:\n'
-                            + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                            + r'$\widehat\eta={:.3f}$'.format(self.eta)),
-                           loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                           fontsize=9, title=leg_title)
+                               fontsize=self.legend_fontsize, title=leg_title)
         else:
             # Plot biased line
             xvals = list(inverse_weibull(np.array([0.001, 0.9999]), self.beta, self.eta))
@@ -2013,53 +2109,53 @@ class Analysis:
                                      x1=self.bounds_lower,
                                      x2=self.bounds_upper,
                                      alpha=0.1, color = 'royalblue', label='_nolegend_')
-                    # Plot bounds and legend
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$ '.format(self.eta),
-                                '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
-                # 1-sided upper bounds
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$ '.format(self.eta),
+                                    '\n{}:\n2s @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 elif self.bounds_type == '1su':
                     plt.semilogx(self.bounds_upper, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
-
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                                  + susp_num,
-                                                                  len(self.df),
-                                                                  susp_num)
-                                + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$ '.format(self.eta),
-                                '\n{}:\n1su @{}%'.format((bounds_legend), self.cl * 100)),
-                               loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$ '.format(self.eta),
+                                    '\n{}:\n1su @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
                 # 1-sided lower bounds
                 elif self.bounds_type == '1sl':
                     plt.semilogx(self.bounds_lower, weibull_prob_paper(self.unrel),
                                  color='royalblue', linestyle='-', linewidth=1)
-
-                    plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                    if self.show_legend:
+                        plt.legend(('n = {} (f: {} | s: {})\n'.format(len(self.df)
+                                                                      + susp_num,
+                                                                      len(self.df),
+                                                                      susp_num)
+                                    + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
+                                    + r'$\widehat\eta={:.3f}$ '.format(self.eta),
+                                    '\n{}:\n1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                   loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                                   fontsize=self.legend_fontsize, title=leg_title)
+            else:
+                if self.show_legend:
+                    plt.legend(['n = {} (f: {} | s: {})\n'.format(len(self.df)
                                                                   + susp_num,
                                                                   len(self.df),
                                                                   susp_num)
                                 + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                                + r'$\widehat\eta={:.3f}$ '.format(self.eta),
-                                '\n{}:\n1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                + r'$\widehat\eta={:.3f}$ '.format(self.eta)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                               fontsize=9, title=leg_title)
-            else:
-                plt.legend(['n = {} (f: {} | s: {})\n'.format(len(self.df)
-                                                              + susp_num,
-                                                              len(self.df),
-                                                              susp_num)
-                            + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
-                            + r'$\widehat\eta={:.3f}$ '.format(self.eta)],
-                           loc='lower left', bbox_to_anchor=(0.65, 0.0),
-                           fontsize=9, title=leg_title)
+                               fontsize=self.legend_fontsize, title=leg_title)
 
         # Plot median ranks
         if self.ds is None:
@@ -2074,6 +2170,14 @@ class Analysis:
         plt.tight_layout()
         plt.grid(True, which='both')
         plt.show()
+
+        # Save plot
+        if self.save:
+            try:
+                plt.savefig(self.save_path)
+            except:
+                raise ValueError('Path is faulty.')
+
 
     @classmethod
     def get_bx_percentile(cls, time, beta_, eta_):
@@ -2116,14 +2220,17 @@ class PlotAll:
     Plots cdfs, pdfs and Weibull plots for multiple instances
     """
 
-    def __init__(self, objects, **kwargs):
-        self.objects = objects
-        for key, val in objects.items():
-            self.unit = getattr(val, 'unit')
-            self.plot_style = getattr(val, 'plot_style')
-        self.unrel = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01 , 0.02 , 0.03 , 0.05 ,
-                               0.07 , 0.1  , 0.2  , 0.3  , 0.4  , 0.5  , 0.6  , 0.632, 0.7,
-                               0.8  , 0.9  , 0.95 , 0.99 , 0.999])
+    def __init__(self, objects=None, **kwargs):
+        if objects is not None:
+            self.objects = objects
+            for key, val in objects.items():
+                self.unit = getattr(val, 'unit')
+                self.plot_style = getattr(val, 'plot_style')
+            self.unrel = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01 , 0.02 , 0.03 , 0.05 ,
+                                   0.07 , 0.1  , 0.2  , 0.3  , 0.4  , 0.5  , 0.6  , 0.632, 0.7,
+                                   0.8  , 0.9  , 0.95 , 0.99 , 0.999])
+            if len(self.objects.keys()) > 6:
+                raise ValueError('mult_weibull only support up to six instances being plotted.')
 
         # Set colormap for Weibull plot
         if 'set_cmap' in kwargs:
@@ -2132,10 +2239,9 @@ class PlotAll:
             self.color = iter(['royalblue', 'salmon', 'mediumseagreen',
                                'darkorange', 'peru', 'darkcyan'])
 
-        if len(self.objects.keys()) > 6:
-            raise ValueError('mult_weibull only support up to six instances being plotted.')
-
-    def mult_weibull(self):
+    def mult_weibull(self, x_label='Time To Failure', y_label='Unreliability',
+                     plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12,
+                     ):
         """
         Plots multiple Analysis class objects in one figure
 
@@ -2162,6 +2268,8 @@ class PlotAll:
             return '{:.1f}'.format((100 * (1 - np.exp(-np.exp(y_i)))))
 
         def unrel_func(x_est, beta_, eta):
+            if type(x_est) == list:
+                x_est = np.asarray(x_est)
             y_est = (1 - np.exp(-(x_est / eta) ** beta_))
             y_est_lnln = weibull_prob_paper(y_est)
             return y_est_lnln
@@ -2210,7 +2318,7 @@ class PlotAll:
 
         # Generate Weibull Plot Figure
         plt.style.use(self.plot_style)
-        plt.figure(figsize=(6, 7))
+        plt.figure(figsize=self.fig_size)
 
         # Y-Axis
         ax = plt.gca()
@@ -2529,29 +2637,198 @@ class PlotAll:
         if plot_legend:
             plt.legend()
 
+    def weibull_pdf(self, beta=None, eta=None, linestyle=None, labels = None,
+                    x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8,
+                    plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None,
+                    fig_size=None, color=None, save=False, plot_style='ggplot', **kwargs):
+        """
+        Parameters
+        ----------
+        beta : list of floats
+            Weibull shape parameter.
+        eta : list of floats
+            Weibull scale parameter
+        linestyle : list of string, optional
+            Defines the linestyle(s) in the plot.
+        labels : list of strings, optional
+            List containing the labels for the plot legend.
+        x_label : string, optional
+            Label for the x-axis. The default is None.
+        y_label : string, optional
+            Label for the y-axis. The default is None.
+        xy_fontsize : float, optional
+            Fontsize for the axes label and ticks. The default is 10.
+        legend_fontsize : float, optional
+            Fontsize for the legend. The default is 8.
+        plot_title : string, optional
+            Title for the plot. The default is 'Weibull PDF'.
+        plot_title_fontsize : float, optional
+            Fontsize of the plot title. The default is 12.
+        x_bounds : list of floats,
+            Sets x-axis boundaries: [start, end, steps]
+        fig_size : tuple of floats, optional
+            Sets width and height in inches: (width, height)
+        color : list of string, optional
+            List containing the colormap for the plotted lines. Length of list must be equal to
+            the beta and eta length of lists.
+        save : boolean, optional
+            If True, the plot is saved according to the path. The default is False.
+        plot_style : TYPE, optional
+            DESCRIPTION. The default is 'ggplot'.
+        **kwargs :
+            path: string
+                Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'
+        """
+
+        def wei_pdf(x, beta, eta):
+            """
+            Weibull probability density function.
+            """
+            return beta / eta * (x / eta) ** (beta - 1) * np.exp(-1 * ((x / eta) ** beta))
+
+        # Check needed input data
+        if beta is None or eta is None:
+            raise ValueError('Beta and eta must be specified.')
+
+        if x_bounds is None:
+            raise ValueError('X axis bounds are not defined. \
+                             Use x_bounds argument for this purpose.')
+
+        # Set line color
+        if color is not None:
+            color = iter(color)
+        else:
+            color = iter(['royalblue', 'salmon', 'mediumseagreen',
+                               'darkorange', 'peru', 'darkcyan'])
+        # Set x-axis
+        xvals = np.linspace(x_bounds[0], x_bounds[1], x_bounds[2])
+
+        # Configure plot
+        plt.style.use(plot_style)
+
+        # Check if custom size for plot is set
+        if fig_size is not None:
+            width, height = (fig_size[0], fig_size[1])
+            plt.figure(figsize=(width, height))
+
+        # Set title
+        plt.title(plot_title, fontsize=plot_title_fontsize)
+
+        # Set x and y axis labels and fontsizes
+        if x_label is not None:
+            plt.xlabel(x_label, fontsize=xy_fontsize)
+        else:
+            plt.xticks(fontsize=xy_fontsize)
+
+        if y_label is not None:
+            plt.ylabel(y_label, fontsize=xy_fontsize)
+        else:
+            plt.yticks(fontsize=xy_fontsize)
+
+        # Check if multiple lines need to be plotted
+        if type(beta)==list and type(eta) == list:
+            if labels is not None:
+                for i, j, lab, line in zip(beta, eta, labels, linestyle):
+                    plt.plot(xvals, wei_pdf(xvals, i, j),
+                             linestyle=line, label=lab, color=next(color))
+
+                # Set legend
+
+                plt.legend(fontsize=legend_fontsize)
+            else:
+                for i, j in zip(beta, eta):
+                    plt.plot(xvals, wei_pdf(xvals, i, j),
+                             linestyle=line, color=next(color))
+        plt.tight_layout()
+
+        # Save plot
+        if save:
+            try:
+                plt.savefig(kwargs['path'])
+            except:
+                raise ValueError('Path is faulty.')
+
+    def simple_weibull(self, beta, eta, unit='-', x_label = 'Time to Failure',
+                       y_label = 'Unreliability', xy_fontsize=12,
+                       plot_title_fontsize=12, plot_title='Weibull Probability Plot',
+                       fig_size=(6, 7), show_legend=True, legend_fontsize=9,
+                       save=False, df=None, ds=None, **kwargs):
+        """
+        beta : float
+            Weibull shape parameter.
+        eta : float
+            Weibull scale parameter
+        x_label : string, optional
+            Label for the x-axis. The default is None.
+        y_label : string, optional
+            Label for the y-axis. The default is None.
+        xy_fontsize : float, optional
+            Fontsize for the axes label and ticks. The default is 10.
+        legend_fontsize : float, optional
+            Fontsize for the legend. The default is 8.
+        plot_title : string, optional
+            Title for the plot. The default is 'Weibull PDF'.
+        plot_title_fontsize : float, optional
+            Fontsize of the plot title. The default is 12.
+        size : tuple of floats, optional
+            Sets width and height in inches: (width, height)
+        save : boolean, optional
+            If True, the plot is saved according to the path. The default is False.
+        plot_style : TYPE, optional
+            DESCRIPTION. The default is 'ggplot'.
+        unit : TYPE, optional
+            DESCRIPTION. The default is '-'.
+        show_legend : TYPE, optional
+            DESCRIPTION. The default is True.
+        df : list of floats, optional
+            Contains the failures. If None, there will be no median ranks in the plot
+        ds : list of floats, optional
+            Contains suspensions. The default is None.
+        **kwargs :
+            path: raw-string
+                Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'
+
+        """
+
+        # Create dummy object
+        if df is None:
+            df = []
+        if ds is None:
+            ds=[]
+        x = Analysis(df=df, ds=ds, show_legend=show_legend)
+
+        # Set attributes from input
+        setattr(x, 'beta', beta)
+        setattr(x, 'eta', eta)
+        setattr(x, 'x_label', x_label)
+        setattr(x, 'y_label', y_label)
+        setattr(x, 'xy_fontsize', xy_fontsize)
+        setattr(x, 'plot_title', plot_title)
+        setattr(x, 'plot_title_fontsize', plot_title_fontsize)
+        setattr(x, 'fig_size', fig_size)
+        setattr(x, 'legend_fontsize', legend_fontsize)
+        setattr(x, 'unit', unit)
+
+        # Plot object
+        x.plot()
+
+        # Save plot
+        if save:
+            try:
+                plt.savefig(kwargs['path'])
+            except:
+                raise ValueError('Path is faulty.')
+
 if __name__ == '__main__':
-    # failures_c = [0.04675399107295282, 0.31260891592041457, 0.32121232576015757, 0.6013488316204837,
-    #           0.7755159796641791, 0.8994041575114923, 0.956417788622185, 1.1967354178170764,
-    #           1.6115311492838604, 2.1120891587523793]
-    # a99 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.99)
-    # a99.mle()
+    # f = [3, 3, 3, 3, 3, 3, 4, 4, 9]
+    # ana1 = Analysis(df=f, bounds='mcpb', bounds_type='2s', show=True, unit= 'min',
+    #                 x_label='test', y_label= 'Hello', xy_fontsize=10, plot_title_fontsize=16,
+    #                 plot_title='Ausfall', show_legend=True)
+    # ana1.mrr()
 
-    # a95 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.95)
-    # a95.mle()
-
-    # a90 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.90)
-    # a90.mle()
-
-    # a80 = Analysis(df=failures_c, bounds='lrb', bounds_type='2s', cl=0.80)
-    # a80.mle()
-
-    # a90_bcm = Analysis(df=failures_c, bounds='lrb', bcm='hrbu', bounds_type='2s', cl=0.90)
-    # a90_bcm.mle()
-
-    # # Create dictionary with Analysis objects
-    # # Keys will be used in figure legend. Name them as you please.
-    # objects = {'lrb99': a99, 'lrb95': a95, 'lrb90': a90, 'lrb80': a80, 'lrb bias corrected': a90_bcm}
-    # PlotAll(objects).contour_plot()
+    #%%
+    PlotAll().simple_weibull(beta =2.0, eta=1, show_legend=False, x_label='test', xy_fontsize=8,
+                             plot_title='test', plot_title_fontsize=18, fig_size=(5, 5))
 
     #%%
     # failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
@@ -2579,6 +2856,24 @@ if __name__ == '__main__':
 
     suspensions_3 = failures1 + failures2
 
-    ana3 = Analysis(df=failures3, bounds='lrb', bcm='np_bs', bounds_type='2s', show = True, unit= 'min')
+    ana3 = Analysis(df=failures3, bounds='lrb', bounds_type='2s', show = True, unit= 'min')
     ana3.mle()
     #%%
+    failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
+    failures2 = [3, 3, 5, 6, 6, 4, 9]
+    failures3 = [5, 6, 6, 6, 7, 9]
+
+    a = Analysis(df=failures1, bounds='lrb', bounds_type='2s', show = False, unit= 'min')
+    a.mle()
+
+    b = Analysis(df=failures1, ds = failures2, bounds='fb', bounds_type='2s', show = False, unit= 'min')
+    b.mle()
+
+    c = Analysis(df=failures3, bounds='lrb', bcm='hrbu', bounds_type='2s', show = False, unit= 'min')
+    c.mle()
+
+    #%%
+    PlotAll().weibull_pdf(beta = [a.beta, b.beta, c.beta], eta = [a.eta, b.eta, c.eta],
+                          linestyle=['-', '--', ':'], labels = ['A', 'B', 'C'],
+                    x_bounds=[0, 20, 100], plot_title = 'test', plot_title_fontsize=7, xy_fontsize=7,
+                    save=True, color=['black', 'black', 'black'])
