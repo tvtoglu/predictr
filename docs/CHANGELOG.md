@@ -2,6 +2,14 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
 
+## [0.1.17] - 2021-03-13
+ 
+### Added
+ - Better documentation in the code
+
+### Change
+ - Minor changes to have more consistent nomenclature int the code
+
 ## [0.1.16] - 2021-03-03
  
 ### Fixed
