@@ -2240,8 +2240,7 @@ class PlotAll:
                                'darkorange', 'peru', 'darkcyan'])
 
     def mult_weibull(self, x_label='Time To Failure', y_label='Unreliability',
-                     plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12,
-                     ):
+                     plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7)):
         """
         Plots multiple Analysis class objects in one figure
 
@@ -2318,7 +2317,7 @@ class PlotAll:
 
         # Generate Weibull Plot Figure
         plt.style.use(self.plot_style)
-        plt.figure(figsize=self.fig_size)
+        plt.figure(figsize=fig_size)
 
         # Y-Axis
         ax = plt.gca()
@@ -2820,60 +2819,22 @@ class PlotAll:
                 raise ValueError('Path is faulty.')
 
 if __name__ == '__main__':
-    # f = [3, 3, 3, 3, 3, 3, 4, 4, 9]
-    # ana1 = Analysis(df=f, bounds='mcpb', bounds_type='2s', show=True, unit= 'min',
-    #                 x_label='test', y_label= 'Hello', xy_fontsize=10, plot_title_fontsize=16,
-    #                 plot_title='Ausfall', show_legend=True)
-    # ana1.mrr()
+    # Create new objects, e.g. name them prototype_a and prototype_b
+    failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+                  0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+                  1.3201853093496474, 1.492172669340363]
+    prototype_a = Analysis(df=failures_a, bounds='lrb', bounds_type='2s')
+    prototype_a.mle()
 
-    #%%
-    PlotAll().simple_weibull(beta =2.0, eta=1, show_legend=False, x_label='test', xy_fontsize=8,
-                             plot_title='test', plot_title_fontsize=18, fig_size=(5, 5))
+    failures_b = [1.8506941739639076, 2.2685555679846954, 2.380993183650987, 2.642404955035375,
+                  2.777082863078587, 2.89527127055147, 2.9099992138728927, 3.1425481097241,
+                  3.3758727398694406, 3.8274990886889997]
+    prototype_b = Analysis(df=failures_b, bounds='pbb', bs_size=100, bounds_type='2s')
+    prototype_b.mle()
 
-    #%%
-    # failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
-    # failures2 = [191, 196, 470, 1208, 6637]
-    # failures3 = [15062, 19124, 20813, 22436, 23244, 23753, 27784, 29308, 35388, 35539, 45126, 68478, 71946, 72401, 111562, 138925, 151032]
+    # Create dictionary with Analysis objects
+    # Keys will be used in figure legend. Name them as you please.
+    objects = {'proto_a': prototype_a, 'proto_b': prototype_b}
 
-    # suspensions_1 = failures1 + failures3
-
-
-
-    # ana1 = Analysis(df=failures2, bounds='lrb', ds= suspensions_1, bounds_type='2s', show=True, unit= 'min')
-    # ana1.mle()
-
-    # PlotAll({'test': ana1}).mult_weibull()
-
-    # ana2 = Analysis(df=failures2, bounds='mcpb', ds= suspensions_1, bounds_type='2s', show=True, unit= 'min')
-    # ana2.mrr()
-
-    # PlotAll({'test': ana2}).mult_weibull()
-
-    #%%
-    failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
-    failures2 = [191, 196, 470, 1208, 6637]
-    failures3 = [15062, 19124, 20813, 22436, 23244, 23753, 27784, 29308, 35388, 35539, 45126, 68478, 71946, 72401, 111562, 138925, 151032]
-
-    suspensions_3 = failures1 + failures2
-
-    ana3 = Analysis(df=failures3, bounds='lrb', bounds_type='2s', show = True, unit= 'min')
-    ana3.mle()
-    #%%
-    failures1 = [3, 3, 3, 3, 3, 3, 4, 4, 9]
-    failures2 = [3, 3, 5, 6, 6, 4, 9]
-    failures3 = [5, 6, 6, 6, 7, 9]
-
-    a = Analysis(df=failures1, bounds='lrb', bounds_type='2s', show = False, unit= 'min')
-    a.mle()
-
-    b = Analysis(df=failures1, ds = failures2, bounds='fb', bounds_type='2s', show = False, unit= 'min')
-    b.mle()
-
-    c = Analysis(df=failures3, bounds='lrb', bcm='hrbu', bounds_type='2s', show = False, unit= 'min')
-    c.mle()
-
-    #%%
-    PlotAll().weibull_pdf(beta = [a.beta, b.beta, c.beta], eta = [a.eta, b.eta, c.eta],
-                          linestyle=['-', '--', ':'], labels = ['A', 'B', 'C'],
-                    x_bounds=[0, 20, 100], plot_title = 'test', plot_title_fontsize=7, xy_fontsize=7,
-                    save=True, color=['black', 'black', 'black'])
+    # Use mult_weibull() method
+    PlotAll(objects).mult_weibull()
