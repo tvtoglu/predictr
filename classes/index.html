@@ -9,8 +9,8 @@
       
       
       
-      <link rel="shortcut icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-7.0.5">
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-7.0.6">
     
     
       
@@ -18,7 +18,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.77f3fd56.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.2c0c5eaf.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.7fa14f5b.min.css">
@@ -67,11 +67,9 @@
       
     </div>
     
-      
-
-<header class="md-header" data-md-component="header">
+      <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="predictr - Predict the Reliability" class="md-header__button md-logo" aria-label="predictr - Predict the Reliability">
+    <a href=".." title="predictr - Predict the Reliability" class="md-header__button md-logo" aria-label="predictr - Predict the Reliability" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
@@ -163,13 +161,11 @@
                     
 
 
-
-
   
 
 <nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="predictr - Predict the Reliability" class="md-nav__button md-logo" aria-label="predictr - Predict the Reliability">
+    <a href=".." title="predictr - Predict the Reliability" class="md-nav__button md-logo" aria-label="predictr - Predict the Reliability" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
@@ -386,6 +382,33 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#modifying-the-weibull-plot" class="md-nav__link">
+    Modifying the Weibull plot
+  </a>
+  
+    <nav class="md-nav" aria-label="Modifying the Weibull plot">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#axes-labels-and-title" class="md-nav__link">
+    Axes labels and title
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#figure-size-plot-legend-and-median-rank-markers" class="md-nav__link">
+    Figure size, plot legend and median rank markers
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -403,6 +426,13 @@
   
     <nav class="md-nav" aria-label="PlotAll">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-arguments-of-each-method" class="md-nav__link">
+    Default Arguments of each method
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#mult_weibull" class="md-nav__link">
@@ -544,78 +574,144 @@
 <table>
 <thead>
 <tr>
-<th align="center">Parameter</th>
-<th align="center">default value</th>
-<th align="center">type</th>
-<th align="center">description</th>
+<th>Parameter</th>
+<th>default value</th>
+<th>type</th>
+<th>description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td align="center">df</td>
-<td align="center">None</td>
-<td align="center">list of floats</td>
-<td align="center">List of failures</td>
+<td>df</td>
+<td>None</td>
+<td>list of floats</td>
+<td>List of failures</td>
 </tr>
 <tr>
-<td align="center">ds</td>
-<td align="center">None</td>
-<td align="center">list of floats</td>
-<td align="center">List of suspensions (right-censored only)</td>
+<td>ds</td>
+<td>None</td>
+<td>list of floats</td>
+<td>List of suspensions (right-censored only)</td>
 </tr>
 <tr>
-<td align="center">bounds</td>
-<td align="center">None</td>
-<td align="center">str</td>
-<td align="center">Confidence bounce method to be used in mle() or mrr()</td>
+<td>bounds</td>
+<td>None</td>
+<td>str</td>
+<td>Confidence bounce method to be used in mle() or mrr()</td>
 </tr>
 <tr>
-<td align="center">bounds_type</td>
-<td align="center">None</td>
-<td align="center">str</td>
-<td align="center">Setting for the bounds: either two-sided or one-sided</td>
+<td>bounds_type</td>
+<td>None</td>
+<td>str</td>
+<td>Setting for the bounds: either two-sided or one-sided</td>
 </tr>
 <tr>
-<td align="center">show</td>
-<td align="center">False</td>
-<td align="center">bool</td>
-<td align="center">If True, the Weibull probability plot will be plotted</td>
+<td>show</td>
+<td>False</td>
+<td>bool</td>
+<td>If True, the Weibull probability plot will be plotted</td>
 </tr>
 <tr>
-<td align="center">bcm</td>
-<td align="center">None</td>
-<td align="center">str</td>
-<td align="center">Defines the bias-correction method in mle()</td>
+<td>bcm</td>
+<td>None</td>
+<td>str</td>
+<td>Defines the bias-correction method in mle()</td>
 </tr>
 <tr>
-<td align="center">cl</td>
-<td align="center">0.9</td>
-<td align="center">float</td>
-<td align="center">Sets the confidence level when bounds are used</td>
+<td>cl</td>
+<td>0.9</td>
+<td>float</td>
+<td>Sets the confidence level when bounds are used</td>
 </tr>
 <tr>
-<td align="center">bs_size</td>
-<td align="center">5000</td>
-<td align="center">int</td>
-<td align="center">Number of bootstrap samples</td>
+<td>bs_size</td>
+<td>5000</td>
+<td>int</td>
+<td>Number of bootstrap samples</td>
 </tr>
 <tr>
-<td align="center">est_type</td>
-<td align="center">'median'</td>
-<td align="center">str</td>
-<td align="center">Sets the statistic to compute from the bootstrap samples</td>
+<td>est_type</td>
+<td>'median'</td>
+<td>str</td>
+<td>Sets the statistic to compute from the bootstrap samples</td>
 </tr>
 <tr>
-<td align="center">plot_style</td>
-<td align="center">'ggplot'</td>
-<td align="center">str</td>
-<td align="center">Choose a style according to your needs. See matplotlib style references for more available styles.</td>
+<td>plot_style</td>
+<td>'ggplot'</td>
+<td>str</td>
+<td>Choose a style according to your needs. See matplotlib style references for more available styles.</td>
 </tr>
 <tr>
-<td align="center">unit</td>
-<td align="center">'-'</td>
-<td align="center">str</td>
-<td align="center">Unit of failures and suspensions, e.g. 's', 'ms', 'no. of cycle' etc.</td>
+<td>unit</td>
+<td>'-'</td>
+<td>str</td>
+<td>Unit of failures and suspensions, e.g. 's', 'ms', 'no. of cycle' etc.</td>
+</tr>
+<tr>
+<td>x_label</td>
+<td>'Time to Failure'</td>
+<td>string</td>
+<td>Label for the x-axis</td>
+</tr>
+<tr>
+<td>y_label</td>
+<td>'Unreliability'</td>
+<td>string</td>
+<td>Label for the y-axis</td>
+</tr>
+<tr>
+<td>xy_fontsize</td>
+<td>12</td>
+<td>float</td>
+<td>fontsize for the axes label and ticks</td>
+</tr>
+<tr>
+<td>legend_fontsize</td>
+<td>9</td>
+<td>float</td>
+<td>Fontsize for the legend</td>
+</tr>
+<tr>
+<td>plot_title</td>
+<td>'Weibull Probability Plot'</td>
+<td>string</td>
+<td>Title for the plot</td>
+</tr>
+<tr>
+<td>plot_title_fontsize</td>
+<td>12</td>
+<td>float</td>
+<td>Fontsize of the plot title</td>
+</tr>
+<tr>
+<td>fig_size</td>
+<td>(6, 7)</td>
+<td>tuple of floats</td>
+<td>Sets figure width and height in inches: (width, height)</td>
+</tr>
+<tr>
+<td>save</td>
+<td>False</td>
+<td>boolean</td>
+<td>the beta and eta length of lists.</td>
+</tr>
+<tr>
+<td>plot_ranks</td>
+<td>True</td>
+<td>boolean</td>
+<td>If True, median ranks will be plotted.</td>
+</tr>
+<tr>
+<td>show_legend</td>
+<td>True</td>
+<td>boolean</td>
+<td>If True, the legend will be plotted</td>
+</tr>
+<tr>
+<td>kwarg: path</td>
+<td></td>
+<td>string</td>
+<td>Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'</td>
 </tr>
 </tbody>
 </table>
@@ -814,6 +910,23 @@ prototype_a = Analysis(df=failures, ds=suspensions, bounds='lrb', show=True, bcm
 prototype_a.mle()
 </code></pre>
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored_hrbu.png" width="500" /></p>
+<h4 id="modifying-the-weibull-plot">Modifying the Weibull plot</h4>
+<h5 id="axes-labels-and-title">Axes labels and title</h5>
+<p>You can modify the axes label, plot title and the fontsize. Also, you can save the plot by setting save=True and path='your/own/directory/example.pdf'.</p>
+<pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='fb',show=True, plot_title='New Project', x_label='No. of Cycles', unit='10^3', y_label='Unreliability: 1-R', xy_fontsize=12, save=True, path=r'var/user/test.pdf')
+prototype_a.mle()
+</code></pre>
+<p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Analysis_Plot_Modification.png" width="500" /></p>
+<h5 id="figure-size-plot-legend-and-median-rank-markers">Figure size, plot legend and median rank markers</h5>
+<p>You can customize the fontsize that is being used in the plot legend. If you don't want a legend set show_legend=False.
+By default, the markers for the median ranks will be plotted. Set plot_ranks=False if you don't want median rank markers in your plot.
+The figure size can be modified with fig_size=(width, height). Width and height set the figure size in inches.</p>
+<pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='fb',show=True, show_legend=True, legend_fontsize=10, show_ranks=False, fig_size=(7, 7))
+prototype_a.mle()
+</code></pre>
+<p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Analysis_Plot_Modification2.png" width="500" /></p>
 <h2 id="plotall">PlotAll</h2>
 <p>PlotAll plots class objects from Analysis in one figure. Currently, only data from mle() is supported.
 Theoretically, you can plot as many objects as you like -&gt; provide a list of colors as a kwarg in PlotAll(objects, **kwargs).mult_weibull(). <b>
@@ -834,6 +947,180 @@ For now, six colors are supported by default, but you can pass an infinit amount
 <tr>
 <td>contour_plot()</td>
 <td>Plots contour plots when likelihood ratio bounds are used in Analysis</td>
+</tr>
+<tr>
+<td>weibull_pdf()</td>
+<td>plots one or more Weibull probability density functions. Axes are completely customizable.</td>
+</tr>
+<tr>
+<td>simple_weibull()</td>
+<td>plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspensions are given, the median ranks are plotted as well.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="default-arguments-of-each-method">Default Arguments of each method</h3>
+<p>Most of the arguments are either self explanatory or already defined in <a href="https://tvtoglu.github.io/predictr/classes/#default-arguments-and-values">default arguments and values</a></p>
+<table>
+<thead>
+<tr>
+<th>Methods</th>
+<th>Default arguments</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mult_weibull()</td>
+<td>x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), plot_ranks=True, save=False, **kwargs</td>
+</tr>
+<tr>
+<td>contour_plot()</td>
+<td>show_legend=True, save=False, **kwargs</td>
+</tr>
+<tr>
+<td>weibull_pdf()</td>
+<td>beta=None, eta=None, linestyle=None, labels = None,x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8, plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None, fig_size=None, color=None, save=False, plot_style='ggplot', **kwargs</td>
+</tr>
+<tr>
+<td>simple_weibull()</td>
+<td>beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, plot_title_fontsize=12, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Parameter(s)</th>
+<th>default value</th>
+<th>type</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>df</td>
+<td>None</td>
+<td>list of floats</td>
+<td>List of failures</td>
+</tr>
+<tr>
+<td>ds</td>
+<td>None</td>
+<td>list of floats</td>
+<td>List of suspensions (right-censored only)</td>
+</tr>
+<tr>
+<td>plot_style</td>
+<td>'ggplot'</td>
+<td>str</td>
+<td>Choose a style according to your needs. See matplotlib style references for more available styles.</td>
+</tr>
+<tr>
+<td>unit</td>
+<td>'-'</td>
+<td>str</td>
+<td>Unit of failures and suspensions, e.g. 's', 'ms', 'no. of cycle' etc.</td>
+</tr>
+<tr>
+<td>x_label</td>
+<td>depends on method</td>
+<td>string</td>
+<td>Label for the x-axis</td>
+</tr>
+<tr>
+<td>y_label</td>
+<td>depends on method</td>
+<td>string</td>
+<td>Label for the y-axis</td>
+</tr>
+<tr>
+<td>labels</td>
+<td></td>
+<td>string</td>
+<td>List containing the labels for the plot legend in weibull_pdf()</td>
+</tr>
+<tr>
+<td>xy_fontsize</td>
+<td>12</td>
+<td>float</td>
+<td>fontsize for the axes label and ticks</td>
+</tr>
+<tr>
+<td>legend_fontsize</td>
+<td>9</td>
+<td>float</td>
+<td>Fontsize for the legend</td>
+</tr>
+<tr>
+<td>plot_title</td>
+<td>'Weibull Probability Plot'</td>
+<td>string</td>
+<td>Title for the plot</td>
+</tr>
+<tr>
+<td>plot_title_fontsize</td>
+<td>12</td>
+<td>float</td>
+<td>Fontsize of the plot title</td>
+</tr>
+<tr>
+<td>fig_size</td>
+<td>(6, 7)</td>
+<td>tuple of floats</td>
+<td>Sets figure width and height in inches: (width, height)</td>
+</tr>
+<tr>
+<td>save</td>
+<td>False</td>
+<td>boolean</td>
+<td>If True, the plot is saved according to the path (kwargs)</td>
+</tr>
+<tr>
+<td>plot_ranks</td>
+<td>True</td>
+<td>boolean</td>
+<td>If True, median ranks will be plotted.</td>
+</tr>
+<tr>
+<td>show_legend</td>
+<td>True</td>
+<td>boolean</td>
+<td>If True, the legend will be plotted</td>
+</tr>
+<tr>
+<td>weibull_pdf: beta, eta</td>
+<td>None, None</td>
+<td>list of floats or None</td>
+<td>Attributes from Analysis object. Pairs of beta and eta values to be plotted. Each parameter pair must have the same index value.</td>
+</tr>
+<tr>
+<td>linestyle</td>
+<td>['-', '--', ':', '-.']</td>
+<td>list of strings</td>
+<td>Defines the linestyle(s) in the plot. Must be greater or equal to the length of beta ans eta lists</td>
+</tr>
+<tr>
+<td>color</td>
+<td>None</td>
+<td>list of strings</td>
+<td>List containing the colormap for the plotted lines. Length of list must be equal to the beta and eta length of lists or the number of Analysis objects.</td>
+</tr>
+<tr>
+<td>x_bounds</td>
+<td></td>
+<td>list of floats</td>
+<td>Sets x-axis boundaries: [start, end, steps inbetween]</td>
+</tr>
+<tr>
+<td>simple_weibull:beta, eta</td>
+<td></td>
+<td>float</td>
+<td>Weibull parameter pair which will be plotted</td>
+</tr>
+<tr>
+<td>kwarg: path</td>
+<td></td>
+<td>string</td>
+<td>Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'</td>
 </tr>
 </tbody>
 </table>
@@ -884,7 +1171,8 @@ prototype_b.mle()
 objects = {'proto_a': prototype_a, 'proto_b': prototype_b}
 
 # Use mult_weibull() method
-PlotAll(objects).mult_weibull()
+# Set plot_ranks=True, if you want to plot the median rank markers
+PlotAll(objects).mult_weibull(plot_ranks=False)
 </code></pre>
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_1sl_2s.png" width="500" /></p>
 <h4 id="three-objects-custom-colors">Three objects - custom colors</h4>
@@ -910,9 +1198,9 @@ prototype_c = Analysis(df=failures_c, bounds='pbb', bounds_type='2s')
 prototype_c.mle()
 
 objects = {'proto_a': prototype_a, 'proto_b': prototype_b, 'secret': prototype_c}
-# Create list with custom colors and pass to the instance method with the kwarg: set_cmap = [...]
+# Create list with custom colors and pass to the instance method
 colors = ['green', 'red', 'blue']
-PlotAll(objects, set_cmap = colors).mult_weibull()
+PlotAll(objects).mult_weibull(plot_ranks=False, color=colors)
 </code></pre>
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_2s_custom_colors.png" width="500" /></p>
 <h3 id="contour_plot">contour_plot()</h3>
@@ -985,12 +1273,6 @@ PlotAll().weibull_pdf(beta = [a.beta, b.beta, c.beta], eta = [a.eta, b.eta, c.et
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Weibull_PDF.png" width="500" /></p>
 <h3 id="simple_weibull">simple_weibull()</h3>
 <p>This method plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspenions are given, the median ranks are plotted as well.</p>
-<p>Arguments:
-simple_weibull(self, beta, eta, unit='-', x_label = 'Time to Failure',
-                       y_label = 'Unreliability', xy_fontsize=12,
-                       plot_title_fontsize=12, plot_title='Weibull Probability Plot',
-                       fig_size=(6, 7), show_legend=True, legend_fontsize=9,
-                       save=False, df=None, ds=None, kwargs):</p>
 <pre><code class="language-python">from predictr import Analysis, PlotAll
 
 # If save=True, you must set the path argument, e.g. path=r'/your/custom/path/test.pdf'
@@ -1068,7 +1350,7 @@ PlotAll().simple_weibull(beta =2.0, eta=1, show_legend=True, x_label='Cycles unt
     <script id="__config" type="application/json">{"base": "..", "features": ["toc.integrate"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing"}, "search": "../assets/javascripts/workers/search.fb4a9340.min.js", "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.5cf3e710.min.js"></script>
+      <script src="../assets/javascripts/bundle.a1c7c35e.min.js"></script>
       
     
   </body>
