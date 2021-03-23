@@ -5,19 +5,31 @@ Analysis contains all necessary methods for the Weibull analysis.
 ### Default arguments and values
 This table provides information on alle arguments that are passed to the Analysis class.
 
-|  Parameter  | default value |      type      |                                                description                                               |
-|:-----------:|:-------------:|:--------------:|:--------------------------------------------------------------------------------------------------------:|
-| df          |      None     | list of floats | List of failures                                                                                         |
-| ds          |      None     | list of floats | List of suspensions (right-censored only)                                                             |
-| bounds      |      None     |       str      | Confidence bounce method to be used in mle() or mrr()                                                 |
-| bounds_type |      None     |       str      | Setting for the bounds: either two-sided or one-sided                                                 |
-| show        |      False    |      bool      | If True, the Weibull probability plot will be plotted                                                 |
-| bcm         |      None     |       str      | Defines the bias-correction method in mle()                                                           |
-| cl          |      0.9      |      float     | Sets the confidence level when bounds are used                                                        |
-| bs_size     |      5000     |       int      | Number of bootstrap samples                                                                              |
-| est_type    |    'median'   |       str      | Sets the statistic to compute from the bootstrap samples                                             |
-| plot_style  |    'ggplot'   |       str      | Choose a style according to your needs. See matplotlib style references for more available styles. |
-| unit        |      '-'      |       str      | Unit of failures and suspensions, e.g. 's', 'ms', 'no. of cycle' etc.                                 |
+| Parameter           | default value              | type            | description                                                                                        |
+|---------------------|----------------------------|-----------------|----------------------------------------------------------------------------------------------------|
+| df                  | None                       | list of floats  | List of failures                                                                                   |
+| ds                  | None                       | list of floats  | List of suspensions (right-censored only)                                                          |
+| bounds              | None                       | str             | Confidence bounce method to be used in mle() or mrr()                                              |
+| bounds_type         | None                       | str             | Setting for the bounds: either two-sided or one-sided                                              |
+| show                | False                      | bool            | If True, the Weibull probability plot will be plotted                                              |
+| bcm                 | None                       | str             | Defines the bias-correction method in mle()                                                        |
+| cl                  | 0.9                        | float           | Sets the confidence level when bounds are used                                                     |
+| bs_size             | 5000                       | int             | Number of bootstrap samples                                                                        |
+| est_type            | 'median'                   | str             | Sets the statistic to compute from the bootstrap samples                                           |
+| plot_style          | 'ggplot'                   | str             | Choose a style according to your needs. See matplotlib style references for more available styles. |
+| unit                | '-'                        | str             | Unit of failures and suspensions, e.g. 's', 'ms', 'no. of cycle' etc.                              |
+| x_label             | 'Time to Failure'          | string          | Label for the x-axis                                                                               |
+| y_label             | 'Unreliability'            | string          | Label for the y-axis                                                                               |
+| xy_fontsize         | 12                         | float           | fontsize for the axes label and ticks                                                              |
+| legend_fontsize     | 9                          | float           | Fontsize for the legend                                                                            |
+| plot_title          | 'Weibull Probability Plot' | string          | Title for the plot                                                                                 |
+| plot_title_fontsize | 12                         | float           | Fontsize of the plot title                                                                         |
+| fig_size            | (6, 7)                     | tuple of floats | Sets figure width and height in inches: (width, height)                                            |
+| save                | False                      | boolean         | the beta and eta length of lists.                                                                  |
+| plot_ranks          | True                       | boolean         | If True, median ranks will be plotted.                                                             |
+| show_legend         | True                       | boolean         | If True, the legend will be plotted                                                                |
+| kwarg: path         |                            | string          | Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'                  |
+
 
 **Important**:
 
@@ -138,6 +150,27 @@ prototype_a.mle()
 ```
 ![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_LRB_censored_hrbu.png){: width="500" }
 
+#### Modifying the Weibull plot
+##### Axes labels and title
+You can modify the axes label, plot title and the fontsize. Also, you can save the plot by setting save=True and path='your/own/directory/example.pdf'.
+```python
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='fb',show=True, plot_title='New Project', x_label='No. of Cycles', unit='10^3', y_label='Unreliability: 1-R', xy_fontsize=12, save=True, path=r'var/user/test.pdf')
+prototype_a.mle()
+```
+![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Analysis_Plot_Modification.png){: width="500" }
+
+##### Figure size, plot legend and median rank markers
+You can customize the fontsize that is being used in the plot legend. If you don't want a legend set show_legend=False.
+By default, the markers for the median ranks will be plotted. Set plot_ranks=False if you don't want median rank markers in your plot.
+The figure size can be modified with fig_size=(width, height). Width and height set the figure size in inches.
+```python
+failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+prototype_a = Analysis(df=failures, bounds='fb',show=True, show_legend=True, legend_fontsize=10, show_ranks=False, fig_size=(7, 7))
+prototype_a.mle()
+```
+![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Analysis_Plot_Modification2.png){: width="500" }
+
 ## PlotAll
 PlotAll plots class objects from Analysis in one figure. Currently, only data from mle() is supported.
 Theoretically, you can plot as many objects as you like -> provide a list of colors as a kwarg in PlotAll(objects, **kwargs).mult_weibull(). <b>
@@ -149,6 +182,43 @@ For now, six colors are supported by default, but you can pass an infinit amount
 |----------------	|-----------------------------------------------------------------------	|
 | mult_weibull() 	| Plots multiple Analysis class instances in one Weibull plot           	|
 | contour_plot() 	| Plots contour plots when likelihood ratio bounds are used in Analysis 	|
+| weibull_pdf()   | plots one or more Weibull probability density functions. Axes are completely customizable.|
+| simple_weibull()| plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspensions are given, the median ranks are plotted as well.|
+
+### Default Arguments of each method
+Most of the arguments are either self explanatory or already defined in [default arguments and values](https://tvtoglu.github.io/predictr/classes/#default-arguments-and-values)
+
+| Methods          | Default arguments                                                                                                                                                                                                                                         |
+|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| mult_weibull()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), plot_ranks=True, save=False, **kwargs                                                                |
+| contour_plot()   | show_legend=True, save=False, **kwargs                  |
+| weibull_pdf()    | beta=None, eta=None, linestyle=None, labels = None,x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8, plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None, fig_size=None, color=None, save=False, plot_style='ggplot', **kwargs |
+| simple_weibull() | beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, plot_title_fontsize=12, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs  |
+
+
+| Parameter(s)           | default value              | type            | description                                                                                        |
+|---------------------|----------------------------|-----------------|----------------------------------------------------------------------------------------------------|
+| df                  | None                       | list of floats  | List of failures                                                                                   |
+| ds                  | None                       | list of floats  | List of suspensions (right-censored only)                                                          |
+| plot_style          | 'ggplot'                   | str             | Choose a style according to your needs. See matplotlib style references for more available styles. |
+| unit                | '-'                        | str             | Unit of failures and suspensions, e.g. 's', 'ms', 'no. of cycle' etc.                              |
+| x_label             | depends on method          | string          | Label for the x-axis                                                                               |
+| y_label             | depends on method          | string          | Label for the y-axis                                                                               |
+| labels              |                            | string          | List containing the labels for the plot legend in weibull_pdf()                                    |
+| xy_fontsize         | 12                         | float           | fontsize for the axes label and ticks                                                              |
+| legend_fontsize     | 9                          | float           | Fontsize for the legend                                                                            |
+| plot_title          | 'Weibull Probability Plot' | string          | Title for the plot                                                                                 |
+| plot_title_fontsize | 12                         | float           | Fontsize of the plot title                                                                         |
+| fig_size            | (6, 7)                     | tuple of floats | Sets figure width and height in inches: (width, height)                                            |
+| save                | False                      | boolean         | If True, the plot is saved according to the path (kwargs)                                          |
+| plot_ranks          | True                       | boolean         | If True, median ranks will be plotted.                                                             |
+| show_legend         | True                       | boolean         | If True, the legend will be plotted                                                                |
+| weibull_pdf: beta, eta| None, None               | list of floats or None | Attributes from Analysis object. Pairs of beta and eta values to be plotted. Each parameter pair must have the same index value.|
+| linestyle         |    ['-', '--', ':', '-.']   | list of strings      | Defines the linestyle(s) in the plot. Must be greater or equal to the length of beta ans eta lists                 |
+|color        |             None               | list of strings         | List containing the colormap for the plotted lines. Length of list must be equal to the beta and eta length of lists or the number of Analysis objects.  |
+| x_bounds    |                            | list of floats          | Sets x-axis boundaries: [start, end, steps inbetween]|
+| simple_weibull:beta, eta    |                            | float          | Weibull parameter pair which will be plotted|
+| kwarg: path         |                            | string          | Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'                  |
 
 ### mult_weibull()
 #### Both with two-sided bounds - default colors
@@ -200,7 +270,8 @@ prototype_b.mle()
 objects = {'proto_a': prototype_a, 'proto_b': prototype_b}
 
 # Use mult_weibull() method
-PlotAll(objects).mult_weibull()
+# Set plot_ranks=True, if you want to plot the median rank markers
+PlotAll(objects).mult_weibull(plot_ranks=False)
 ```
 ![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_1sl_2s.png){: width="500" }
 
@@ -228,9 +299,9 @@ prototype_c = Analysis(df=failures_c, bounds='pbb', bounds_type='2s')
 prototype_c.mle()
 
 objects = {'proto_a': prototype_a, 'proto_b': prototype_b, 'secret': prototype_c}
-# Create list with custom colors and pass to the instance method with the kwarg: set_cmap = [...]
+# Create list with custom colors and pass to the instance method
 colors = ['green', 'red', 'blue']
-PlotAll(objects, set_cmap = colors).mult_weibull()
+PlotAll(objects).mult_weibull(plot_ranks=False, color=colors)
 ```
 ![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_2s_custom_colors.png){: width="500" }
 
@@ -313,12 +384,6 @@ PlotAll().weibull_pdf(beta = [a.beta, b.beta, c.beta], eta = [a.eta, b.eta, c.et
 ### simple_weibull()
 This method plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspenions are given, the median ranks are plotted as well.
 
-Arguments:
-simple_weibull(self, beta, eta, unit='-', x_label = 'Time to Failure',
-                       y_label = 'Unreliability', xy_fontsize=12,
-                       plot_title_fontsize=12, plot_title='Weibull Probability Plot',
-                       fig_size=(6, 7), show_legend=True, legend_fontsize=9,
-                       save=False, df=None, ds=None, kwargs):
 ```python
 from predictr import Analysis, PlotAll
 

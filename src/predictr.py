@@ -25,7 +25,7 @@ class Analysis:
                  cl=0.9, bcm=None, bs_size=5000, est_type='median',
                  unit='-', x_label = 'Time to Failure',
                  y_label = 'Unreliability', xy_fontsize=12, plot_title_fontsize=12,
-                 plot_title='Weibull Probability Plot',
+                 plot_title='Weibull Probability Plot', plot_ranks=True,
                  fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, **kwargs):
         """
         Parameters
@@ -61,18 +61,17 @@ class Analysis:
         legend_fontsize : float, optional
             Fontsize for the legend. The default is 9.
         plot_title : string, optional
-            Title for the plot. The default is 'Weibull PDF'.
+            Title for the plot. The default is 'Weibull Probability Plot'.
         plot_title_fontsize : float, optional
             Fontsize of the plot title. The default is 12.
         fig_size : tuple of floats, optional
             Sets width and height in inches: (width, height)
-        color : list of string, optional
-            List containing the colormap for the plotted lines. Length of list must be equal to
-            the beta and eta length of lists.
         save : boolean, optional
             If True, the plot is saved according to the path. The default is False.
-        plot_style : TYPE, optional
-            DESCRIPTION. The default is 'ggplot'.
+        plot_style : string, optional
+            Matplotlib plot style. The default is 'ggplot'.
+        plot_ranks : boolean, optional
+            If True, median ranks will be plotted.
         show_legend : boolean, optional
             If True, the legend will be plotted. The default is True.
         **kwargs :
@@ -112,7 +111,7 @@ class Analysis:
         self.x_label, self.y_label, self.plot_title = x_label, y_label, plot_title
         self.xy_fontsize, self.plot_title_fontsize = xy_fontsize, plot_title_fontsize
         self.show_legend, self.legend_fontsize = show_legend, legend_fontsize
-        self.fig_size, self.save = fig_size, save
+        self.fig_size, self.plot_ranks, self.save = fig_size, plot_ranks, save
         if self.save:
             try:
                 self.save_path = kwargs['path']
@@ -1154,18 +1153,18 @@ class Analysis:
                         fontsize=self.legend_fontsize, title=self.title)
 
         # Plot discrete median ranks
-        if self.ds is None:
-            plt.semilogx(self.df, weibull_prob_paper(self.median_rank()), marker='o',
-                         markerfacecolor='mediumblue', markeredgecolor='mediumblue',
-                         markersize=4, alpha=.5, linestyle='None', zorder=3)
-        else:
-            plt.semilogx(self.df, weibull_prob_paper(self.median_rank_cens()), marker='o',
-                         markerfacecolor='mediumblue', markeredgecolor='mediumblue',
-                         markersize=4, alpha=.5, linestyle='None', zorder= 3)
+        if self.plot_ranks:
+            if self.ds is None:
+                plt.semilogx(self.df, weibull_prob_paper(self.median_rank()), marker='o',
+                             markerfacecolor='mediumblue', markeredgecolor='mediumblue',
+                             markersize=4, alpha=.5, linestyle='None', zorder=3)
+            else:
+                plt.semilogx(self.df, weibull_prob_paper(self.median_rank_cens()), marker='o',
+                             markerfacecolor='mediumblue', markeredgecolor='mediumblue',
+                             markersize=4, alpha=.5, linestyle='None', zorder= 3)
 
         plt.tight_layout()
         plt.grid(True, which='both')
-        plt.show()
 
         # Save plot
         if self.save:
@@ -1173,6 +1172,8 @@ class Analysis:
                 plt.savefig(self.save_path)
             except:
                 raise ValueError('Path is faulty.')
+
+        plt.show()
 
     def fisher_bounds(self):
         """
@@ -2156,20 +2157,19 @@ class Analysis:
                                 + r'$\widehat\eta={:.3f}$ '.format(self.eta)],
                                loc='lower left', bbox_to_anchor=(0.65, 0.0),
                                fontsize=self.legend_fontsize, title=leg_title)
-
-        # Plot median ranks
-        if self.ds is None:
-            plt.semilogx(self.df, weibull_prob_paper(self.median_rank()), marker='o',
-                         markerfacecolor='mediumblue', markeredgecolor='mediumblue',
-                         markersize=4, alpha=.5, linestyle='None', zorder=3)
-        else:
-            plt.semilogx(self.df, weibull_prob_paper(self.median_rank_cens()), marker='o',
-                         markerfacecolor='mediumblue', markeredgecolor='mediumblue',
-                         markersize=4, alpha=.5, linestyle='None', zorder= 3)
+        if self.plot_ranks:
+            # Plot median ranks
+            if self.ds is None:
+                plt.semilogx(self.df, weibull_prob_paper(self.median_rank()), marker='o',
+                             markerfacecolor='mediumblue', markeredgecolor='mediumblue',
+                             markersize=4, alpha=.5, linestyle='None', zorder=3)
+            else:
+                plt.semilogx(self.df, weibull_prob_paper(self.median_rank_cens()), marker='o',
+                             markerfacecolor='mediumblue', markeredgecolor='mediumblue',
+                             markersize=4, alpha=.5, linestyle='None', zorder= 3)
 
         plt.tight_layout()
         plt.grid(True, which='both')
-        plt.show()
 
         # Save plot
         if self.save:
@@ -2178,6 +2178,7 @@ class Analysis:
             except:
                 raise ValueError('Path is faulty.')
 
+        plt.show()
 
     @classmethod
     def get_bx_percentile(cls, time, beta_, eta_):
@@ -2229,18 +2230,20 @@ class PlotAll:
             self.unrel = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01 , 0.02 , 0.03 , 0.05 ,
                                    0.07 , 0.1  , 0.2  , 0.3  , 0.4  , 0.5  , 0.6  , 0.632, 0.7,
                                    0.8  , 0.9  , 0.95 , 0.99 , 0.999])
-            if len(self.objects.keys()) > 6:
-                raise ValueError('mult_weibull only support up to six instances being plotted.')
+            # if len(self.objects.keys()) > 6:
+            #     raise ValueError('mult_weibull only support up to six instances being plotted.')
 
-        # Set colormap for Weibull plot
-        if 'set_cmap' in kwargs:
-            self.color = iter(kwargs['set_cmap'])
-        else:
-            self.color = iter(['royalblue', 'salmon', 'mediumseagreen',
-                               'darkorange', 'peru', 'darkcyan'])
+        # # Set colormap for Weibull plot
+        # if 'set_cmap' in kwargs:
+        #     self.color = iter(kwargs['set_cmap'])
+        # else:
+        #     self.color = iter(['royalblue', 'salmon', 'mediumseagreen',
+        #                        'darkorange', 'peru', 'darkcyan'])
 
     def mult_weibull(self, x_label='Time To Failure', y_label='Unreliability',
-                     plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7)):
+                     plot_title='Weibull Probability Plot', xy_fontsize=12,
+                     plot_title_fontsize=12, fig_size=(6, 7),
+                     plot_ranks=True, save=False, color=None, **kwargs):
         """
         Plots multiple Analysis class objects in one figure
 
@@ -2272,6 +2275,70 @@ class PlotAll:
             y_est = (1 - np.exp(-(x_est / eta) ** beta_))
             y_est_lnln = weibull_prob_paper(y_est)
             return y_est_lnln
+
+        def median_rank(df, cl=0.5):
+            """
+            Mediran ranks for uncensored data. Returns a list with
+            median ranks.
+            """
+            ranks = []
+            n = len(df)
+            for i in range(1, n+1):
+                ranks.append(beta.ppf(cl, i, n-i+1))
+            return ranks
+
+        def median_rank_cens(df, ds, cl=0.5):
+            """
+            Returns adjusted median ranks as described in the
+            Weibull Handbook. Returns a list with adjusted median ranks.
+            """
+
+            def bernard(adj_r, n, cl):
+                """
+                Returns Bernards Approximation for the adjusted ranks
+                """
+                #return (np.array(i) - 0.3) / (len(self.df+self.ds) + 0.4)
+                return [beta.ppf(cl, i, n-i+1) for i in adj_r]
+
+            n = len(df + ds)
+            # Reverse ranks need to consider suspensions and their order
+            all_ = df + ds
+            rev_rank = []
+            prev = 0
+            for j in df:
+                # Check if failure time is entered multiple times
+                if df.count(j) > 1:
+                    # Ignore same elements after first time
+                    if prev == j:
+                        pass
+                    else:
+                        # Number of times element is in df
+                        count_element = df.count(j)
+                        # Loop through identical failure time
+                        for i in range(count_element):
+                            count = sum(map(lambda x : x < j, all_)) + i
+                            rev_rank.append(len(all_) - count)
+                    prev = j
+                else:
+                    count = sum(map(lambda x : x < j, all_))
+                    rev_rank.append(len(all_) - count)
+
+            #Calculate adjusted rank
+            adj_ranks = []
+            prev_rank = 0
+            for i in range(1, len(df)+1):
+                adj_ranks.append((rev_rank[i-1] * prev_rank + n + 1) / (rev_rank[i-1] +1))
+                prev_rank = adj_ranks[-1]
+            adj_ranks = bernard(adj_ranks, n, cl)
+            return adj_ranks
+
+        # Check colormap
+        # Set line color
+        if color is not None:
+            color = iter(color)
+        else:
+            color = iter(['royalblue', 'salmon', 'mediumseagreen',
+                               'darkorange', 'peru', 'darkcyan'])
 
         # Get t_min and t_max to plot
         temp_list = []
@@ -2346,6 +2413,7 @@ class PlotAll:
         # Plot Weibull lines
         for key, val in self.objects.items():
             if getattr(val, 'bounds') is None:
+                col = next(color)
                 if getattr(val, 'beta_c4') is not None:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_c4'),
@@ -2353,7 +2421,7 @@ class PlotAll:
                     global xplot
                     xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xplot, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=next(self.color), linestyle='-', linewidth=1.5,
+                                 color=col, linestyle='-', linewidth=1.5,
                                  label=f'{key}')
                 elif getattr(val, 'beta_hrbu') is not None:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -2363,7 +2431,7 @@ class PlotAll:
                     plt.semilogx(xplot, unrel_func(xplot,
                                                    getattr(val, 'beta_hrbu'),
                                                    getattr(val, 'eta_hrbu')),
-                                 color=next(self.color), linestyle='-',
+                                 color=col, linestyle='-',
                                  linewidth=1.5, label=f'{key}')
                 elif getattr(val, 'beta_np_bs') is not None:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -2372,7 +2440,7 @@ class PlotAll:
                     xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xplot, unrel_func(xplot, getattr(val, 'beta_np_bs'),
                                                    getattr(val, 'eta_np_bs')),
-                                 color=next(self.color), linestyle='-',
+                                 color=col, linestyle='-',
                                  linewidth=1.5, label=f'{key}')
                 elif getattr(val, 'beta_p_bs') is not None:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -2381,7 +2449,7 @@ class PlotAll:
                     xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xplot, unrel_func(xplot, getattr(val, 'beta_p_bs'),
                                                    getattr(val, 'eta_p_bs')),
-                                 color=next(self.color), linestyle='-',
+                                 color=col, linestyle='-',
                                  linewidth=1.5, label=f'{key}')
                 else:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -2390,11 +2458,11 @@ class PlotAll:
                     xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xplot, unrel_func(xplot, getattr(val, 'beta'),
                                                    getattr(val, 'eta')),
-                                 color=next(self.color), linestyle='-',
+                                 color=col, linestyle='-',
                                  linewidth=1.5, label=f'{key}')
             if getattr(val, 'bounds_type') == '2s':
                 if getattr(val, 'beta_c4') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_c4'),
                                                getattr(val, 'eta_c4'))))
@@ -2412,7 +2480,7 @@ class PlotAll:
                                      x2=getattr(val, 'bounds_upper'),
                                      alpha=0.1, color = col, label='_nolegend_')
                 elif getattr(val, 'beta_hrbu') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
                                                getattr(val, 'eta_hrbu'))))
@@ -2430,7 +2498,7 @@ class PlotAll:
                                      x2=getattr(val, 'bounds_upper'),
                                      alpha=0.1, color = col, label='_nolegend_')
                 elif getattr(val, 'beta_np_bs') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_np_bs'),
                                                getattr(val, 'eta_np_bs'))))
@@ -2448,7 +2516,7 @@ class PlotAll:
                                      x2=getattr(val, 'bounds_upper'),
                                      alpha=0.1, color = col, label='_nolegend_')
                 elif getattr(val, 'beta_p_bs') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_p_bs'),
                                                getattr(val, 'eta_p_bs'))))
@@ -2466,7 +2534,7 @@ class PlotAll:
                                      x2=getattr(val, 'bounds_upper'),
                                      alpha=0.1, color = col, label='_nolegend_')
                 else:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta'),
                                                getattr(val, 'eta'))))
@@ -2485,7 +2553,7 @@ class PlotAll:
                                      alpha=0.1, color = col, label='_nolegend_')
             if getattr(val, 'bounds_type') == '1su':
                 if getattr(val, 'beta_c4') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_c4'),
                                                getattr(val, 'eta_c4'))))
@@ -2497,7 +2565,7 @@ class PlotAll:
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_hrbu') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
                                                getattr(val, 'eta_hrbu'))))
@@ -2509,7 +2577,7 @@ class PlotAll:
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_np_bs') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_np_bs'),
                                                getattr(val, 'eta_np_bs'))))
@@ -2521,7 +2589,7 @@ class PlotAll:
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_p_bs') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_p_bs'),
                                                getattr(val, 'eta_p_bs'))))
@@ -2533,7 +2601,7 @@ class PlotAll:
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
                 else:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta'),
                                                getattr(val, 'eta'))))
@@ -2546,7 +2614,7 @@ class PlotAll:
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
             if getattr(val, 'bounds_type') == '1sl':
                 if getattr(val, 'beta_c4') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_c4'),
                                                getattr(val, 'eta_c4'))))
@@ -2558,7 +2626,7 @@ class PlotAll:
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_hrbu') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
                                                getattr(val, 'eta_hrbu'))))
@@ -2570,7 +2638,7 @@ class PlotAll:
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_np_bs') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_np_bs'),
                                                getattr(val, 'eta_np_bs'))))
@@ -2582,7 +2650,7 @@ class PlotAll:
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_p_bs') is not None:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_p_bs'),
                                                getattr(val, 'eta_p_bs'))))
@@ -2594,7 +2662,7 @@ class PlotAll:
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
                 else:
-                    col = next(self.color)
+                    col = next(color)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta'),
                                                getattr(val, 'eta'))))
@@ -2605,12 +2673,35 @@ class PlotAll:
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
                                  color=col, linestyle='-', linewidth=1, label='_nolegend_')
+
+            # Plot discrete median ranks
+            if plot_ranks:
+                if getattr(val, 'ds') is None:
+                    plt.semilogx(getattr(val, 'df'),
+                                 weibull_prob_paper(median_rank(getattr(val, 'df'))),
+                                 marker='o',
+                                 markerfacecolor=col, markeredgecolor='black',
+                                 markersize=4, alpha=.5, linestyle='None', zorder=3)
+                else:
+                    plt.semilogx(getattr(val, 'df'),
+                                 weibull_prob_paper(median_rank_cens(getattr(val, 'df'), getattr(val, 'ds'))),
+                                 marker='o',
+                                 markerfacecolor=col, markeredgecolor='black',
+                                 markersize=4, alpha=.5, linestyle='None', zorder= 3)
         plt.tight_layout()
         plt.grid(True, which='both')
         plt.legend()
+
+        # Save plot
+        if save:
+            try:
+                plt.savefig(kwargs['path'])
+            except:
+                raise ValueError('Path is faulty.')
+
         plt.show()
 
-    def contour_plot(self, plot_legend=True):
+    def contour_plot(self, show_legend=True, color=None, save=False, **kwargs):
         """
         Plots the contour plot when likelihood ratio bounds are being used.
         Multiple objects can be used as well.
@@ -2620,12 +2711,19 @@ class PlotAll:
         plt.style.use(self.plot_style)
         plt.title('Contour Plot')
 
+        # Set colormap
+        if color is not None:
+            color = iter(color)
+        else:
+            color = iter(['royalblue', 'salmon', 'mediumseagreen',
+                               'darkorange', 'peru', 'darkcyan'])
+
         # Get beta and eta pairs from object
         for key, val in self.objects.items():
             beta = getattr(val, 'beta_lrb')
             eta = getattr(val, 'eta_lrb')
             conf_level = getattr(val, 'cl')
-            plt.scatter(beta, eta, s=3, c=next(self.color),
+            plt.scatter(beta, eta, s=3, c=next(color),
                         label=f'{key}: {conf_level*100}%')
 
         plt.xlabel(r'$\widehat\beta$')
@@ -2633,11 +2731,18 @@ class PlotAll:
         plt.grid(True, which='both')
         plt.tight_layout()
 
-        if plot_legend:
+        if show_legend:
             plt.legend()
 
-    def weibull_pdf(self, beta=None, eta=None, linestyle=None, labels = None,
-                    x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8,
+        # Save plot
+        if save:
+            try:
+                plt.savefig(kwargs['path'])
+            except:
+                raise ValueError('Path is faulty.')
+
+    def weibull_pdf(self, beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels = None,
+                    x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=9,
                     plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None,
                     fig_size=None, color=None, save=False, plot_style='ggplot', **kwargs):
         """
@@ -2647,7 +2752,7 @@ class PlotAll:
             Weibull shape parameter.
         eta : list of floats
             Weibull scale parameter
-        linestyle : list of string, optional
+        linestyle : list of strings, optional
             Defines the linestyle(s) in the plot.
         labels : list of strings, optional
             List containing the labels for the plot legend.
@@ -2667,7 +2772,7 @@ class PlotAll:
             Sets x-axis boundaries: [start, end, steps]
         fig_size : tuple of floats, optional
             Sets width and height in inches: (width, height)
-        color : list of string, optional
+        color : list of strings, optional
             List containing the colormap for the plotted lines. Length of list must be equal to
             the beta and eta length of lists.
         save : boolean, optional
@@ -2692,6 +2797,10 @@ class PlotAll:
         if x_bounds is None:
             raise ValueError('X axis bounds are not defined. \
                              Use x_bounds argument for this purpose.')
+
+        # Check if number of linestyles and object count match eachother
+        if len(linestyle) != len(beta) or len(linestyle) != len(eta):
+            raise ValueError('Number of linestyles must match the list length of beta and eta.')
 
         # Set line color
         if color is not None:
@@ -2746,6 +2855,8 @@ class PlotAll:
                 plt.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
+
+        plt.show()
 
     def simple_weibull(self, beta, eta, unit='-', x_label = 'Time to Failure',
                        y_label = 'Unreliability', xy_fontsize=12,
@@ -2817,24 +2928,3 @@ class PlotAll:
                 plt.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
-
-if __name__ == '__main__':
-    # Create new objects, e.g. name them prototype_a and prototype_b
-    failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
-                  0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
-                  1.3201853093496474, 1.492172669340363]
-    prototype_a = Analysis(df=failures_a, bounds='lrb', bounds_type='2s')
-    prototype_a.mle()
-
-    failures_b = [1.8506941739639076, 2.2685555679846954, 2.380993183650987, 2.642404955035375,
-                  2.777082863078587, 2.89527127055147, 2.9099992138728927, 3.1425481097241,
-                  3.3758727398694406, 3.8274990886889997]
-    prototype_b = Analysis(df=failures_b, bounds='pbb', bs_size=100, bounds_type='2s')
-    prototype_b.mle()
-
-    # Create dictionary with Analysis objects
-    # Keys will be used in figure legend. Name them as you please.
-    objects = {'proto_a': prototype_a, 'proto_b': prototype_b}
-
-    # Use mult_weibull() method
-    PlotAll(objects).mult_weibull()
