@@ -2,13 +2,31 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
 
+## [0.1.19] - 2021-03-23
+ 
+### Changed
+ - Removed set_cmaps argument in PlotAll. You can now customize the colors for each PlotAll method individually using the color argument.
+ - Improved consistency of method arguments throughout code: fontsizes, nomenclature etc.
+
+### Added
+ - PlotAll methods can plot median rank markers
+ - Possibility to save plots for all methods
+
+### Fixed
+ - Fixed bug that resulted in empty saved plots
+
+## [0.1.18] - 2021-03-17
+ 
+### Fixed
+ - fig_size didn't work in mult_weibull() due to a bug in the code
+
 ## [0.1.17] - 2021-03-13
  
 ### Added
  - Better documentation in the code
 
 ### Change
- - Minor changes to have more consistent nomenclature int the code
+ - Minor changes to have more consistent nomenclature in the code
 
 ## [0.1.16] - 2021-03-03
  
