@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
       name='predictr',
-      version='0.1.19',
+      version='0.1.20',
       description='Weibull Analysis Tools',
       author='Tamer Tevetoglu',
       author_email="predictr@outlook.com",
