@@ -2406,9 +2406,9 @@ class PlotAll:
         plt.tick_params(axis='x', colors='black')
 
         # Set labels and legends
-        plt.title("Weibull Probability Plot", color='black', fontsize=12)
-        plt.xlabel('Time to Failure [{}]'.format(self.unit), color='black', fontsize=12)
-        plt.ylabel("Unreliability [%]", color='black', fontsize=12)
+        plt.title(x_label, color='black', fontsize=plot_title_fontsize)
+        plt.xlabel(x_label + ' [{}]'.format(self.unit), color='black', fontsize=xy_fontsize)
+        plt.ylabel(y_label, color='black', fontsize=xy_fontsize)
 
         # Plot Weibull lines
         for key, val in self.objects.items():
