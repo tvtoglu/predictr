@@ -2,6 +2,12 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
 
+
+## [0.1.20] - 2021-04-15
+ 
+### Fixed
+ - Fixed bug that prevented custom axis labels and titles in mult_weibull()
+
 ## [0.1.19] - 2021-03-23
  
 ### Changed
