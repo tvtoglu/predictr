@@ -434,8 +434,7 @@ class Analysis:
                                             gamma(len(self.df) / 2)
                                             / gamma((len(self.df) - 1) / 2)) ** 3.52
                 it = (x ** self.beta_c4 for x in self.df)
-                self.eta_c4 = (1 / len(self.df)
-                                     * np.sum(np.fromiter(it, float))) ** (1 / self.beta_c4)
+                self.eta_c4 = self.eta #(1 / len(self.df) * np.sum(np.fromiter(it, float))) ** (1 / self.beta_c4)
             elif self.bcm == 'hrbu':
                 if self.ds is None:
                     self.beta_hrbu = (self.beta / (1.0115 + (1.278 / len(self.df))
@@ -1148,7 +1147,8 @@ class Analysis:
                                                           len(self.df), susp_num)
                         + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
                         + r'$\widehat\eta={:.3f}$ '.format(self.eta)
-                        + '\n$r^2={:.3f}$'.format(self.rvalue)],
+                        + '\n$r^2={:.3f}$ | '.format(self.rvalue)
+                        + 'pval={:.2e}'.format(self.pvalue)],
                         loc='lower left', bbox_to_anchor=(0.65, 0.0),
                         fontsize=self.legend_fontsize, title=self.title)
 
@@ -2239,11 +2239,69 @@ class PlotAll:
         # else:
         #     self.color = iter(['royalblue', 'salmon', 'mediumseagreen',
         #                        'darkorange', 'peru', 'darkcyan'])
+    def median_rank(self, cl=0.5):
+        """
+        Mediran ranks for uncensored data. Returns a list with
+        median ranks.
+        """
+        ranks = []
+        n = len(self.df)
+        for i in range(1, n+1):
+            ranks.append(beta.ppf(cl, i, n-i+1))
+        return ranks
+
+    def median_rank_cens(self, cl=0.5):
+        """
+        Returns adjusted median ranks as described in the
+        Weibull Handbook. Returns a list with adjusted median ranks.
+        """
+
+        def bernard(adj_r, n, cl):
+            """
+            Returns Bernards Approximation for the adjusted ranks
+            """
+            #return (np.array(i) - 0.3) / (len(self.df+self.ds) + 0.4)
+            return [beta.ppf(cl, i, n-i+1) for i in adj_r]
+
+        n = len(self.df + self.ds)
+        # Reverse ranks need to consider suspensions and their order
+        all_ = self.df + self.ds
+        rev_rank = []
+        prev = 0
+        for j in self.df:
+            # Check if failure time is entered multiple times
+            if self.df.count(j) > 1:
+                # Ignore same elements after first time
+                if prev == j:
+                    pass
+                else:
+                    # Number of times element is in df
+                    count_element = self.df.count(j)
+                    # Loop through identical failure time
+                    for i in range(count_element):
+                        count = sum(map(lambda x : x < j, all_)) + i
+                        rev_rank.append(len(all_) - count)
+                prev = j
+            else:
+                count = sum(map(lambda x : x < j, all_))
+                rev_rank.append(len(all_) - count)
+
+        #Calculate adjusted rank
+        adj_ranks = []
+        prev_rank = 0
+        for i in range(1, len(self.df)+1):
+            adj_ranks.append((rev_rank[i-1] * prev_rank + n + 1) / (rev_rank[i-1] +1))
+            prev_rank = adj_ranks[-1]
+        self.adj_ranks = bernard(adj_ranks, n, cl)
+        return self.adj_ranks
+
+
 
     def mult_weibull(self, x_label='Time To Failure', y_label='Unreliability',
                      plot_title='Weibull Probability Plot', xy_fontsize=12,
                      plot_title_fontsize=12, fig_size=(6, 7),
-                     plot_ranks=True, save=False, color=None, **kwargs):
+                     plot_ranks=True, save=False, color=None, linestyle=None,
+                     **kwargs):
         """
         Plots multiple Analysis class objects in one figure
 
@@ -2339,14 +2397,27 @@ class PlotAll:
         else:
             color = iter(['royalblue', 'salmon', 'mediumseagreen',
                                'darkorange', 'peru', 'darkcyan'])
+        
+        # Check linestyle input
+        if linestyle is not None:
+            l_style = iter(linestyle)
+            # Check if provided number of linstyle is in accordance with number of objects
+            if len(self.objects) != len(linestyle):
+                raise ValueError(f'Number of linestyles ({len(linestyle)}) is'\
+                                 ' not in accordance with the number of'\
+                                     f' objects ({len(self.objects)}).')
+        else:
+            l_style = iter(len(self.objects) * ['-'])
 
         # Get t_min and t_max to plot
         temp_list = []
         for key, val in self.objects.items():
-            if (getattr(val, 'bounds_lower')) is not None:
-                temp_list.append(min(getattr(val, 'bounds_lower')))
-            if (getattr(val, 'bounds_upper')) is not None:
-                temp_list.append(max(getattr(val, 'bounds_upper')))
+            # Check for special case of percentil bounds, e.g. 'bbb'
+            if (getattr(val, 'bounds')) != 'bbb':
+                if (getattr(val, 'bounds_lower')) is not None:
+                    temp_list.append(min(getattr(val, 'bounds_lower')))
+                if (getattr(val, 'bounds_upper')) is not None:
+                    temp_list.append(max(getattr(val, 'bounds_upper')))
             if ((getattr(val, 'bounds_lower')) is None
                 and (getattr(val, 'bounds_upper')) is None):
                 if getattr(val, 'beta_c4') is not None:
@@ -2406,7 +2477,7 @@ class PlotAll:
         plt.tick_params(axis='x', colors='black')
 
         # Set labels and legends
-        plt.title(x_label, color='black', fontsize=plot_title_fontsize)
+        plt.title(plot_title, color='black', fontsize=plot_title_fontsize)
         plt.xlabel(x_label + ' [{}]'.format(self.unit), color='black', fontsize=xy_fontsize)
         plt.ylabel(y_label, color='black', fontsize=xy_fontsize)
 
@@ -2414,15 +2485,17 @@ class PlotAll:
         for key, val in self.objects.items():
             if getattr(val, 'bounds') is None:
                 col = next(color)
+                ls = next(l_style)
                 if getattr(val, 'beta_c4') is not None:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_c4'),
                                                getattr(val, 'eta_c4')))
-                    global xplot
                     xplot = np.linspace(min(xvals), max(xvals), 100)
-                    plt.semilogx(xplot, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5,
-                                 label=f'{key}')
+                    plt.semilogx(xplot, unrel_func(xplot,
+                                                   getattr(val, 'beta_c4'),
+                                                   getattr(val, 'eta_c4')),
+                                 color=col, linestyle=ls,
+                                 linewidth=1.5,label=f'{key}')
                 elif getattr(val, 'beta_hrbu') is not None:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
@@ -2431,7 +2504,7 @@ class PlotAll:
                     plt.semilogx(xplot, unrel_func(xplot,
                                                    getattr(val, 'beta_hrbu'),
                                                    getattr(val, 'eta_hrbu')),
-                                 color=col, linestyle='-',
+                                 color=col, linestyle=ls,
                                  linewidth=1.5, label=f'{key}')
                 elif getattr(val, 'beta_np_bs') is not None:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -2440,7 +2513,7 @@ class PlotAll:
                     xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xplot, unrel_func(xplot, getattr(val, 'beta_np_bs'),
                                                    getattr(val, 'eta_np_bs')),
-                                 color=col, linestyle='-',
+                                 color=col, linestyle=ls,
                                  linewidth=1.5, label=f'{key}')
                 elif getattr(val, 'beta_p_bs') is not None:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -2449,7 +2522,7 @@ class PlotAll:
                     xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xplot, unrel_func(xplot, getattr(val, 'beta_p_bs'),
                                                    getattr(val, 'eta_p_bs')),
-                                 color=col, linestyle='-',
+                                 color=col, linestyle=ls,
                                  linewidth=1.5, label=f'{key}')
                 else:
                     xvals = list(inverse_weibull(np.array([0.001, 0.9999]),
@@ -2458,95 +2531,102 @@ class PlotAll:
                     xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xplot, unrel_func(xplot, getattr(val, 'beta'),
                                                    getattr(val, 'eta')),
-                                 color=col, linestyle='-',
+                                 color=col, linestyle=ls,
                                  linewidth=1.5, label=f'{key}')
             if getattr(val, 'bounds_type') == '2s':
                 if getattr(val, 'beta_c4') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_c4'),
                                                getattr(val, 'eta_c4'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.fill_betweenx(y=weibull_prob_paper(self.unrel),
                                      x1=getattr(val, 'bounds_lower'),
                                      x2=getattr(val, 'bounds_upper'),
                                      alpha=0.1, color = col, label='_nolegend_')
                 elif getattr(val, 'beta_hrbu') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
                                                getattr(val, 'eta_hrbu'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.fill_betweenx(y=weibull_prob_paper(self.unrel),
                                      x1=getattr(val, 'bounds_lower'),
                                      x2=getattr(val, 'bounds_upper'),
                                      alpha=0.1, color = col, label='_nolegend_')
                 elif getattr(val, 'beta_np_bs') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_np_bs'),
                                                getattr(val, 'eta_np_bs'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.fill_betweenx(y=weibull_prob_paper(self.unrel),
                                      x1=getattr(val, 'bounds_lower'),
                                      x2=getattr(val, 'bounds_upper'),
                                      alpha=0.1, color = col, label='_nolegend_')
                 elif getattr(val, 'beta_p_bs') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_p_bs'),
                                                getattr(val, 'eta_p_bs'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.fill_betweenx(y=weibull_prob_paper(self.unrel),
                                      x1=getattr(val, 'bounds_lower'),
                                      x2=getattr(val, 'bounds_upper'),
                                      alpha=0.1, color = col, label='_nolegend_')
+                elif (getattr(val, 'bounds')) == 'bbb':
+                    pass
                 else:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta'),
                                                getattr(val, 'eta'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                     plt.fill_betweenx(y=weibull_prob_paper(self.unrel),
                                      x1=getattr(val, 'bounds_lower'),
                                      x2=getattr(val, 'bounds_upper'),
@@ -2554,125 +2634,136 @@ class PlotAll:
             if getattr(val, 'bounds_type') == '1su':
                 if getattr(val, 'beta_c4') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_c4'),
                                                getattr(val, 'eta_c4'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_hrbu') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
                                                getattr(val, 'eta_hrbu'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_np_bs') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_np_bs'),
                                                getattr(val, 'eta_np_bs'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_p_bs') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_p_bs'),
                                                getattr(val, 'eta_p_bs'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                 else:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta'),
                                                getattr(val, 'eta'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_upper'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
             if getattr(val, 'bounds_type') == '1sl':
                 if getattr(val, 'beta_c4') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_c4'),
                                                getattr(val, 'eta_c4'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_hrbu') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_hrbu'),
                                                getattr(val, 'eta_hrbu'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_np_bs') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_np_bs'),
                                                getattr(val, 'eta_np_bs'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                 elif getattr(val, 'beta_p_bs') is not None:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta_p_bs'),
                                                getattr(val, 'eta_p_bs'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
                 else:
                     col = next(color)
+                    ls = next(l_style)
                     xvals = sorted(list(inverse_weibull(np.array([0.001, 0.9999]),
                                                getattr(val, 'beta'),
                                                getattr(val, 'eta'))))
 
                     #xplot = np.linspace(min(xvals), max(xvals), 100)
                     plt.semilogx(xvals, np.log(-np.log(1 - np.array([0.001, 0.9999]))),
-                                 color=col, linestyle='-', linewidth=1.5, zorder = 2,
+                                 color=col, linestyle=ls, linewidth=1.5, zorder = 2,
                                  label=f'{key}')
                     plt.semilogx(getattr(val, 'bounds_lower'), weibull_prob_paper(self.unrel),
-                                 color=col, linestyle='-', linewidth=1, label='_nolegend_')
+                                 color=col, linestyle=ls, linewidth=1, label='_nolegend_')
+            
 
             # Plot discrete median ranks
             if plot_ranks:
