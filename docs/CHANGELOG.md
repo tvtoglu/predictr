@@ -2,6 +2,16 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
 
+## [0.1.21] - 2021-08-23
+ 
+### Fixed
+ - Custom plot title was not updating in PlotAll
+ - MRR plots: pvalue was not shown when adj. ranks were being used
+ - RBA now works correctly in PlotAll
+ 
+ ### Added
+ - Linestyles can now be customized  in PlotAll -> mult_weibull(linestyle=['-', '-.']) etc.
+
 
 ## [0.1.20] - 2021-04-15
  
