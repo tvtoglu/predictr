@@ -2,6 +2,12 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
 
+## [0.1.22] - 2021-11-02
+ 
+### Fixed
+ - Units in axis labels are now according to the International System of Units (SI):e.g. '[%]' -> 'in %'
+
+
 ## [0.1.21] - 2021-08-23
  
 ### Fixed
@@ -9,7 +15,7 @@ All notable changes to this project will be documented in this file.
  - MRR plots: pvalue was not shown when adj. ranks were being used
  - RBA now works correctly in PlotAll
  
- ### Added
+### Added
  - Linestyles can now be customized  in PlotAll -> mult_weibull(linestyle=['-', '-.']) etc.
 
 

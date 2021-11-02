@@ -906,9 +906,9 @@ class Analysis:
 
         # Set labels and legends
         plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
-        plt.xlabel(f'{self.x_label}{" in "+self.unit if self.unit!="-" else ""}', color='black', fontsize=self.xy_fontsize)
+        plt.xlabel(self.x_label + f' [{self.unit}]', color='black', fontsize=self.xy_fontsize)
         plt.xticks(fontsize=self.xy_fontsize)
-        plt.ylabel(self.y_label + ' in %', color='black', fontsize=self.xy_fontsize)
+        plt.ylabel(self.y_label + ' [%]', color='black', fontsize=self.xy_fontsize)
         plt.yticks(fontsize=self.xy_fontsize)
 
         # Plot legend
@@ -1662,9 +1662,9 @@ class Analysis:
 
         # Set labels and legends
         plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
-        plt.xlabel(f'{self.x_label}{" in "+self.unit if self.unit!="-" else ""}', color='black', fontsize=self.xy_fontsize)
+        plt.xlabel(self.x_label + f' [{self.unit}]', color='black', fontsize=self.xy_fontsize)
         plt.xticks(fontsize=self.xy_fontsize)
-        plt.ylabel(f'{self.y_label} in %', color='black', fontsize=self.xy_fontsize)
+        plt.ylabel(self.y_label + ' [%]', color='black', fontsize=self.xy_fontsize)
         plt.yticks(fontsize=self.xy_fontsize)
 
         # General style properties
@@ -2478,9 +2478,8 @@ class PlotAll:
 
         # Set labels and legends
         plt.title(plot_title, color='black', fontsize=plot_title_fontsize)
-        
-        plt.xlabel(f'{x_label}{" in "+self.unit if self.unit!="-" else ""}', color='black', fontsize=xy_fontsize)
-        plt.ylabel(f'{y_label} in %', color='black', fontsize=xy_fontsize)
+        plt.xlabel(x_label + ' [{}]'.format(self.unit), color='black', fontsize=xy_fontsize)
+        plt.ylabel(y_label, color='black', fontsize=xy_fontsize)
 
         # Plot Weibull lines
         for key, val in self.objects.items():
@@ -3020,27 +3019,3 @@ class PlotAll:
                 plt.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
-
-if __name__ == '__main__':
-    #x = Analysis(df=[2, 4, 6, 7, 9, 18], show=True, bcm='hrbu', unit='10^3')
-    #x.mle()
-
-    # Create new objects, e.g. name them prototype_a and prototype_b
-    failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
-                0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
-                1.3201853093496474, 1.492172669340363]
-    prototype_a = Analysis(df=failures_a, bounds='lrb', bounds_type='2s', unit='10^4')
-    prototype_a.mle()
-
-    failures_b = [1.8506941739639076, 2.2685555679846954, 2.380993183650987, 2.642404955035375,
-                2.777082863078587, 2.89527127055147, 2.9099992138728927, 3.1425481097241,
-                3.3758727398694406, 3.8274990886889997]
-    prototype_b = Analysis(df=failures_b, bounds='pbb', bounds_type='2s', unit='10^4')
-    prototype_b.mle()
-
-    # Create dictionary with Analysis objects
-    # Keys will be used in figure legend. Name them as you please.
-    objects = {'proto_a': prototype_a, 'proto_b': prototype_b}
-
-    # Use mult_weibull() method
-    PlotAll(objects).mult_weibull()
