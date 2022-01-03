@@ -5,11 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
       name='predictr',
-<<<<<<< Updated upstream
-      version='0.1.22',
-=======
       version='0.1.23',
->>>>>>> Stashed changes
       description='Life Data Analysis for Reliability Engineers - Weibull Analysis, Detailed Plots, Compute Statistics',
       author='Tamer Tevetoglu',
       author_email="predictr@outlook.com",
