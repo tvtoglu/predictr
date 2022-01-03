@@ -2,6 +2,19 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
 
+<<<<<<< Updated upstream
+=======
+## [0.1.23] - 2022-01-02
+ 
+ ### Fixed
+ - Computation of one-sided Likelihood Ratio Bounds had an error, which always resulted in a 95% one-sided bound; no matter what was set by the user.
+
+ ### Added
+ - Legend fontsize can now be set in mult_weibull(legend_fontsize=9)
+ - Bootstrap bounds now fully support censored data
+ - Non-parametric boostrap bias-correction now fully supports censored data (parametric already did)
+
+>>>>>>> Stashed changes
 ## [0.1.22] - 2021-11-02
  
 ### Fixed
