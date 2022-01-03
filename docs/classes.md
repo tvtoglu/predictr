@@ -68,8 +68,8 @@ Analysis supports nearly all state of the art confidence bounds methods.
 |---------------------------------|:-----:|:-----:|:---------------:|:-------------:|:------------------:|:--------------:|
 | Beta-Binomial Bounds            |   -   |   x   |        x        |       x       | '2s', '1sl', '1su' |      'bbb'     |
 | Monte-Carlo Pivotal Bounds      |   -   |   x   |        x        |       x       | '2s', '1sl', '1su' |     'mcpb'     |
-| Non-Parametric Bootstrap Bounds |   x   |   x   |        x        |       -       | '2s', '1sl', '1su' |     'npbb'     |
-| Parametric Bootstrap Bounds     |   x   |   x   |        x        |       -       | '2s', '1sl', '1su' |      'pbb'     |
+| Non-Parametric Bootstrap Bounds |   x   |   x   |        x        |       x       | '2s', '1sl', '1su' |     'npbb'     |
+| Parametric Bootstrap Bounds     |   x   |   x   |        x        |       x       | '2s', '1sl', '1su' |      'pbb'     |
 | Fisher Bounds                   |   x   |   -   |        x        |       x       | '2s', '1sl', '1su' |      'fb'      |
 | Likelihood Ratio Bounds         |   x   |   -   |        x        |       x       | '2s', '1sl', '1su' |      'lrb'     |
 
