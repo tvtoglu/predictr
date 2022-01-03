@@ -131,8 +131,6 @@ class Analysis:
         self.beta_hrbu, self.eta_hrbu = None, None
         self.f, self.f_inv= None, None
         self.k_a_bound, self.se_beta,self.se_eta = None, None, None
-        self.www = None
-        self.bounds_lower = None
         self.tmin_plot, self.tmax_plot, self.xplot = None, None, None
         self.unrel = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01,
                                0.02, 0.03, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4,
@@ -625,14 +623,13 @@ class Analysis:
 
     def pb_bounds(self, method_call):
         """
-        Computes parametric bootstrap confidence bounds for MRR.
+        Computes parametric bootstrap confidence bounds.
         """
         # Use the initial estimation of Weibull parameters
         beta_0 = self.beta
         eta_0 = self.eta
 
         # Create empty panda DataFrame
-        global df
         df = pd.DataFrame(columns=list(self.unrel))
 
         # Check if MRR or MLE is being used
@@ -673,50 +670,121 @@ class Analysis:
 
     def npbb_bounds(self, method_call):
         """
-        Computes non-parametric bootstrap confidence bounds for MRR.
+        Computes non-parametric bootstrap confidence bounds.
         """
+        def cen_index(df, ds):
+            'Solely censored samples needs this index for resampling'
+            # Create dat with length: df+ds and input tuples
+            # check if only censored data is available
+            if df != None:
+                # index 1 -> failure
+                df_w_index = [(i, 1) for i in df]
+                # index 0 -> suspension
+                ds_w_index = [(i, 0) for i in ds]
+            
+            # create new list of tuples with all information
+            dat = df_w_index + ds_w_index
+            return dat
         # Create empty panda DataFrame
         df = pd.DataFrame(columns=list(self.unrel))
 
         # Check if MRR or MLE is being used
         if method_call == 'mrr':
+           # Check if cen_index will be needed and therefore dat
+            if self.ds != None:
+                dat = cen_index(self.df, self.ds)
+
             j = 0
             with np.errstate(divide='ignore', invalid='ignore'):
                 while j < self.bs_size:
-                    try:
-                        # Draw random bootstrap samples from sample with
-                        bs_samples = list(np.random.choice(self.df,
-                                                           size=len(self.df),
-                                                           replace=True))
+                    # Check if sample is uncensored
+                    if self.ds == None:
+                        try:
+                            # Draw random bootstrap samples from sample with
+                            bs_samples = list(np.random.choice(self.df,
+                                                                size=len(self.df),
+                                                                replace=True))
 
-                        # Conduct MLE to compute Weibull parameters
-                        y = Analysis(df=bs_samples)
-                        y.mrr()
-                        df.loc[j] = list(np.array(y.eta) *
-                                 ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
-                        j +=1
-                    except RuntimeError:
-                        pass
+                            # Conduct MLE to compute Weibull parameters
+                            y = Analysis(df=bs_samples)
+                            y.mle()
+                            df.loc[j] = list(np.array(y.eta) *
+                                        ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
+                            j +=1
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            # np.random.choice requires a 1darray, 
+                            # which dat is not after transforming it to an array
+                            # Randonmly draw indices instead
+                            bs_samples_idx = np.random.choice(len(dat),
+                                                                size=len(dat),
+                                                                replace=True)
+                            # Use randomly drawn indices to generate random bootstrap sample
+                            bs_samples = np.array(dat)[bs_samples_idx]
+
+                            # Filter failures and suspenions by ID (0 or 1)
+                            df_temp = [i for i, j in bs_samples if j==1]
+                            ds_temp = [i for i, j in bs_samples if j==0]
+
+                            # Conduct MLE to compute Weibull parameters
+                            y = Analysis(df=df_temp, ds=ds_temp)
+                            y.mle()
+                            df.loc[j] = list(np.array(y.eta) *
+                                        ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
+                            j +=1
+                        except Exception: #RuntimeError:
+                            pass     
         elif method_call == 'mle':
+            # Check if cen_index will be needed and therefore dat
+            if self.ds != None:
+                dat = cen_index(self.df, self.ds)
+
             j = 0
             with np.errstate(divide='ignore', invalid='ignore'):
                 while j < self.bs_size:
-                    try:
-                        # Draw random bootstrap samples from sample with
-                        bs_samples = list(np.random.choice(self.df,
-                                                           size=len(self.df),
-                                                           replace=True))
+                    # Check if sample is uncensored
+                    if self.ds == None:
+                        try:
+                            # Draw random bootstrap samples from sample with
+                            bs_samples = list(np.random.choice(self.df,
+                                                                size=len(self.df),
+                                                                replace=True))
 
-                        # Conduct MLE to compute Weibull parameters
-                        y = Analysis(df=bs_samples)
-                        y.mle()
-                        df.loc[j] = list(np.array(y.eta) *
-                                 ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
-                        j +=1
-                    except RuntimeError:
-                        pass
+                            # Conduct MLE to compute Weibull parameters
+                            y = Analysis(df=bs_samples)
+                            y.mle()
+                            df.loc[j] = list(np.array(y.eta) *
+                                        ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
+                            j +=1
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            # np.random.choice requires a 1darray, 
+                            # which dat is not after transforming it to an array
+                            # Randonmly draw indices instead
+                            bs_samples_idx = np.random.choice(len(dat),
+                                                                size=len(dat),
+                                                                replace=True)
+                            # Use randomly drawn indices to generate random bootstrap sample
+                            bs_samples = np.array(dat)[bs_samples_idx]
+
+                            # Filter failures and suspenions by ID (0 or 1)
+                            df_temp = [i for i, j in bs_samples if j==1]
+                            ds_temp = [i for i, j in bs_samples if j==0]
+
+                            # Conduct MLE to compute Weibull parameters
+                            y = Analysis(df=df_temp, ds=ds_temp)
+                            y.mle()
+                            df.loc[j] = list(np.array(y.eta) *
+                                        ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
+                            j +=1
+                        except Exception: #RuntimeError:
+                            pass     
         else:
-            raise ValueError(f'pb_bounds() does not support {method_call}')
+            raise ValueError(f'npbb_bounds() does not support {method_call}')
 
         # Sort each column in dataframe
         for col in df:
@@ -906,9 +974,9 @@ class Analysis:
 
         # Set labels and legends
         plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
-        plt.xlabel(self.x_label + f' [{self.unit}]', color='black', fontsize=self.xy_fontsize)
+        plt.xlabel(f'{self.x_label}{" in "+self.unit if self.unit!="-" else ""}', color='black', fontsize=self.xy_fontsize)
         plt.xticks(fontsize=self.xy_fontsize)
-        plt.ylabel(self.y_label + ' [%]', color='black', fontsize=self.xy_fontsize)
+        plt.ylabel(self.y_label + ' in %', color='black', fontsize=self.xy_fontsize)
         plt.yticks(fontsize=self.xy_fontsize)
 
         # Plot legend
@@ -1197,7 +1265,7 @@ class Analysis:
                 b = self.beta_p_bs
                 eta = self.eta_p_bs
             else:
-                raise ValueError('No valid bias correction method is defined')
+                raise ValueError('No valid bias-correction method is defined')
 
         # Fisher Information Matrix calculation
         if self.ds is None:
@@ -1463,8 +1531,13 @@ class Analysis:
             self.k_a_bound = norm.ppf((1.0 - self.cl) / 2 + self.cl)
             # No need to adapt self.cl for 2-sided bounds
             self.cl_lrb = self.cl
-        elif (self.bounds_type == '1su' or self.bounds_type == '1sl'):
-            self.k_a_bound = 0.95
+        elif self.bounds_type == '1su':
+            # 1-sided upper
+            self.k_a_bound = norm.ppf(self.cl)
+            self.cl_lrb = 2 * self.cl - 1
+        elif self.bounds_type == '1sl':
+            # 1-sided lower
+            self.k_a_bound = norm.ppf(1.0 - self.cl)
             self.cl_lrb = 2 * self.cl - 1
         else:
             print('break')
@@ -1662,9 +1735,9 @@ class Analysis:
 
         # Set labels and legends
         plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
-        plt.xlabel(self.x_label + f' [{self.unit}]', color='black', fontsize=self.xy_fontsize)
+        plt.xlabel(f'{self.x_label}{" in "+self.unit if self.unit!="-" else ""}', color='black', fontsize=self.xy_fontsize)
         plt.xticks(fontsize=self.xy_fontsize)
-        plt.ylabel(self.y_label + ' [%]', color='black', fontsize=self.xy_fontsize)
+        plt.ylabel(f'{self.y_label} in %', color='black', fontsize=self.xy_fontsize)
         plt.yticks(fontsize=self.xy_fontsize)
 
         # General style properties
@@ -2299,7 +2372,7 @@ class PlotAll:
 
     def mult_weibull(self, x_label='Time To Failure', y_label='Unreliability',
                      plot_title='Weibull Probability Plot', xy_fontsize=12,
-                     plot_title_fontsize=12, fig_size=(6, 7),
+                     plot_title_fontsize=12, legend_fontsize=9, fig_size=(6, 7),
                      plot_ranks=True, save=False, color=None, linestyle=None,
                      **kwargs):
         """
@@ -2478,8 +2551,9 @@ class PlotAll:
 
         # Set labels and legends
         plt.title(plot_title, color='black', fontsize=plot_title_fontsize)
-        plt.xlabel(x_label + ' [{}]'.format(self.unit), color='black', fontsize=xy_fontsize)
-        plt.ylabel(y_label, color='black', fontsize=xy_fontsize)
+        
+        plt.xlabel(f'{x_label}{" in "+self.unit if self.unit!="-" else ""}', color='black', fontsize=xy_fontsize)
+        plt.ylabel(f'{y_label} in %', color='black', fontsize=xy_fontsize)
 
         # Plot Weibull lines
         for key, val in self.objects.items():
@@ -2781,7 +2855,7 @@ class PlotAll:
                                  markersize=4, alpha=.5, linestyle='None', zorder= 3)
         plt.tight_layout()
         plt.grid(True, which='both')
-        plt.legend()
+        plt.legend(fontsize= legend_fontsize)
 
         # Save plot
         if save:
@@ -2935,7 +3009,7 @@ class PlotAll:
 
                 plt.legend(fontsize=legend_fontsize)
             else:
-                for i, j in zip(beta, eta):
+                for i, j, line in zip(beta, eta, linestyle):
                     plt.plot(xvals, wei_pdf(xvals, i, j),
                              linestyle=line, color=next(color))
         plt.tight_layout()
@@ -3019,3 +3093,28 @@ class PlotAll:
                 plt.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
+
+if __name__ == '__main__':
+    #x = Analysis(df=[2, 4, 6, 7, 9, 18], show=True, bcm='hrbu', unit='10^3')
+    #x.mle()
+
+    # Create new objects, e.g. name them prototype_a and prototype_b
+    failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+                0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+                1.3201853093496474, 1.492172669340363]
+    prototype_a = Analysis(df=failures_a, bounds='npbb', bounds_type='2s', unit='10^4', bs_size=5000)
+    prototype_a.mle()
+
+    failures_b = [1.8506941739639076, 2.2685555679846954, 2.380993183650987, 2.642404955035375,
+                2.777082863078587, 2.89527127055147, 2.9099992138728927, 3.1425481097241,
+                3.3758727398694406, 3.8274990886889997]
+    prototype_b = Analysis(df=failures_a, bounds='npbb', show=False, bounds_type='2s', unit='10^4', bs_size=5000)
+    prototype_b.mrr()
+
+    # Create dictionary with Analysis objects
+    # Keys will be used in figure legend. Name them as you please.
+    objects = {'npbb mle': prototype_a, 'npbb mrr': prototype_b}
+
+    # Use mult_weibull() method
+    PlotAll(objects).mult_weibull()
+
