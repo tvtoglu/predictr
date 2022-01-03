@@ -2,8 +2,6 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
 
-<<<<<<< Updated upstream
-=======
 ## [0.1.23] - 2022-01-02
  
  ### Fixed
@@ -14,7 +12,6 @@ All notable changes to this project will be documented in this file.
  - Bootstrap bounds now fully support censored data
  - Non-parametric boostrap bias-correction now fully supports censored data (parametric already did)
 
->>>>>>> Stashed changes
 ## [0.1.22] - 2021-11-02
  
 ### Fixed
