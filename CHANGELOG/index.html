@@ -288,6 +288,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#0123-2022-01-02" class="md-nav__link">
+    [0.1.23] - 2022-01-02
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#0122-2021-11-02" class="md-nav__link">
     [0.1.22] - 2021-11-02
   </a>
@@ -709,6 +716,13 @@
                 
                 <h1 id="change-log-predictr">Change Log - predictr</h1>
 <p>All notable changes to this project will be documented in this file.</p>
+<h2 id="0123-2022-01-02">[0.1.23] - 2022-01-02</h2>
+<p>### Fixed
+ - Computation of one-sided Likelihood Ratio Bounds had an error, which always resulted in a 95% one-sided bound; no matter what was set by the user.</p>
+<p>### Added
+ - Legend fontsize can now be set in mult_weibull(legend_fontsize=9)
+ - Bootstrap bounds now fully support censored data
+ - Non-parametric boostrap bias-correction now fully supports censored data (parametric already did)</p>
 <h2 id="0122-2021-11-02">[0.1.22] - 2021-11-02</h2>
 <h3 id="fixed">Fixed</h3>
 <ul>
