@@ -475,8 +475,9 @@ class Analysis:
             self.npbb_bounds('mle')
         elif self.bounds == 'pbb':
             self.pb_bounds('mle')
-        # Check print parameter
-        if self.show:
+        
+        # Check save and show parameter
+        if self.show or self.save:
             self.plot()
 
     def median_rank(self, cl=0.5):
@@ -591,8 +592,9 @@ class Analysis:
             self.npbb_bounds('mrr')
         elif self.bounds == 'mcpb':
             self.mcp_bounds()
-        # Show Weibull plot
-        if self.show:
+
+        # Show and/or save Weibull plot
+        if self.show or self.save:
             self.plot_mrr()
 
     def bb_bounds(self):
@@ -717,7 +719,7 @@ class Analysis:
                         try:
                             # np.random.choice requires a 1darray, 
                             # which dat is not after transforming it to an array
-                            # Randonmly draw indices instead
+                            # Randomly draw indices instead
                             bs_samples_idx = np.random.choice(len(dat),
                                                                 size=len(dat),
                                                                 replace=True)
@@ -764,7 +766,7 @@ class Analysis:
                         try:
                             # np.random.choice requires a 1darray, 
                             # which dat is not after transforming it to an array
-                            # Randonmly draw indices instead
+                            # Randomly draw indices instead
                             bs_samples_idx = np.random.choice(len(dat),
                                                                 size=len(dat),
                                                                 replace=True)
@@ -1241,7 +1243,8 @@ class Analysis:
             except:
                 raise ValueError('Path is faulty.')
 
-        plt.show()
+        if self.show:
+            plt.show()
 
     def fisher_bounds(self):
         """
@@ -2251,7 +2254,8 @@ class Analysis:
             except:
                 raise ValueError('Path is faulty.')
 
-        plt.show()
+        if self.show:
+            plt.show()
 
     @classmethod
     def get_bx_percentile(cls, time, beta_, eta_):
@@ -3095,26 +3099,8 @@ class PlotAll:
                 raise ValueError('Path is faulty.')
 
 if __name__ == '__main__':
-    #x = Analysis(df=[2, 4, 6, 7, 9, 18], show=True, bcm='hrbu', unit='10^3')
-    #x.mle()
+    df = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+                    0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+                    1.3201853093496474, 1.492172669340363]
 
-    # Create new objects, e.g. name them prototype_a and prototype_b
-    failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
-                0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
-                1.3201853093496474, 1.492172669340363]
-    prototype_a = Analysis(df=failures_a, bounds='npbb', bounds_type='2s', unit='10^4', bs_size=5000)
-    prototype_a.mle()
-
-    failures_b = [1.8506941739639076, 2.2685555679846954, 2.380993183650987, 2.642404955035375,
-                2.777082863078587, 2.89527127055147, 2.9099992138728927, 3.1425481097241,
-                3.3758727398694406, 3.8274990886889997]
-    prototype_b = Analysis(df=failures_a, bounds='npbb', show=False, bounds_type='2s', unit='10^4', bs_size=5000)
-    prototype_b.mrr()
-
-    # Create dictionary with Analysis objects
-    # Keys will be used in figure legend. Name them as you please.
-    objects = {'npbb mle': prototype_a, 'npbb mrr': prototype_b}
-
-    # Use mult_weibull() method
-    PlotAll(objects).mult_weibull()
 

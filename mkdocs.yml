@@ -11,7 +11,7 @@ theme:
 nav:
     - Home: index.md
     - Getting started: get_started.md
-    - Available classes: classes.md
+    - Classes and exemplary code: classes.md
     - Changelog: CHANGELOG.md
     - Cite predictr: citation.md
     - Contact me: contact.md
