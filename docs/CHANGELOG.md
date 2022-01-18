@@ -2,7 +2,7 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
 
-## [0.1.24] - 2022-01-02
+## [0.1.24] - 2022-01-15
  
 ### Added
  - Saving Weibull plots required to plot and show them in the previous versions of predictr. Now, saving plots and actually showing them are independent from each other.
