@@ -182,8 +182,8 @@ For now, six colors are supported by default, but you can pass an infinit amount
 |----------------	|-----------------------------------------------------------------------	|
 | mult_weibull() 	| Plots multiple Analysis class instances in one Weibull plot           	|
 | contour_plot() 	| Plots contour plots when likelihood ratio bounds are used in Analysis 	|
-| weibull_pdf()   | plots one or more Weibull probability density functions. Axes are completely customizable.|
-| simple_weibull()| plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspensions are given, the median ranks are plotted as well.|
+| weibull_pdf()   | Plots one or more Weibull probability density functions. Axes are completely customizable.|
+| simple_weibull()| Plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspensions are given, the median ranks are plotted as well.|
 
 ### Default Arguments of each method
 Most of the arguments are either self explanatory or already defined in [default arguments and values](https://tvtoglu.github.io/predictr/classes/#default-arguments-and-values)
