@@ -4,6 +4,7 @@
 @author: tamertevetoglu
 """
 
+from array import array
 from math import floor, ceil
 import numpy as np
 import matplotlib.pyplot as plt
@@ -3097,6 +3098,18 @@ class PlotAll:
                 plt.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
+    
+    @classmethod
+    def plot_set(cls, weib_pairs:array):
+        """
+        This method plots a set of Weibull lines on one plot
+        
+        weib_pairs : array of arrays 
+            Contains Weibull parameter pairs, e.g. weib_pairs=[[beta1, eta1], ...].
+        """
+        # Create an empty pl
+
+
 
 if __name__ == '__main__':
     df = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
