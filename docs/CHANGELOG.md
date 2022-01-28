@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 ## [0.1.25] - 2022-XY-XX
  
 ### Added
- - .summary() method with export in a beatiful html file
+ - .summary() method
  - Weibull AFT
 
 ## [0.1.24] - 2022-01-15
