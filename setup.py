@@ -11,8 +11,9 @@ setup(
       author_email="predictr@outlook.com",
       url="https://tvtoglu.github.io/predictr/",
       project_urls={
-        'Documentation': "https://tvtoglu.github.io/predictr/",
-        'GitHub': "https://github.com/tvtoglu/predictr"},
+        'Documentation': "https://tvtoglu.github.io/predictr/classes/",
+        'GitHub': "https://github.com/tvtoglu/predictr",
+        'Github Discussions': "https://github.com/tvtoglu/predictr/discussions"},
       py_modules=["predictr"],
       package_dir={'': 'src'},
       long_description=long_description,
