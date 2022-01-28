@@ -8,13 +8,27 @@ theme:
     scheme: slate
   features:
     - toc.integrate
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.expand
+    - navigation.top
 nav:
     - Home: index.md
     - Getting started: get_started.md
-    - Classes and exemplary code: classes.md
+    - Documentation: classes.md
     - Changelog: CHANGELOG.md
+    - Medium Articles: medium.md
     - Cite predictr: citation.md
     - Contact me: contact.md
+extra:
+  analytics:
+    provider: google
+    property: G-DG202BKH8K
+  social:
+    - icon: fontawesome/brands/medium
+      link: https://medium.com/@tamertevetoglu
 
 # Repository
 repo_name: tvtoglu/predictr
@@ -23,3 +37,5 @@ edit_uri: ""
 
 markdown_extensions:
   - attr_list
+  - toc:
+      toc_depth: 6
