@@ -190,7 +190,7 @@ Most of the arguments are either self explanatory or already defined in [default
 
 | Methods          | Default arguments                                                                                                                                                                                                                                         |
 |------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| mult_weibull()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), plot_ranks=True, save=False, linestyle=None, legend_fontsize=9, **kwargs                                                                |
+| mult_weibull()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, linestyle=None, legend_fontsize=9, **kwargs                                                                |
 | contour_plot()   | show_legend=True, save=False, **kwargs                  |
 | weibull_pdf()    | beta=None, eta=None, linestyle=None, labels = None,x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8, plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None, fig_size=None, color=None, save=False, plot_style='ggplot', **kwargs |
 | simple_weibull() | beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, plot_title_fontsize=12, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs  |
@@ -216,7 +216,7 @@ Most of the arguments are either self explanatory or already defined in [default
 | weibull_pdf: beta, eta| None, None               | list of floats or None | Attributes from Analysis object. Pairs of beta and eta values to be plotted. Each parameter pair must have the same index value.|
 | linestyle         |    ['-', '--', ':', '-.']   | list of strings      | Defines the linestyle(s) in the plot. Must be greater or equal to the length of beta ans eta lists                 |
 |color        |             None               | list of strings         | List containing the colormap for the plotted lines. Length of list must be equal to the beta and eta length of lists or the number of Analysis objects.  |
-| x_bounds    |                            | list of floats          | Sets x-axis boundaries: [start, end, steps inbetween]|
+| x_bounds    |                            | list of floats          | Sets x-axis boundaries: [start, stop] or [start, end, steps inbetween], respectively.|
 | simple_weibull:beta, eta    |                            | float          | Weibull parameter pair which will be plotted|
 | kwarg: path         |                            | string          | Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'                  |
 
