@@ -5,6 +5,7 @@
 """
 
 from array import array
+from logging import raiseExceptions
 from math import floor, ceil
 import numpy as np
 import matplotlib.pyplot as plt
@@ -2378,7 +2379,7 @@ class PlotAll:
     def mult_weibull(self, x_label='Time To Failure', y_label='Unreliability',
                      plot_title='Weibull Probability Plot', xy_fontsize=12,
                      plot_title_fontsize=12, legend_fontsize=9, fig_size=(6, 7),
-                     plot_ranks=True, save=False, color=None, linestyle=None,
+                     x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None,
                      **kwargs):
         """
         Plots multiple Analysis class objects in one figure
@@ -2528,8 +2529,17 @@ class PlotAll:
                                                getattr(val, 'eta')))
                     temp_list.append(min(dat))
                     temp_list.append(max(dat))
-        x_axis_min = min(temp_list)
-        x_axis_max = max(temp_list)
+        
+        # Check for custom x-axis limits 
+        if x_bounds is None:
+            x_axis_min = min(temp_list)
+            x_axis_max = max(temp_list)
+        else:
+            # Check if x_bounds is of type list
+            if type(x_bounds) != list:
+                raise TypeError(f'x_bounds need to be of type list and not {type(x_bounds)}.') 
+            x_axis_min = x_bounds[0]
+            x_axis_max = x_bounds[1]
 
         # Generate Weibull Plot Figure
         plt.style.use(self.plot_style)
@@ -2871,7 +2881,7 @@ class PlotAll:
 
         plt.show()
 
-    def contour_plot(self, show_legend=True, color=None, save=False, **kwargs):
+    def contour_plot(self, show=True, style='scatter', show_legend=True, color=None, save=False, **kwargs):
         """
         Plots the contour plot when likelihood ratio bounds are being used.
         Multiple objects can be used as well.
@@ -2889,12 +2899,22 @@ class PlotAll:
                                'darkorange', 'peru', 'darkcyan'])
 
         # Get beta and eta pairs from object
-        for key, val in self.objects.items():
-            beta = getattr(val, 'beta_lrb')
-            eta = getattr(val, 'eta_lrb')
-            conf_level = getattr(val, 'cl')
-            plt.scatter(beta, eta, s=3, c=next(color),
-                        label=f'{key}: {conf_level*100}%')
+        if style == 'scatter':
+            for key, val in self.objects.items():
+                beta = getattr(val, 'beta_lrb')
+                eta = getattr(val, 'eta_lrb')
+                conf_level = getattr(val, 'cl')
+                plt.scatter(beta, eta, s=3, c=next(color),
+                            label=f'{key}: {conf_level*100}%')
+        elif style == 'smooth_line':
+            pass
+        elif style == 'angular_line':
+            for key, val in self.objects.items():
+                beta = getattr(val, 'beta_lrb')
+                eta = getattr(val, 'eta_lrb')
+                beta_sorted = beta[0::2] + beta[1::2][::-1] + beta[0:1]
+                eta_sorted = eta[0::2] + eta[1::2][::-1] + eta[0:1]
+                plt.plot(beta_sorted, eta_sorted, '-o', linewidth=1.5, markersize=4)
 
         plt.xlabel(r'$\widehat\beta$')
         plt.ylabel(r'$\widehat\eta$')
@@ -2910,6 +2930,9 @@ class PlotAll:
                 plt.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
+
+        if show:
+            plt.show()
 
     def weibull_pdf(self, beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels = None,
                     x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=9,
@@ -3112,8 +3135,12 @@ class PlotAll:
 
 
 if __name__ == '__main__':
-    df = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
-                    0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
-                    1.3201853093496474, 1.492172669340363]
+    # Create new objects
+    failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+                0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+                1.3201853093496474, 1.492172669340363]
+    prototype_a = Analysis(df=failures_a, bounds='lrb', bounds_type='2s', show=True)
+    prototype_a.mle()
 
-
+    objects = {'initial design': prototype_a}
+    PlotAll(objects).contour_plot()
