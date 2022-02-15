@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
  - Weibull AFT
 
 ## [0.1.25] - 2022-02-15
- ### Added
+### Added
  - added show argument in PlotAll.contour_plot()
  - added customizable x-axis limits in PlotAll.mult_weibull(x_bounds[start, end])
 
