@@ -2,12 +2,16 @@
 # Change Log - predictr
 All notable changes to this project will be documented in this file.
 
-
-## [0.1.25] - 2022-XY-XX
- 
+## Planned updates
 ### Added
  - .summary() method
  - Weibull AFT
+
+## [0.1.25] - 2022-02-15
+ ### Added
+ - added show argument in PlotAll.contour_plot()
+ - added customizable x-axis limits in PlotAll.mult_weibull(x_bounds[start, end])
+
 
 ## [0.1.24] - 2022-01-15
  

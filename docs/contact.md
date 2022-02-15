@@ -5,7 +5,7 @@ E-mail address: predictr(AT)outlookDOTcom  (replace (AT) with @ and DOT with .)
 
 
 ## Medium
-[Medium Profile](https://www.researchgate.net/profile/Tamer-Tevetoglu)
+[Medium Profile](https://medium.com/@tamertevetoglu)
 
 
 ## Github Discussion
