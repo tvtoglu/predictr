@@ -1118,7 +1118,7 @@ For now, six colors are supported by default, but you can pass an infinit amount
 <tbody>
 <tr>
 <td>mult_weibull()</td>
-<td>x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), plot_ranks=True, save=False, linestyle=None, legend_fontsize=9, **kwargs</td>
+<td>x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, linestyle=None, legend_fontsize=9, **kwargs</td>
 </tr>
 <tr>
 <td>contour_plot()</td>
@@ -1256,7 +1256,7 @@ For now, six colors are supported by default, but you can pass an infinit amount
 <td>x_bounds</td>
 <td></td>
 <td>list of floats</td>
-<td>Sets x-axis boundaries: [start, end, steps inbetween]</td>
+<td>Sets x-axis boundaries: [start, stop] or [start, end, steps inbetween], respectively.</td>
 </tr>
 <tr>
 <td>simple_weibull:beta, eta</td>
