@@ -146,6 +146,7 @@ class Analysis:
         self.title = None
         self.mins, self.maxes, self.sol, self._z, self.z= None, None, None, None, None
         self.beta_lrb, self.eta_lrb, self.cl_lrb = None, None, None
+        self.beta_pairs_lrb, self.eta_pairs_lrb = None, None
         self.sol_post, self.sol_b, self.sol_eta = None, None, None
         self.eta_range_init, self.beta_range_init = None, None
         self.beta_f_range, self.eta_f_range = None, None
@@ -1370,10 +1371,21 @@ class Analysis:
             np.log(gamma(n+1)) - np.log(gamma((n - m + 1)) -> not needed for lrb
             beta, eta: need to be ndarrays
             """
+            # Math terms for failures
+            f_term1 = [x / eta for x in df]
+            f_term2 = np.exp(np.log(f_term1) * beta_)
+            f_sum = np.sum(f_term2, axis=0)
+
+            # Math terms for suspensions
+            s_term1 = [x / eta for x in ds]
+            s_term2 = np.exp(np.log(s_term1) * beta_)
+            s_sum = np.sum(s_term2, axis=0)
+
             return (len(df) * (np.log(beta_) - beta_ * np.log(eta))
                     + (beta_ - 1) * np.sum([np.log(x) for x in df])
-                    - np.sum([(t / eta) ** beta_ for t in df], axis=0)
-                    - np.sum([(x / eta) ** beta_ for x in ds], axis=0))
+                    - f_sum
+                    - s_sum)
+
 
         def ll_full_no_cens(beta_, eta, df):
             """
@@ -1382,101 +1394,88 @@ class Analysis:
             np.log(gamma(n+1)) - np.log(gamma((n - m + 1)) -> not needed for lrb
             beta, eta: need to be ndarrays
             """
+            # Math terms for failures
+            f_term1 = [x / eta for x in df]
+            f_term2 = np.exp(np.log(f_term1) * beta_)
+            f_sum = np.sum(f_term2, axis=0)
+
             return (len(df) * (np.log(beta_) - beta_ * np.log(eta))
                     + (beta_ - 1) * np.sum([np.log(x) for x in df])
-                    - np.sum([(t / eta) ** beta_ for t in df], axis=0))
+                    - f_sum)
 
         def zerofinder(b_init, eta_init, z):
             """"
             Returns an array which contains the solution pairs for
             the LRBs.
             """
-            # Step 1: Create rough mesh in order to define finer mesh
+            # Step 1: Create rough mesh in order to get rough solution bounds
+            _init_sol = np.diff(np.sign(z))
             beta_range_init = b_init
             eta_range_init = eta_init
 
-            # Eta indices show the index for the first value with a sign change
-            sol = [[], []]
-            for b in range(len(beta_range_init)):
-                eta_indices = np.where(np.diff(np.sign(z[b])))[0] + 1
-                if len(eta_indices) == 1:
-                    sol[0].append(b)
-                    sol[1].append(eta_indices[0] - 1)
+            # Mask NaN values, otherwise np.argwhere will find random results
+            _init_sol2 = np.ma.array(_init_sol, mask=np.isnan(_init_sol))
 
-                if len(eta_indices) > 1:
-                    # Only two soltutions needed for rough mesh
-                    sol[0].append(b)
-                    sol[1].append(eta_indices[0] - 1)
+            # Get solution pairs for beta and eta
+            # Nested format: array([[ idx,  val], [ idx2, val2],..., [idxn,  valn]])
+            # where idx = beta index, and val = eta index
+            # The index returns the ndarray value below the sign change
+            _init_sol_all = np.argwhere(_init_sol2)
+            _init_sol_beta = _init_sol_all[:, 0]
+            _init_sol_eta = _init_sol_all[:, 1]
 
-                    sol[0].append(b)
-                    sol[1].append(eta_indices[1])
+            # Return beta-eta pairs as actual numerical values
+            beta_lrb = beta_range_init[_init_sol_beta]
+            eta_lrb = eta_range_init[_init_sol_eta]
 
-            if len(sol[0]) == 0:
-                raise ValueError('No solution pairs found. \
-                                 Sample size might be too large so\
-                                 that an overbuffering occurs in \
-                                 the gamma function, which leads to:\
-                                 log(inf).')
-
-            # Create solution attribute
-            self.sol = sol
-
-            # Step 2: Create actual finer mesh using the found signs from step
+            # Step 2: Create actual finer mesh using the found signs from step 1
             # Create new, denser mesh for beta and eta pairs
-            delta_beta = beta_range_init[sol[0][-1]] - beta_range_init[sol[0][0]]
+            # delta_beta is a safety measure for samples with high suspension ratio
+            delta_beta = max(beta_lrb) - min(beta_lrb)
+            _beta_range = np.linspace(min(beta_lrb) - delta_beta,
+                                        max(beta_lrb) + delta_beta, 400)
 
-            _beta_range = np.linspace(beta_range_init[sol[0][0]] - delta_beta,
-                                      beta_range_init[sol[0][-1]] + delta_beta, 300)
-            _eta_range = np.linspace(eta_range_init[np.min(sol[1])],
-                                     eta_range_init[np.max(sol[1])], 250)
+            # max(eta_range_init[_init_sol_eta + 1] is needed, because 
+            # the previous index results always output right before the root.
+            # Hence, in order to include the "upper limit" of the eta solutions
+            # the +1 is added in the index
+            _eta_range = np.linspace(min(eta_lrb), max(eta_range_init[_init_sol_eta + 1]), 300)
 
+            # Create finer mesh (2nd iteration for more precise results)
             _bb, _ee = np.meshgrid(_beta_range, _eta_range, indexing='ij')
-            # self.bb_ = _bb
-            # self.ee_ = _ee
+
+            # Compute the Likelihood Ratio Test for the finer mesh
             if self.ds is None:
-                self._z = (2 * np.log(np.exp(
+                _z = (2 * np.log(np.exp(
                     ll_full_no_cens(_bb, _ee, self.df)
                     - ll_full_no_cens(np.array([self.sol_b]),np.array([self.sol_eta]),
-                                      self.df))) + chi2.ppf(self.cl_lrb, 1))
+                                        self.df))) + chi2.ppf(self.cl_lrb, 1))
             else:
-                self._z = (2 * np.log(np.exp(
+                _z = (2 * np.log(np.exp(
                     ll_full(_bb, _ee, self.df, self.ds)
                     - ll_full(np.array([self.sol_b]), np.array([self.sol_eta]),
-                              self.df, self.ds))) + chi2.ppf(self.cl_lrb, 1))
+                                self.df, self.ds))) + chi2.ppf(self.cl_lrb, 1))
 
-            # Compute solution pairs from finer mesh
-            _sol_beta = []
-            _sol_eta = [[], []]
-            for b in range(len(_beta_range)):
-                eta_indices = np.where(np.diff(np.sign(self._z[b])))[0] + 1
-                if len(eta_indices) == 1:
-                    _sol_beta.append(b)
-                    # Find solution left and right from _z = 0
-                    _sol_eta[0].append(eta_indices[0] - 1)
-                    _sol_eta[1].append(eta_indices[0])
+            # Create ndarray to find sign changes, which indicate solution pairs
+            _temp_sol = np.diff(np.sign(_z))
 
-                if len(eta_indices) == 2:
-                    # Find first solution pair
-                    _sol_beta.append(b)
-                    _sol_eta[0].append(eta_indices[0] - 1)
-                    _sol_eta[1].append(eta_indices[0])
+            # Mask NaN values, otherwise np.argwhere will find random results
+            _temp_sol2 = np.ma.array(_temp_sol, mask=np.isnan(_temp_sol))
 
-                    # Second second solution pair
-                    _sol_beta.append(b)
-                    _sol_eta[0].append(eta_indices[1] - 1)
-                    _sol_eta[1].append(eta_indices[1])
-
-            self.sol_post = [_sol_beta, _sol_eta]
+            # Get solution pairs for beta and eta
+            # Nested format: array([[ idx,  val], [ idx2, val2],..., [idxn,  valn]])
+            # where idx = beta index, and val = eta index
+            _sol_all = np.argwhere(_temp_sol2)
+            _sol_beta = _sol_all[:, 0] 
+            _sol_eta = _sol_all[:, 1]
 
             # Get mean value between sign changes for eta from new mesh
+            # Beta values are precise
             # Return beta-eta pairs as actual numerical values
-            beta_lrb = [_beta_range[i] for i in _sol_beta]
-            eta_lrb = [((_eta_range[i] + _eta_range[j]) / 2)
-                       for i, j in zip(_sol_eta[0], _sol_eta[1])]
+            beta_pairs_lrb = _beta_range[_sol_beta]
+            eta_pairs_lrb = (_eta_range[_sol_eta] + _eta_range[_sol_eta + 1]) / 2
 
-            return (beta_lrb, eta_lrb)
-
-            # 1 Define parameter range using var(param)
+            return (beta_pairs_lrb, eta_pairs_lrb)
 
         # 1.1 Calculate bounds for parameters using Fisher method
 
@@ -1498,7 +1497,7 @@ class Analysis:
                 b = self.beta_p_bs
                 eta = self.eta_p_bs
             else:
-                raise ValueError('No valid bias correction method is defined')
+                raise ValueError('No valid bias-correction method is defined')
 
 
         # Hotfix to pass actual corrected beta and eta to the zerofinder
@@ -2912,8 +2911,8 @@ class PlotAll:
             for key, val in self.objects.items():
                 beta = getattr(val, 'beta_lrb')
                 eta = getattr(val, 'eta_lrb')
-                beta_sorted = beta[0::2] + beta[1::2][::-1] + beta[0:1]
-                eta_sorted = eta[0::2] + eta[1::2][::-1] + eta[0:1]
+                beta_sorted = list(beta[0::2]) + list(beta[1::2][::-1]) + list(beta[0:1])
+                eta_sorted = list(eta[0::2]) + list(eta[1::2][::-1]) + list(eta[0:1])
                 plt.plot(beta_sorted, eta_sorted, '-o', linewidth=1.5, markersize=4)
 
         plt.xlabel(r'$\widehat\beta$')
@@ -3121,26 +3120,13 @@ class PlotAll:
                 plt.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
-    
-    @classmethod
-    def plot_set(cls, weib_pairs:array):
-        """
-        This method plots a set of Weibull lines on one plot
-        
-        weib_pairs : array of arrays 
-            Contains Weibull parameter pairs, e.g. weib_pairs=[[beta1, eta1], ...].
-        """
-        # Create an empty pl
-
-
 
 if __name__ == '__main__':
-    # Create new objects
     failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
-                0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
-                1.3201853093496474, 1.492172669340363]
-    prototype_a = Analysis(df=failures_a, bounds='lrb', bounds_type='2s', show=True)
-    prototype_a.mle()
+              0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+              1.3201853093496474, 1.492172669340363]
+    x = Analysis(df=failures_a, bounds='lrb', bounds_type='2s')
+    x.mle()
 
-    objects = {'initial design': prototype_a}
-    PlotAll(objects).contour_plot()
+    objects = {'initial design': x}
+    PlotAll(objects).contour_plot(style = 'angular_line')
