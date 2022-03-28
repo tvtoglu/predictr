@@ -1,11 +1,20 @@
 site_name: predictr - Predict the Reliability
 theme:
   name: material
+  palette: 
+    - scheme: slate 
+      toggle:
+        icon: material/lightbulb
+        name: Switch to light mode
+    - scheme: default
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to dark mode
+
 
   # Default values, taken from mkdocs_theme.yml
   language: en
-  palette:
-    scheme: slate
+
   features:
     - toc.integrate
     - navigation.instant
