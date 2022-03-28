@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.26] - 2022-03-28
+### Added
+ - added new style argument plot in PlotAll.contour_plot(style='...'): Currently scatter and angular line plots are supported
+
+### Fixed
+ - Boosted LRB computation by fully vectorizing each computation step and using algeabric tricks (as a tip: don't use np.power(), because it is way too slow for big computations). Now, it takes half the amount of time to have more precise results. 
+
+
 ## [0.1.25] - 2022-02-15
 ### Added
  - added show argument in PlotAll.contour_plot()
