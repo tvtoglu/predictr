@@ -1,7 +1,7 @@
 # Overview of my publications
 
 ## Medium (medium.com and towardsdatascience.com)
-## Survival Analysis in Python: A Quick Guide to The Weibull Analysis
+
 Publisher: Towards Data Science  
 Date: January 19, 2022  
 [Survival Analysis in Python: A Quick Guide to The Weibull Analysis](https://towardsdatascience.com/survival-analysis-in-python-a-quick-guide-to-the-weibull-analysis-5babd4f137f6)
