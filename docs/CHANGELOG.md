@@ -7,6 +7,9 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+### Fixed
+ - fixed "No artists with labels found to put in legend" in PlotAll.contour()
+
 ## [0.1.26] - 2022-03-28
 ### Added
  - added new style argument plot in PlotAll.contour_plot(style='...'): Currently scatter and angular line plots are supported
