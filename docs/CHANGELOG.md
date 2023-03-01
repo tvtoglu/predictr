@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.27] - 2023-03-01
 ### Fixed
- - fixed "No artists with labels found to put in legend" in PlotAll.contour()
+ - MRR based NPBB are now computed correctly. A typo in the code lead to a bug that computed solely MLE based bounds, no matter if 'mrr' was set as an attribute. A big THANK YOU to William Gandler who reported this bug and various spelling mistakes!
+ - Minor other spelling mistakes pointed out by Antonia, Sarahi and Edna
 
 ## [0.1.26] - 2022-03-28
 ### Added
