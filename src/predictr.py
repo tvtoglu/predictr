@@ -51,7 +51,7 @@ class Analysis:
         bs_size : int, optional
             Sets number of bootstrap samlpes. The default is 5000.
         est_type : float, optional
-            Sets which statictic to compute from bootstrap samples. The default is 'median'.
+            Sets which statistic to compute from bootstrap samples. The default is 'median'.
         unit : string, optional
             Unit shown in the Weibull plot on the x-axis. The default is '-'.
         x_label : string, optional
@@ -238,9 +238,9 @@ class Analysis:
             Returns
             -------
             beta_bs : float
-                Bias-coorected Weibull shape parameter beta.
+                Bias-corrected Weibull shape parameter beta.
             eta_bs : float
-                Bias-coorected Weibull shape parameter eta.
+                Bias-corrected Weibull shape parameter eta.
             """
             # Since non-parametric boostrapping can cause an error using
             # the mle() method in Analysis class, a safety net is needed
@@ -297,9 +297,9 @@ class Analysis:
             Returns
             -------
             beta_bs : float
-                Bias-coorected Weibull shape parameter beta.
+                Bias-corrected Weibull shape parameter beta.
             eta_bs : float
-                Bias-coorected Weibull shape parameter eta.
+                Bias-corrected Weibull shape parameter eta.
 
             """
             # Assign initial MLE of Weibull parameters
@@ -678,10 +678,10 @@ class Analysis:
         Computes non-parametric bootstrap confidence bounds.
         """
         def cen_index(df, ds):
-            'Solely censored samples needs this index for resampling'
+            'Solely censored samples need this index for resampling'
             # Create dat with length: df+ds and input tuples
             # check if only censored data is available
-            if df != None:
+            if df is not None:
                 # index 1 -> failure
                 df_w_index = [(i, 1) for i in df]
                 # index 0 -> suspension
@@ -703,16 +703,16 @@ class Analysis:
             with np.errstate(divide='ignore', invalid='ignore'):
                 while j < self.bs_size:
                     # Check if sample is uncensored
-                    if self.ds == None:
+                    if self.ds is None:
                         try:
                             # Draw random bootstrap samples from sample with
                             bs_samples = list(np.random.choice(self.df,
                                                                 size=len(self.df),
                                                                 replace=True))
 
-                            # Conduct MLE to compute Weibull parameters
+                            # Conduct MRR to compute Weibull parameters
                             y = Analysis(df=bs_samples)
-                            y.mle()
+                            y.mrr()
                             df.loc[j] = list(np.array(y.eta) *
                                         ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
                             j +=1
@@ -735,7 +735,7 @@ class Analysis:
 
                             # Conduct MLE to compute Weibull parameters
                             y = Analysis(df=df_temp, ds=ds_temp)
-                            y.mle()
+                            y.mrr()
                             df.loc[j] = list(np.array(y.eta) *
                                         ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
                             j +=1
@@ -743,14 +743,14 @@ class Analysis:
                             pass     
         elif method_call == 'mle':
             # Check if cen_index will be needed and therefore dat
-            if self.ds != None:
+            if self.ds is not None:
                 dat = cen_index(self.df, self.ds)
 
             j = 0
             with np.errstate(divide='ignore', invalid='ignore'):
                 while j < self.bs_size:
                     # Check if sample is uncensored
-                    if self.ds == None:
+                    if self.ds is None:
                         try:
                             # Draw random bootstrap samples from sample with
                             bs_samples = list(np.random.choice(self.df,
@@ -1305,7 +1305,7 @@ class Analysis:
             # 1-sided upper
             self.k_a_bound = norm.ppf(self.cl)
         elif self.bounds_type == '1sl':
-            # 1-sided upper
+            # 1-sided lower
             self.k_a_bound = norm.ppf(1.0 - self.cl)
 
         # Standard error for each parameter
@@ -3125,8 +3125,5 @@ if __name__ == '__main__':
     failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
               0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
               1.3201853093496474, 1.492172669340363]
-    x = Analysis(df=failures_a, bounds='lrb', bounds_type='2s')
-    x.mle()
-
-    objects = {'initial design': x}
-    PlotAll(objects).contour_plot(style = 'angular_line')
+    x = Analysis(df=failures_a, bounds='npbb', bounds_type='2s', show=True)
+    #x.mle()
