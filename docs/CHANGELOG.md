@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 ## [0.1.27] - 2023-03-01
 ### Fixed
  - MRR based NPBB are now computed correctly. A typo in the code lead to a bug that computed solely MLE based bounds, no matter if 'mrr' was set as an attribute. A big THANK YOU to William Gandler who reported this bug and various spelling mistakes!
- - Minor other spelling mistakes pointed out by Antonia, Sarahi and Edna
+ - Minor other spelling mistakes pointed out by Antonia, Sarahi and Edna. ¡Viva México, Cabrones!
 
 ## [0.1.26] - 2022-03-28
 ### Added
