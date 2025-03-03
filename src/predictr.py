@@ -1836,7 +1836,7 @@ class Analysis:
                                     '\nuncorrected MLE:\n'
                                     + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
                                     + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                    '\n{}:\1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                    '\n{}:1sl @{}%'.format((bounds_legend), self.cl * 100)),
                                    loc='lower left', bbox_to_anchor=(0.65, 0.0),
                                    fontsize=self.legend_fontsize, title=leg_title)
             else:
@@ -1933,7 +1933,7 @@ class Analysis:
                                     '\nuncorrected MLE:\n'
                                     + r'$\widehat\beta={:.3f}$ | '.format(self.beta)
                                     + r'$\widehat\eta={:.3f}$'.format(self.eta),
-                                    '\n{}:\1sl @{}%'.format((bounds_legend), self.cl * 100)),
+                                    '\n{}:1sl @{}%'.format((bounds_legend), self.cl * 100)),
                                    loc='lower left', bbox_to_anchor=(0.65, 0.0),
                                    fontsize=self.legend_fontsize, title=leg_title)
             else:
