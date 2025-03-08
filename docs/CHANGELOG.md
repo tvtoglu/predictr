@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.28] - 2025-03-08
+### Fixed
+ - '1sl' attribute inside the plot is now being displayed correctly. Bug was found by bobbolous! Thank you.
+
+
 ## [0.1.27] - 2023-03-01
 ### Fixed
  - MRR based NPBB are now computed correctly. A typo in the code lead to a bug that computed solely MLE based bounds, no matter if 'mrr' was set as an attribute. A big THANK YOU to William Gandler who reported this bug and various spelling mistakes!
