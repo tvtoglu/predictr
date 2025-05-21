@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.29] - 2025-05-21
+### Added
+ - Added two new styles to the contour plot in PlotAll.contour_plot(): 'spline' and 'angular_line. These are additional styles to the scatter plot. New default is 'spline' for smoother curves through the data points.
+
 ## [0.1.28] - 2025-03-08
 ### Fixed
  - '1sl' attribute inside the plot is now being displayed correctly. Bug was found by bobbolous! Thank you.
