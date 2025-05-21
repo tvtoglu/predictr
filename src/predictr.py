@@ -15,6 +15,7 @@ from scipy import optimize
 from scipy.special import gamma
 from scipy.stats import norm, chi2, beta, linregress, trim_mean
 from scipy.stats.distributions import weibull_min
+from scipy.interpolate import splprep, splev
 
 class Analysis:
     """
@@ -1433,13 +1434,13 @@ class Analysis:
             # delta_beta is a safety measure for samples with high suspension ratio
             delta_beta = max(beta_lrb) - min(beta_lrb)
             _beta_range = np.linspace(min(beta_lrb) - delta_beta,
-                                        max(beta_lrb) + delta_beta, 400)
+                                        max(beta_lrb) + delta_beta, 800)
 
             # max(eta_range_init[_init_sol_eta + 1] is needed, because 
             # the previous index results always output right before the root.
             # Hence, in order to include the "upper limit" of the eta solutions
             # the +1 is added in the index
-            _eta_range = np.linspace(min(eta_lrb), max(eta_range_init[_init_sol_eta + 1]), 300)
+            _eta_range = np.linspace(min(eta_lrb), max(eta_range_init[_init_sol_eta + 1]), 600)
 
             # Create finer mesh (2nd iteration for more precise results)
             _bb, _ee = np.meshgrid(_beta_range, _eta_range, indexing='ij')
@@ -1559,7 +1560,7 @@ class Analysis:
         # 1.2 Create mesh with repect to the paramter range
         # Beta bounds are critical to the mesh resolution, hence two steps to produce beta range
 
-        self.beta_range_init = np.arange(.2 * self.beta_f_range[0], 2 * self.beta_f_range[1], 0.05)
+        self.beta_range_init = np.arange(.2 * self.beta_f_range[0], 2 * self.beta_f_range[1], 0.02)
         self.eta_range_init = np.linspace(.5 * self.eta_f_range[0], 2 * self.eta_f_range[1], 1000)
 
         # Create mesh
@@ -2880,7 +2881,7 @@ class PlotAll:
 
         plt.show()
 
-    def contour_plot(self, show=True, style='scatter', show_legend=True, color=None, save=False, **kwargs):
+    def contour_plot(self, show=True, style='spline', show_legend=True, color=None, save=False, **kwargs):
         """
         Plots the contour plot when likelihood ratio bounds are being used.
         Multiple objects can be used as well.
@@ -2905,8 +2906,17 @@ class PlotAll:
                 conf_level = getattr(val, 'cl')
                 plt.scatter(beta, eta, s=3, c=next(color),
                             label=f'{key}: {conf_level*100}%')
-        elif style == 'smooth_line':
-            pass
+        elif style == 'spline':
+            for key, val in self.objects.items():
+                beta = getattr(val, 'beta_lrb')
+                eta = getattr(val, 'eta_lrb')
+                beta_sorted = list(beta[0::2]) + list(beta[1::2][::-1]) + list(beta[0:1])
+                eta_sorted = list(eta[0::2]) + list(eta[1::2][::-1]) + list(eta[0:1])
+
+                # Compute Spline
+                tck, u = splprep([beta_sorted, eta_sorted], s=0, per=True)
+                beta_spline, eta_spline = splev(np.linspace(0, 1, 800), tck)
+                plt.plot(beta_spline, eta_spline,linewidth=1.5, markersize=4)
         elif style == 'angular_line':
             for key, val in self.objects.items():
                 beta = getattr(val, 'beta_lrb')
@@ -3126,4 +3136,4 @@ if __name__ == '__main__':
               0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
               1.3201853093496474, 1.492172669340363]
     x = Analysis(df=failures_a, bounds='npbb', bounds_type='2s', show=True)
-    #x.mle()
+    x.mle()
