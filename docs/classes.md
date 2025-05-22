@@ -190,13 +190,13 @@ Most of the arguments are either self explanatory or already defined in [default
 
 | Methods          | Default arguments                                                                                                                                                                                                                                         |
 |------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| mult_weibull()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, linestyle=None, legend_fontsize=9, **kwargs                                                                |
-| contour_plot()   | show_legend=True, save=False, **kwargs                  |
+| mult_weibull()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, linestyle=None, legend_fontsize=9, **kwargs               |
+| contour_plot()   | show_legend=True, style='spline', x_label=r'$\widehat\beta$', y_label=r'$\widehat\eta$', plot_title='Contour Plot', xy_fontsize=12, plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8), save=False, **kwargs                                  |
 | weibull_pdf()    | beta=None, eta=None, linestyle=None, labels = None,x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8, plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None, fig_size=None, color=None, save=False, plot_style='ggplot', **kwargs |
 | simple_weibull() | beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, plot_title_fontsize=12, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs  |
 
 
-| Parameter(s)           | default value              | type            | description                                                                                        |
+| Parameter(s)        | default value              | type            | description                                                                                        |
 |---------------------|----------------------------|-----------------|----------------------------------------------------------------------------------------------------|
 | df                  | None                       | list of floats  | List of failures                                                                                   |
 | ds                  | None                       | list of floats  | List of suspensions (right-censored only)                                                          |
@@ -211,6 +211,7 @@ Most of the arguments are either self explanatory or already defined in [default
 | plot_title_fontsize | 12                         | float           | Fontsize of the plot title                                                                         |
 | fig_size            | (6, 7)                     | tuple of floats | Sets figure width and height in inches: (width, height)                                            |
 | save                | False                      | boolean         | If True, the plot is saved according to the path (kwargs)                                          |
+| style               | 'spline'                   | string          | Defines the style being used for the contour plot: 'scatter', 'angular_line'                       |
 | plot_ranks          | True                       | boolean         | If True, median ranks will be plotted.                                                             |
 | show_legend         | True                       | boolean         | If True, the legend will be plotted                                                                |
 | weibull_pdf: beta, eta| None, None               | list of floats or None | Attributes from Analysis object. Pairs of beta and eta values to be plotted. Each parameter pair must have the same index value.|

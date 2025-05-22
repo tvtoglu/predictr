@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.30] - 2025-05-22
+### Added
+ - Added new arguments for PlotAll.contour_plot(): x_label=r'$\widehat\beta$', y_label=r'$\widehat\eta$', plot_title='Contour Plot', xy_fontsize=12, plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8). You can now fully customize this plot.
+
+### Fixed
+ - Showing the legend in PlotAll.contour_plot() now works again. 
+
 ## [0.1.29] - 2025-05-21
 ### Added
  - Added two new styles to the contour plot in PlotAll.contour_plot(): 'spline' and 'angular_line. These are additional styles to the scatter plot. New default is 'spline' for smoother curves through the data points.
