@@ -2881,7 +2881,9 @@ class PlotAll:
 
         plt.show()
 
-    def contour_plot(self, show=True, style='spline', show_legend=True, color=None, save=False, **kwargs):
+    def contour_plot(self, show=True, style='spline', show_legend=True, color=None, x_label=r'$\widehat\beta$',
+                     y_label=r'$\widehat\eta$', plot_title='Contour Plot', xy_fontsize=12,
+                     plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8), save=False, **kwargs):
         """
         Plots the contour plot when likelihood ratio bounds are being used.
         Multiple objects can be used as well.
@@ -2889,7 +2891,9 @@ class PlotAll:
         """
         # Configure plot
         plt.style.use(self.plot_style)
-        plt.title('Contour Plot')
+        plt.figure(figsize=fig_size)
+        plt.title(plot_title, fontsize=plot_title_fontsize)
+        
 
         # Set colormap
         if color is not None:
@@ -2910,28 +2914,30 @@ class PlotAll:
             for key, val in self.objects.items():
                 beta = getattr(val, 'beta_lrb')
                 eta = getattr(val, 'eta_lrb')
+                conf_level = getattr(val, 'cl')
                 beta_sorted = list(beta[0::2]) + list(beta[1::2][::-1]) + list(beta[0:1])
                 eta_sorted = list(eta[0::2]) + list(eta[1::2][::-1]) + list(eta[0:1])
 
                 # Compute Spline
                 tck, u = splprep([beta_sorted, eta_sorted], s=0, per=True)
                 beta_spline, eta_spline = splev(np.linspace(0, 1, 800), tck)
-                plt.plot(beta_spline, eta_spline,linewidth=1.5, markersize=4)
+                plt.plot(beta_spline, eta_spline,linewidth=1.5, markersize=4, label=f'{key}: {conf_level*100}%')
         elif style == 'angular_line':
             for key, val in self.objects.items():
                 beta = getattr(val, 'beta_lrb')
                 eta = getattr(val, 'eta_lrb')
+                conf_level = getattr(val, 'cl')
                 beta_sorted = list(beta[0::2]) + list(beta[1::2][::-1]) + list(beta[0:1])
                 eta_sorted = list(eta[0::2]) + list(eta[1::2][::-1]) + list(eta[0:1])
-                plt.plot(beta_sorted, eta_sorted, '-o', linewidth=1.5, markersize=4)
+                plt.plot(beta_sorted, eta_sorted, '-o', linewidth=1.5, markersize=4, label=f'{key}: {conf_level*100}%')
 
-        plt.xlabel(r'$\widehat\beta$')
-        plt.ylabel(r'$\widehat\eta$')
+        plt.xlabel(x_label, fontsize=xy_fontsize)
+        plt.ylabel(y_label, fontsize=xy_fontsize)
         plt.grid(True, which='both')
         plt.tight_layout()
 
         if show_legend:
-            plt.legend()
+            plt.legend(fontsize=legend_fontsize)
 
         # Save plot
         if save:
