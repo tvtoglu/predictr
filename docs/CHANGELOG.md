@@ -7,6 +7,16 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.31] - 2025-08-11
+### Improved
+ Long time no see! I’m back! Expect many exciting updates as we make Predictr the best reliability tool out there!  
+ - Vectorized MCPB for MRR: up to 300x faster
+ - Vectorized parametric and non-parametric bootstrap bias correction: up to 900x faster
+ - Vectorized bootstrap bounds: up to x900 faster
+ - Vectorized LRB: up to 200x faster
+### Fixed
+ - PlotAll.contour_plot() now searches for beta solutions for a fixed eta value, hence, adding more solutions to the contour plot. The curve now looks smoother.
+
 ## [0.1.30] - 2025-05-22
 ### Added
  - Added new arguments for PlotAll.contour_plot(): x_label=r'$\widehat\beta$', y_label=r'$\widehat\eta$', plot_title='Contour Plot', xy_fontsize=12, plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8). You can now fully customize this plot.
