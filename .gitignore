@@ -179,3 +179,7 @@ src/.idea/src.iml
 src/.idea/modules.xml
 src/.idea/misc.xml
 src/.idea/inspectionProfiles/profiles_settings.xml
+src/tests/test_bootstrap.py
+src/tests/test_bounds.py
+.gitignore
+src/tests/test_mcp_bounds.py

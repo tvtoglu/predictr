@@ -10,18 +10,150 @@ from math import floor, ceil
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.cm import get_cmap
 import pandas as pd
 from scipy import optimize
 from scipy.special import gamma
 from scipy.stats import norm, chi2, beta, linregress, trim_mean
 from scipy.stats.distributions import weibull_min
-from scipy.interpolate import splprep, splev
+from scipy.spatial import ConvexHull
+
 
 class Analysis:
     """
     Analysis provides parameter estimations, confidence bounds
     computations, bias corrections, and plotting of the data.
     """
+
+    @staticmethod
+    def _get_cmap(name):
+        """
+        Version-safe colormap lookup. matplotlib >= 3.6 exposes
+        mpl.colormaps as a subscriptable registry; older versions only
+        have the (now-deprecated) get_cmap() function, where
+        mpl.colormaps/plt.colormaps is a plain, non-subscriptable function.
+        """
+        try:
+            return mpl.colormaps[name]
+        except (TypeError, AttributeError):
+            return get_cmap(name)
+
+    @staticmethod
+    def _vectorized_weibull_mle(samples):
+        """
+        Vectorized Weibull MLE for many independent uncensored samples at
+        once. Mirrors Analysis.mle()'s beta_init() (analytic initial
+        estimate) followed by a Newton-Raphson refinement using the same
+        log-likelihood derivatives as ll_weib_beta_uncen / ll_weib_beta_uncen_2,
+        but applied to a whole batch of (e.g. bootstrap) samples
+        simultaneously instead of looping over them one at a time.
+
+        Parameters
+        ----------
+        samples : ndarray, shape (B, n)
+            Each row is one independent uncensored sample.
+
+        Returns
+        -------
+        beta_vec, eta_vec : ndarray, shape (B,)
+            MLE estimates of beta and eta for every row. Rows for which no
+            valid estimate could be found are set to np.nan.
+        """
+        n = samples.shape[1]
+
+        # Analytic initial estimate (row-wise equivalent of beta_init())
+        t_N = samples.max(axis=1, keepdims=True)
+        beta1 = (1.0 / n * np.sum(np.log(t_N / samples), axis=1)) ** -1
+
+        x_k = (samples / t_N) ** beta1[:, None]
+        ln_x_k = np.log(x_k)
+        ln_x_k = np.where(ln_x_k == 0, 1e-8, ln_x_k)
+
+        denom = np.sum(x_k * (ln_x_k ** 2 + ln_x_k + 1), axis=1)
+
+        def sig(p):
+            num = np.sum(x_k * ln_x_k ** (p - 1) * (ln_x_k ** 2 + p * ln_x_k + p), axis=1)
+            return num / denom
+
+        sig_0, sig_2, sig_3, sig_4, sig_5 = sig(0), sig(2), sig(3), sig(4), sig(5)
+
+        beta_k = beta1 * (1 - sig_0 - sig_2 / 2 * sig_0 ** 2
+                          + ((sig_3 / 6) - (sig_2 ** 2) / 2) * sig_0 ** 3
+                          + ((5 * sig_3 * sig_2 / 12)
+                             - (5 * sig_2 ** 3 / 8 - sig_4 / 24))
+                          * sig_0 ** 4 + ((sig_5 / 120)
+                                          + (7 * sig_2 ** 2 * sig_3 / 8)
+                                          - (7 * sig_2 ** 4 / 8) - (sig_3 ** 2 / 12)
+                                          - 3 * sig_2 * sig_4 / 24) * sig_0 ** 5)
+
+        # Newton-Raphson refinement, vectorized across all rows, only
+        # iterating on rows that have not converged yet.
+        log_samples = np.log(samples)
+        active = np.ones(len(beta_k), dtype=bool)
+        for _ in range(100):
+            if not np.any(active):
+                break
+            bk = beta_k[active, None]
+            s = samples[active]
+            ls = log_samples[active]
+            pw = s ** bk
+            a = ls.sum(axis=1)
+            b = (pw * ls).sum(axis=1)
+            c = pw.sum(axis=1)
+            f = (1.0 / beta_k[active]) + (a / n) - (b / c)
+
+            eta = (c / n) ** (1.0 / beta_k[active])
+            ratio = s / eta[:, None]
+            f2 = np.sum((-1.0 / bk ** 2) - ratio ** bk * (np.log(ratio) ** 2), axis=1)
+
+            step = f / f2
+            beta_k[active] = beta_k[active] - step
+
+            idx = np.where(active)[0]
+            active[idx[np.abs(step) < 1.0e-5]] = False
+
+        beta_k = np.where(np.isfinite(beta_k) & (beta_k > 0), beta_k, np.nan)
+        eta_k = (np.sum(samples ** beta_k[:, None], axis=1) / n) ** (1.0 / beta_k)
+        return beta_k, eta_k
+
+    @staticmethod
+    def _vectorized_weibull_mrr(samples):
+        """
+        Vectorized Weibull median rank regression (MRR) for many
+        independent uncensored samples at once, mirroring Analysis.mrr()
+        for the uncensored case.
+
+        The median ranks only depend on the sample size n (not on the data
+        values), so they are computed once and reused as the fixed
+        regressor for the OLS fit of every row.
+
+        Parameters
+        ----------
+        samples : ndarray, shape (B, n)
+            Each row is one independent uncensored sample, ascending sorted.
+
+        Returns
+        -------
+        beta_vec, eta_vec : ndarray, shape (B,)
+            MRR estimates of beta and eta for every row.
+        """
+        n = samples.shape[1]
+        ranks = beta.ppf(0.5, np.arange(1, n + 1), n - np.arange(1, n + 1) + 1)
+        y = np.log(-np.log(1 - ranks))
+
+        x = np.log(samples)
+        x_mean = x.mean(axis=1, keepdims=True)
+        y_mean = y.mean()
+        y_centered = y - y_mean
+
+        x_centered = x - x_mean
+        cov = np.sum(x_centered * y_centered[None, :], axis=1)
+        var_x = np.sum(x_centered ** 2, axis=1)
+
+        beta_k = cov / var_x
+        intercept = y_mean - beta_k * x_mean[:, 0]
+        eta_k = np.exp(intercept / (-1 * beta_k))
+        return beta_k, eta_k
 
     def __init__(self, df: list = None, ds: list = None, show: bool = False,
                  plot_style='ggplot', bounds=None, bounds_type='2s',
@@ -243,38 +375,34 @@ class Analysis:
             eta_bs : float
                 Bias-corrected Weibull shape parameter eta.
             """
-            # Since non-parametric boostrapping can cause an error using
-            # the mle() method in Analysis class, a safety net is needed
-            # This is especially needed for small sample size
-            j = 0
-            with np.errstate(divide='ignore', invalid='ignore'):
-                weib_beta = []
-                while j < bs_size:
-                    try:
-                        # Draw random bootstrap samples from sample with
-                        bs_samples = list(np.random.choice(sample, size=len(sample), replace=True))
+            n = len(sample)
+            sample_arr = np.asarray(sample, dtype=float)
 
-                        # Conduct MLE to compute Weibull parameters
-                        x = Analysis(df=bs_samples)
-                        x.mle()
-                        weib_beta.append(x.beta)
-                        j +=1
-                    except RuntimeError:
-                        pass
+            with np.errstate(divide='ignore', invalid='ignore'):
+                # Draw all bootstrap resamples at once
+                bs_samples = np.random.choice(sample_arr, size=(bs_size, n), replace=True)
+                weib_beta, _ = self._vectorized_weibull_mle(bs_samples)
+
+                # Safety net: a handful of resamples can fail to yield a
+                # valid MLE estimate (e.g. degenerate resamples for small
+                # sample sizes). Redraw and refit only those rows.
+                invalid = ~np.isfinite(weib_beta)
+                while np.any(invalid):
+                    idx = np.where(invalid)[0]
+                    redrawn = np.random.choice(sample_arr, size=(len(idx), n), replace=True)
+                    bs_samples[idx] = redrawn
+                    weib_beta[idx], _ = self._vectorized_weibull_mle(redrawn)
+                    invalid = ~np.isfinite(weib_beta)
 
                 # Calculate Bootstrap beta
                 if est_type == 'median':
                     beta_bs = 2.0 * self.beta - np.median(weib_beta)
-                    it = (i ** beta_bs for i in sample)
-                    eta_bs = (1 / len(sample) * np.sum(np.fromiter(it, float))) ** (1 / beta_bs)
                 elif est_type == 'mean':
                     beta_bs = 2.0 * self.beta - np.mean(weib_beta)
-                    it = (i ** beta_bs for i in sample)
-                    eta_bs = (1 / len(sample) * np.sum(np.fromiter(it, float))) ** (1 / beta_bs)
                 elif est_type == 'trimmed_mean':
                     beta_bs = 2.0 * self.beta - trim_mean(weib_beta, 0.1)
-                    it = (i ** beta_bs for i in sample)
-                    eta_bs = (1 / len(sample) * np.sum(np.fromiter(it, float))) ** (1 / beta_bs)
+                it = (i ** beta_bs for i in sample)
+                eta_bs = (1 / len(sample) * np.sum(np.fromiter(it, float))) ** (1 / beta_bs)
                 return beta_bs, eta_bs
 
 
@@ -306,31 +434,23 @@ class Analysis:
             # Assign initial MLE of Weibull parameters
             beta_0 = self.beta
             eta_0 = self.eta
+            n = len(sample)
 
-            # Draw bs_samples from initial estimation and compute beta and eta
-            #global weib_beta
-            weib_beta = []
-            weib_eta = []
-            for _ in range(bs_size):
-                y = Analysis(df=list(weibull_min.rvs(beta_0, loc = 0, scale = eta_0,
-                                              size = len(sample))))
-                y.mle()
-                weib_beta.append(y.beta)
-                weib_eta.append(y.eta)
+            # Draw all bs_samples from initial estimation at once and
+            # compute beta for every resample in one vectorized pass
+            with np.errstate(divide='ignore', invalid='ignore'):
+                bs_samples = weibull_min.rvs(beta_0, loc=0, scale=eta_0, size=(bs_size, n))
+                weib_beta, _ = self._vectorized_weibull_mle(bs_samples)
 
             # Calculate Bootstrap beta
             if est_type == 'median':
                 beta_bs = 2.0 * self.beta - np.median(weib_beta)
-                it = (i ** beta_bs for i in sample)
-                eta_bs = (1 / len(sample) * np.sum(np.fromiter(it, float))) ** (1 / beta_bs)
             elif est_type == 'mean':
                 beta_bs = 2.0 * self.beta - np.mean(weib_beta)
-                it = (i ** beta_bs for i in sample)
-                eta_bs = (1 / len(sample) * np.sum(np.fromiter(it, float))) ** (1 / beta_bs)
             elif est_type == 'trimmed_mean':
                 beta_bs = 2.0 * self.beta - trim_mean(weib_beta, 0.2)
-                it = (i ** beta_bs for i in sample)
-                eta_bs = (1 / len(sample) * np.sum(np.fromiter(it, float))) ** (1 / beta_bs)
+            it = (i ** beta_bs for i in sample)
+            eta_bs = (1 / len(sample) * np.sum(np.fromiter(it, float))) ** (1 / beta_bs)
             return beta_bs, eta_bs
 
         if dist == 'weibull':
@@ -634,45 +754,39 @@ class Analysis:
         # Use the initial estimation of Weibull parameters
         beta_0 = self.beta
         eta_0 = self.eta
+        n = len(self.df)
 
-        # Create empty panda DataFrame
-        df = pd.DataFrame(columns=list(self.unrel))
+        # Draw all bootstrap resamples at once and fit every one of them
+        # in a single vectorized pass instead of looping bs_size times.
+        bs_samples = weibull_min.rvs(beta_0, loc=0, scale=eta_0, size=(self.bs_size, n))
 
-        # Check if MRR or MLE is being used
         if method_call == 'mrr':
-            for i in range(self.bs_size):
-                y = Analysis(df=list(weibull_min.rvs(beta_0, loc = 0, scale = eta_0,
-                                              size = len(self.df))))
-                y.mrr()
-                df.loc[i] = list(np.array(y.eta) *
-                                 ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
+            bs_samples.sort(axis=1)
+            beta_bs, eta_bs = self._vectorized_weibull_mrr(bs_samples)
         elif method_call == 'mle':
-            for i in range(self.bs_size):
-                y = Analysis(df=list(weibull_min.rvs(beta_0, loc = 0, scale = eta_0,
-                                              size = len(self.df))))
-                y.mle()
-                df.loc[i] = list(np.array(y.eta) *
-                                 ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
+            beta_bs, eta_bs = self._vectorized_weibull_mle(bs_samples)
         else:
             raise ValueError(f'pb_bounds() does not support {method_call}')
 
-        # Sort each column in dataframe
-        for col in df:
-            df[col] = df[col].sort_values(ignore_index=True)
+        # Percentile life for every bootstrap fit and every unreliability
+        # level in self.unrel, then sort each unreliability column
+        neg_log = -np.log(1 - self.unrel)
+        life_matrix = eta_bs[:, None] * (neg_log[None, :] ** (1.0 / beta_bs[:, None]))
+        life_matrix.sort(axis=0)
 
         # Compute iloc position of lower and upper coonfidence bounds
         # -1 necessary, since python indexing starts at 0
         if self.bounds_type == '2s':
             lower_perc_position = ceil(self.bs_size * ((1 - self.cl) / 2)) - 1
             upper_perc_position = floor(self.bs_size * (1 - ((1 - self.cl) / 2))) - 1
-            self.bounds_lower = df.iloc[lower_perc_position].values.tolist()
-            self.bounds_upper = df.iloc[upper_perc_position].values.tolist()
+            self.bounds_lower = life_matrix[lower_perc_position].tolist()
+            self.bounds_upper = life_matrix[upper_perc_position].tolist()
         elif self.bounds_type == '1su':
             upper_perc_position = floor(self.bs_size * self.cl) - 1
-            self.bounds_upper = df.iloc[upper_perc_position].values.tolist()
+            self.bounds_upper = life_matrix[upper_perc_position].tolist()
         elif self.bounds_type == '1sl':
             lower_perc_position = ceil(self.bs_size * (1 - self.cl)) - 1
-            self.bounds_lower = df.iloc[lower_perc_position].values.tolist()
+            self.bounds_lower = life_matrix[lower_perc_position].tolist()
 
     def npbb_bounds(self, method_call):
         """
@@ -687,128 +801,95 @@ class Analysis:
                 df_w_index = [(i, 1) for i in df]
                 # index 0 -> suspension
                 ds_w_index = [(i, 0) for i in ds]
-            
+
             # create new list of tuples with all information
             dat = df_w_index + ds_w_index
             return dat
-        # Create empty panda DataFrame
-        df = pd.DataFrame(columns=list(self.unrel))
 
-        # Check if MRR or MLE is being used
-        if method_call == 'mrr':
-           # Check if cen_index will be needed and therefore dat
-            if self.ds != None:
-                dat = cen_index(self.df, self.ds)
-
-            j = 0
-            with np.errstate(divide='ignore', invalid='ignore'):
-                while j < self.bs_size:
-                    # Check if sample is uncensored
-                    if self.ds is None:
-                        try:
-                            # Draw random bootstrap samples from sample with
-                            bs_samples = list(np.random.choice(self.df,
-                                                                size=len(self.df),
-                                                                replace=True))
-
-                            # Conduct MRR to compute Weibull parameters
-                            y = Analysis(df=bs_samples)
-                            y.mrr()
-                            df.loc[j] = list(np.array(y.eta) *
-                                        ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
-                            j +=1
-                        except Exception:
-                            pass
-                    else:
-                        try:
-                            # np.random.choice requires a 1darray, 
-                            # which dat is not after transforming it to an array
-                            # Randomly draw indices instead
-                            bs_samples_idx = np.random.choice(len(dat),
-                                                                size=len(dat),
-                                                                replace=True)
-                            # Use randomly drawn indices to generate random bootstrap sample
-                            bs_samples = np.array(dat)[bs_samples_idx]
-
-                            # Filter failures and suspenions by ID (0 or 1)
-                            df_temp = [i for i, j in bs_samples if j==1]
-                            ds_temp = [i for i, j in bs_samples if j==0]
-
-                            # Conduct MLE to compute Weibull parameters
-                            y = Analysis(df=df_temp, ds=ds_temp)
-                            y.mrr()
-                            df.loc[j] = list(np.array(y.eta) *
-                                        ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
-                            j +=1
-                        except Exception: #RuntimeError:
-                            pass     
-        elif method_call == 'mle':
-            # Check if cen_index will be needed and therefore dat
-            if self.ds is not None:
-                dat = cen_index(self.df, self.ds)
-
-            j = 0
-            with np.errstate(divide='ignore', invalid='ignore'):
-                while j < self.bs_size:
-                    # Check if sample is uncensored
-                    if self.ds is None:
-                        try:
-                            # Draw random bootstrap samples from sample with
-                            bs_samples = list(np.random.choice(self.df,
-                                                                size=len(self.df),
-                                                                replace=True))
-
-                            # Conduct MLE to compute Weibull parameters
-                            y = Analysis(df=bs_samples)
-                            y.mle()
-                            df.loc[j] = list(np.array(y.eta) *
-                                        ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
-                            j +=1
-                        except Exception:
-                            pass
-                    else:
-                        try:
-                            # np.random.choice requires a 1darray, 
-                            # which dat is not after transforming it to an array
-                            # Randomly draw indices instead
-                            bs_samples_idx = np.random.choice(len(dat),
-                                                                size=len(dat),
-                                                                replace=True)
-                            # Use randomly drawn indices to generate random bootstrap sample
-                            bs_samples = np.array(dat)[bs_samples_idx]
-
-                            # Filter failures and suspenions by ID (0 or 1)
-                            df_temp = [i for i, j in bs_samples if j==1]
-                            ds_temp = [i for i, j in bs_samples if j==0]
-
-                            # Conduct MLE to compute Weibull parameters
-                            y = Analysis(df=df_temp, ds=ds_temp)
-                            y.mle()
-                            df.loc[j] = list(np.array(y.eta) *
-                                        ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
-                            j +=1
-                        except Exception: #RuntimeError:
-                            pass     
-        else:
+        if method_call not in ('mrr', 'mle'):
             raise ValueError(f'npbb_bounds() does not support {method_call}')
 
-        # Sort each column in dataframe
-        for col in df:
-            df[col] = df[col].sort_values(ignore_index=True)
+        neg_log = -np.log(1 - self.unrel)
+
+        if self.ds is None:
+            # Uncensored data: every bootstrap resample has the same
+            # size, so all resamples can be drawn and fitted in a single
+            # vectorized pass instead of looping bs_size times.
+            n = len(self.df)
+            sample_arr = np.asarray(self.df, dtype=float)
+
+            def fit(samples):
+                if method_call == 'mrr':
+                    return self._vectorized_weibull_mrr(np.sort(samples, axis=1))
+                return self._vectorized_weibull_mle(samples)
+
+            with np.errstate(divide='ignore', invalid='ignore'):
+                bs_samples = np.random.choice(sample_arr, size=(self.bs_size, n), replace=True)
+                beta_bs, eta_bs = fit(bs_samples)
+
+                # Safety net: redraw and refit any resample that failed
+                # to produce a valid estimate (mirrors the try/except
+                # retry of the original loop-based implementation).
+                invalid = ~(np.isfinite(beta_bs) & np.isfinite(eta_bs))
+                while np.any(invalid):
+                    idx = np.where(invalid)[0]
+                    redrawn = np.random.choice(sample_arr, size=(len(idx), n), replace=True)
+                    bs_samples[idx] = redrawn
+                    beta_bs[idx], eta_bs[idx] = fit(redrawn)
+                    invalid = ~(np.isfinite(beta_bs) & np.isfinite(eta_bs))
+
+            life_matrix = eta_bs[:, None] * (neg_log[None, :] ** (1.0 / beta_bs[:, None]))
+            life_matrix.sort(axis=0)
+        else:
+            # Censored data: each bootstrap resample can contain a
+            # different number of failures/suspensions, which does not
+            # vectorize as cleanly, so this path keeps the original
+            # per-resample loop.
+            dat = cen_index(self.df, self.ds)
+            rows = []
+            j = 0
+            with np.errstate(divide='ignore', invalid='ignore'):
+                while j < self.bs_size:
+                    try:
+                        # np.random.choice requires a 1darray,
+                        # which dat is not after transforming it to an array
+                        # Randomly draw indices instead
+                        bs_samples_idx = np.random.choice(len(dat),
+                                                            size=len(dat),
+                                                            replace=True)
+                        # Use randomly drawn indices to generate random bootstrap sample
+                        bs_samples = np.array(dat)[bs_samples_idx]
+
+                        # Filter failures and suspenions by ID (0 or 1)
+                        df_temp = [i for i, k in bs_samples if k == 1]
+                        ds_temp = [i for i, k in bs_samples if k == 0]
+
+                        # Conduct MRR/MLE to compute Weibull parameters
+                        y = Analysis(df=df_temp, ds=ds_temp)
+                        if method_call == 'mrr':
+                            y.mrr()
+                        else:
+                            y.mle()
+                        rows.append(np.array(y.eta) *
+                                    ((-np.log(1 - self.unrel)) ** (1 / np.array(y.beta))))
+                        j += 1
+                    except Exception:
+                        pass
+            life_matrix = np.sort(np.array(rows), axis=0)
 
         # Compute iloc position of lower and upper coonfidence bounds
         # -1 necessary, since python indexing starts at 0
         if self.bounds_type == '2s':
             lower_perc_position = ceil(self.bs_size * ((1 - self.cl) / 2)) - 1
             upper_perc_position = floor(self.bs_size * (1 - ((1 - self.cl) / 2))) - 1
-            self.bounds_lower = df.iloc[lower_perc_position].values.tolist()
-            self.bounds_upper = df.iloc[upper_perc_position].values.tolist()
+            self.bounds_lower = life_matrix[lower_perc_position].tolist()
+            self.bounds_upper = life_matrix[upper_perc_position].tolist()
         elif self.bounds_type == '1su':
             upper_perc_position = floor(self.bs_size * self.cl) - 1
-            self.bounds_upper = df.iloc[upper_perc_position].values.tolist()
+            self.bounds_upper = life_matrix[upper_perc_position].tolist()
         elif self.bounds_type == '1sl':
             lower_perc_position = ceil(self.bs_size * (1 - self.cl)) - 1
-            self.bounds_lower = df.iloc[lower_perc_position].values.tolist()
+            self.bounds_lower = life_matrix[lower_perc_position].tolist()
 
     def mcp_bounds(self):
         """
@@ -816,19 +897,18 @@ class Analysis:
         Not to be used with mle()!
 
         """
-        # Create empty panda DataFrame
-        df = pd.DataFrame(columns=list(self.unrel))
+        n = len(self.df)
 
-        # Fixed params are needed in this method: beta=eta=1.0
-        for i in range(self.bs_size):
-            y = Analysis(df=list(weibull_min.rvs(1.0, loc = 0, scale = 1.0,
-                                          size = len(self.df))))
-            y.mrr()
-            df.loc[i] = (np.log(y.eta) - np.log(np.log(1 / (1 - self.unrel)))) / (1 / y.beta)
+        # Fixed params are needed in this method: beta=eta=1.0. Draw all
+        # bs_size samples at once and fit every one of them in a single
+        # vectorized pass instead of looping bs_size times.
+        samples = weibull_min.rvs(1.0, loc=0, scale=1.0, size=(self.bs_size, n))
+        samples.sort(axis=1)
+        beta_k, eta_k = self._vectorized_weibull_mrr(samples)
 
-        # Sort each column in dataframe
-        for col in df:
-            df[col] = df[col].sort_values(ignore_index=True)
+        z_p = ((np.log(eta_k)[:, None] - np.log(np.log(1 / (1 - self.unrel)))[None, :])
+               * beta_k[:, None])
+        z_p.sort(axis=0)
 
         # Compute iloc position of lower and upper coonfidence bounds
         # -1 necessary, since python indexing starts at 0
@@ -838,31 +918,31 @@ class Analysis:
             upper_perc_position = floor(self.bs_size * (1 - ((1 - self.cl) / 2))) - 1
 
             # Get lower and upper z_p per percentile and compute time intervals
-            bounds_lower_z_p = df.iloc[lower_perc_position].values.tolist()
-            bounds_upper_z_p = df.iloc[upper_perc_position].values.tolist()
+            bounds_lower_z_p = z_p[lower_perc_position]
+            bounds_upper_z_p = z_p[upper_perc_position]
 
             # Actual bounds as timestamps
             # ATTENTION: upper_z_p results in lower_t_p bounds
-            self.bounds_upper = [np.exp(np.log(self.eta) - i / self.beta) for i in bounds_lower_z_p]
-            self.bounds_lower = [np.exp(np.log(self.eta) - i / self.beta) for i in bounds_upper_z_p]
+            self.bounds_upper = list(np.exp(np.log(self.eta) - bounds_lower_z_p / self.beta))
+            self.bounds_lower = list(np.exp(np.log(self.eta) - bounds_upper_z_p / self.beta))
         elif self.bounds_type == '1su':
             lower_perc_position = ceil(self.bs_size * ((1 - self.cl) / 2)) - 1
 
             # Get lower and upper z_p per percentile and compute time intervals
-            bounds_lower_z_p = df.iloc[lower_perc_position].values.tolist()
+            bounds_lower_z_p = z_p[lower_perc_position]
 
             # Actual bounds as timestamps
             # ATTENTION: upper_z_p results in lower_t_p bounds
-            self.bounds_upper = [np.exp(np.log(self.eta) - i / self.beta) for i in bounds_lower_z_p]
+            self.bounds_upper = list(np.exp(np.log(self.eta) - bounds_lower_z_p / self.beta))
         elif self.bounds_type == '1sl':
             upper_perc_position = floor(self.bs_size * (1 - ((1 - self.cl) / 2))) - 1
 
             # Get lower and upper z_p per percentile and compute time intervals
-            bounds_upper_z_p = df.iloc[upper_perc_position].values.tolist()
+            bounds_upper_z_p = z_p[upper_perc_position]
 
             # Actual bounds as timestamps
             # ATTENTION: upper_z_p results in lower_t_p bounds
-            self.bounds_lower = [np.exp(np.log(self.eta) - i / self.beta) for i in bounds_upper_z_p]
+            self.bounds_lower = list(np.exp(np.log(self.eta) - bounds_upper_z_p / self.beta))
 
     def plot_mrr(self):
         """
@@ -1354,9 +1434,6 @@ class Analysis:
             """
             mins = np.zeros(len(unreliability))
             maxes = np.zeros_like(mins)
-            unrel = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01,
-                              0.02, 0.03, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4,
-                              0.5, 0.6, 0.632, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999])
             for idx, unrel in enumerate(unreliability):
                 ret = np.array(eta) * ((-np.log(1 - unrel)) ** (1 / np.array(beta_)))
                 mins[idx] = min(ret)
@@ -1365,116 +1442,269 @@ class Analysis:
                 self.maxes = maxes
             return mins, maxes
 
-        def ll_full(beta_, eta, df, ds):
+        # Precompute the parts of the log-likelihood that do not depend
+        # on (beta, eta) once, instead of re-deriving them on every
+        # mesh/refinement evaluation. log(x/eta) is computed as
+        # log(x) - log(eta) (log(x) precomputed, log(eta) computed once
+        # per mesh) and x**beta_ as exp(log(x/eta) * beta_): both are
+        # noticeably faster here than a fresh division/power per sample.
+        log_df = np.log(self.df)
+        sum_log_df = np.sum(log_df)
+        n_df = len(self.df)
+        if self.ds is not None:
+            log_ds = np.log(self.ds)
+
+        def ll_full(beta_, eta):
             """
-            Function return is verified and correct.
-            However, it not considering the constant term:
-            np.log(gamma(n+1)) - np.log(gamma((n - m + 1)) -> not needed for lrb
-            beta, eta: need to be ndarrays
+            Vectorized right-censored Weibull log-likelihood (up to a
+            (beta, eta)-independent constant, not needed for lrb).
+            beta_, eta: broadcastable ndarrays (or plain floats).
             """
-            # Math terms for failures
-            f_term1 = [x / eta for x in df]
-            f_term2 = np.exp(np.log(f_term1) * beta_)
-            f_sum = np.sum(f_term2, axis=0)
+            log_eta = np.log(eta)
+            f_sum = np.zeros_like(eta, dtype=np.float64)
+            for lx in log_df:
+                f_sum = f_sum + np.exp((lx - log_eta) * beta_)
+            s_sum = np.zeros_like(eta, dtype=np.float64)
+            for lx in log_ds:
+                s_sum = s_sum + np.exp((lx - log_eta) * beta_)
+            return (n_df * (np.log(beta_) - beta_ * log_eta)
+                    + (beta_ - 1) * sum_log_df - f_sum - s_sum)
 
-            # Math terms for suspensions
-            s_term1 = [x / eta for x in ds]
-            s_term2 = np.exp(np.log(s_term1) * beta_)
-            s_sum = np.sum(s_term2, axis=0)
-
-            return (len(df) * (np.log(beta_) - beta_ * np.log(eta))
-                    + (beta_ - 1) * np.sum([np.log(x) for x in df])
-                    - f_sum
-                    - s_sum)
-
-
-        def ll_full_no_cens(beta_, eta, df):
+        def ll_full_no_cens(beta_, eta):
             """
-            Function return is verified and correct.
-            However, it not considering the constant term:
-            np.log(gamma(n+1)) - np.log(gamma((n - m + 1)) -> not needed for lrb
-            beta, eta: need to be ndarrays
+            Vectorized uncensored Weibull log-likelihood (up to a
+            (beta, eta)-independent constant, not needed for lrb).
+            beta_, eta: broadcastable ndarrays (or plain floats).
             """
-            # Math terms for failures
-            f_term1 = [x / eta for x in df]
-            f_term2 = np.exp(np.log(f_term1) * beta_)
-            f_sum = np.sum(f_term2, axis=0)
+            log_eta = np.log(eta)
+            f_sum = np.zeros_like(eta, dtype=np.float64)
+            for lx in log_df:
+                f_sum = f_sum + np.exp((lx - log_eta) * beta_)
+            return (n_df * (np.log(beta_) - beta_ * log_eta)
+                    + (beta_ - 1) * sum_log_df - f_sum)
 
-            return (len(df) * (np.log(beta_) - beta_ * np.log(eta))
-                    + (beta_ - 1) * np.sum([np.log(x) for x in df])
-                    - f_sum)
+        ll_func = ll_full_no_cens if self.ds is None else ll_full
 
-        def zerofinder(b_init, eta_init, z):
-            """"
-            Returns an array which contains the solution pairs for
-            the LRBs.
+        def lr_z(beta_, eta):
             """
-            # Step 1: Create rough mesh in order to get rough solution bounds
-            _init_sol = np.diff(np.sign(z))
-            beta_range_init = b_init
-            eta_range_init = eta_init
+            Likelihood-ratio test statistic shifted by the chi-squared
+            critical value, so that lr_z == 0 marks the LRB contour.
+            2 * log(exp(ll - ll_ref)) simplifies to 2 * (ll - ll_ref);
+            skipping the exp/log round trip avoids needless overflow/
+            underflow on large meshes and is also considerably faster.
+            """
+            return 2 * (ll_func(beta_, eta) - self.ll_ref) + self.chi2_val
 
-            # Mask NaN values, otherwise np.argwhere will find random results
-            _init_sol2 = np.ma.array(_init_sol, mask=np.isnan(_init_sol))
+        def crossing_idx(z, axis):
+            """Row/col index pairs where z changes sign along `axis`."""
+            diff = np.diff(np.sign(z), axis=axis)
+            diff = np.ma.array(diff, mask=np.isnan(diff))
+            idx = np.argwhere(diff)
+            return idx[:, 0], idx[:, 1]
 
-            # Get solution pairs for beta and eta
-            # Nested format: array([[ idx,  val], [ idx2, val2],..., [idxn,  valn]])
-            # where idx = beta index, and val = eta index
-            # The index returns the ndarray value below the sign change
-            _init_sol_all = np.argwhere(_init_sol2)
-            _init_sol_beta = _init_sol_all[:, 0]
-            _init_sol_eta = _init_sol_all[:, 1]
+        def collapse_to_envelope(fixed_pts, scan_pts, group_idx):
+            """
+            Collapses groups (rows/columns, identified by group_idx)
+            with more than two crossings down to just the two most
+            extreme scan-axis values.
 
-            # Return beta-eta pairs as actual numerical values
-            beta_lrb = beta_range_init[_init_sol_beta]
-            eta_lrb = eta_range_init[_init_sol_eta]
+            Near a tangent point of the contour, z(scan_coord) can hug
+            zero over a whole stretch; catastrophic cancellation in
+            2 * (ll - ll_ref) then makes it flicker sign at the
+            numerical-noise level instead of crossing cleanly, which
+            without this collapse shows up as a "comb" of many points
+            sharing the same fixed coordinate - rendered by
+            contour_plot's convex hull as a spurious straight line
+            segment. Collapsing to the two extremes is harmless for a
+            genuine (convex) boundary too, since only the outermost
+            points survive a convex hull anyway.
+            """
+            if len(group_idx) == 0:
+                return fixed_pts, scan_pts, group_idx
 
-            # Step 2: Create actual finer mesh using the found signs from step 1
-            # Create new, denser mesh for beta and eta pairs
-            # delta_beta is a safety measure for samples with high suspension ratio
-            delta_beta = max(beta_lrb) - min(beta_lrb)
-            _beta_range = np.linspace(min(beta_lrb) - delta_beta,
-                                        max(beta_lrb) + delta_beta, 800)
+            order = np.argsort(group_idx, kind='stable')
+            group_sorted = group_idx[order]
+            fixed_sorted = fixed_pts[order]
+            scan_sorted = scan_pts[order]
 
-            # max(eta_range_init[_init_sol_eta + 1] is needed, because 
-            # the previous index results always output right before the root.
-            # Hence, in order to include the "upper limit" of the eta solutions
-            # the +1 is added in the index
-            _eta_range = np.linspace(min(eta_lrb), max(eta_range_init[_init_sol_eta + 1]), 600)
+            out_fixed, out_scan, out_group = [], [], []
+            start = 0
+            n = len(group_sorted)
+            for end in range(1, n + 1):
+                if end == n or group_sorted[end] != group_sorted[start]:
+                    block_scan = scan_sorted[start:end]
+                    if block_scan.size > 2:
+                        lo, hi = block_scan.min(), block_scan.max()
+                        out_fixed.extend([fixed_sorted[start], fixed_sorted[start]])
+                        out_scan.extend([lo, hi])
+                        out_group.extend([group_sorted[start], group_sorted[start]])
+                    else:
+                        out_fixed.extend(fixed_sorted[start:end])
+                        out_scan.extend(scan_sorted[start:end])
+                        out_group.extend(group_sorted[start:end])
+                    start = end
+            return np.array(out_fixed), np.array(out_scan), np.array(out_group, dtype=int)
 
-            # Create finer mesh (2nd iteration for more precise results)
-            _bb, _ee = np.meshgrid(_beta_range, _eta_range, indexing='ij')
+        def bisect_refine(fixed_vals, lo, hi, is_beta_fixed, n_iter=40):
+            """
+            Vectorized bisection that pins every crossing down to near
+            machine precision within its coarse mesh bracket [lo, hi],
+            instead of just taking the bracket's midpoint.
 
-            # Compute the Likelihood Ratio Test for the finer mesh
-            if self.ds is None:
-                _z = (2 * np.log(np.exp(
-                    ll_full_no_cens(_bb, _ee, self.df)
-                    - ll_full_no_cens(np.array([self.sol_b]),np.array([self.sol_eta]),
-                                        self.df))) + chi2.ppf(self.cl_lrb, 1))
+            Without this, a near-vertical stretch of the contour (where
+            many different fixed values share the same coarse bracket
+            of the scanned coordinate) would have all of its solutions
+            quantized to the same coordinate - visible as a spurious
+            straight line segment once rendered. Refining every
+            crossing individually resolves them to their own, slightly
+            different position instead, tracing the true curve. All
+            crossings for a direction are refined together in one
+            vectorized pass (`fixed_vals`, `lo`, `hi` are arrays), so
+            this stays cheap even for thousands of crossings.
+            """
+            if is_beta_fixed:
+                f_lo = lr_z(fixed_vals, lo)
             else:
-                _z = (2 * np.log(np.exp(
-                    ll_full(_bb, _ee, self.df, self.ds)
-                    - ll_full(np.array([self.sol_b]), np.array([self.sol_eta]),
-                                self.df, self.ds))) + chi2.ppf(self.cl_lrb, 1))
+                f_lo = lr_z(lo, fixed_vals)
+            for _ in range(n_iter):
+                mid = (lo + hi) / 2
+                f_mid = lr_z(fixed_vals, mid) if is_beta_fixed else lr_z(mid, fixed_vals)
+                keep_lo = (np.sign(f_mid) == np.sign(f_lo)) | (f_mid == 0)
+                lo = np.where(keep_lo, mid, lo)
+                hi = np.where(keep_lo, hi, mid)
+                f_lo = np.where(keep_lo, f_mid, f_lo)
+            return (lo + hi) / 2
 
-            # Create ndarray to find sign changes, which indicate solution pairs
-            _temp_sol = np.diff(np.sign(_z))
+        def scan_axis(z, beta_range, eta_range, along):
+            """
+            Scans the mesh for solution pairs in one direction.
 
-            # Mask NaN values, otherwise np.argwhere will find random results
-            _temp_sol2 = np.ma.array(_temp_sol, mask=np.isnan(_temp_sol))
+            along='eta': for every beta row, find the eta value(s) where
+                z changes sign (the classic "fix beta, solve eta" scan).
+            along='beta': for every eta column, find the beta value(s)
+                where z changes sign ("fix eta, solve beta"), which is
+                what recovers points near the left/right extremes of the
+                contour that the eta-wise scan alone can miss.
 
-            # Get solution pairs for beta and eta
-            # Nested format: array([[ idx,  val], [ idx2, val2],..., [idxn,  valn]])
-            # where idx = beta index, and val = eta index
-            _sol_all = np.argwhere(_temp_sol2)
-            _sol_beta = _sol_all[:, 0] 
-            _sol_eta = _sol_all[:, 1]
+            Returns beta_pts, eta_pts and the row/column index that each
+            solution belongs to (used afterwards to spot rows/columns
+            that only yielded a single solution).
+            """
+            if along == 'eta':
+                row, col = crossing_idx(z, axis=1)
+                beta_pts = beta_range[row]
+                eta_pts = bisect_refine(beta_pts, eta_range[col], eta_range[col + 1],
+                                         is_beta_fixed=True)
+                beta_pts, eta_pts, group_idx = collapse_to_envelope(beta_pts, eta_pts, row)
+                n_groups = len(beta_range)
+            else:
+                row, col = crossing_idx(z, axis=0)
+                eta_pts = eta_range[col]
+                beta_pts = bisect_refine(eta_pts, beta_range[row], beta_range[row + 1],
+                                          is_beta_fixed=False)
+                eta_pts, beta_pts, group_idx = collapse_to_envelope(eta_pts, beta_pts, col)
+                n_groups = len(eta_range)
+            return beta_pts, eta_pts, group_idx, n_groups
 
-            # Get mean value between sign changes for eta from new mesh
-            # Beta values are precise
-            # Return beta-eta pairs as actual numerical values
-            beta_pairs_lrb = _beta_range[_sol_beta]
-            eta_pairs_lrb = (_eta_range[_sol_eta] + _eta_range[_sol_eta + 1]) / 2
+        def refine_lone_crossings(beta_pts, eta_pts, group_idx, n_groups,
+                                   fixed_range, other_range, is_beta_fixed,
+                                   n_local=4000, expand=3.0):
+            """
+            Workaround for rows/columns where only one crossing was
+            found on the shared fine mesh (typically near-tangent
+            points close to the extremes of the contour, where the
+            missing second crossing lies outside the current mesh
+            range). For every such row/column, redo a dense 1D scan
+            over a widened range of the other coordinate to try to
+            recover the missing solution. Only the two most extreme
+            crossings found are kept (see collapse_to_envelope): a
+            near-tangent point can make z flicker with many spurious
+            noise-level sign changes rather than one clean crossing.
+            """
+            counts = np.bincount(group_idx, minlength=n_groups)
+            lone = np.where(counts == 1)[0]
+            if lone.size == 0:
+                return np.array([]), np.array([])
+
+            span = other_range.max() - other_range.min()
+            lo = max(other_range.min() - expand * span, 1e-6)
+            hi = other_range.max() + expand * span
+            local_vals = np.linspace(lo, hi, n_local)
+
+            extra_beta, extra_eta = [], []
+            for i in lone:
+                fixed_val = fixed_range[i]
+                if is_beta_fixed:
+                    b_local, e_local = np.full(n_local, fixed_val), local_vals
+                else:
+                    b_local, e_local = local_vals, np.full(n_local, fixed_val)
+
+                z_local = lr_z(b_local, e_local)
+                diff_local = np.diff(np.sign(z_local))
+                cross = np.argwhere(np.ma.array(diff_local, mask=np.isnan(diff_local))).ravel()
+                if cross.size >= 2:
+                    lo_c, hi_c = cross.min(), cross.max()
+                    for c in (lo_c, hi_c):
+                        mid = (local_vals[c] + local_vals[c + 1]) / 2
+                        if is_beta_fixed:
+                            extra_beta.append(fixed_val)
+                            extra_eta.append(mid)
+                        else:
+                            extra_beta.append(mid)
+                            extra_eta.append(fixed_val)
+
+            return np.array(extra_beta), np.array(extra_eta)
+
+        def zerofinder(beta_range_init, eta_range_init, z):
+            """
+            Returns arrays with all solution pairs (beta, eta) for the
+            LRB contour, found by scanning the mesh in both directions
+            and locally refining rows/columns with only one crossing.
+            """
+            # Step 1: rough bounding box for the refined mesh, combining
+            # both scan directions on the coarse mesh.
+            row_e, col_e = crossing_idx(z, axis=1)
+            row_b, col_b = crossing_idx(z, axis=0)
+
+            beta_rough = np.concatenate([beta_range_init[row_e], beta_range_init[row_b]])
+            eta_rough = np.concatenate([eta_range_init[col_e], eta_range_init[col_b]])
+
+            if beta_rough.size == 0:
+                raise RuntimeError('lrb(): no solutions found on the initial mesh; '
+                                    'the parameter range may need to be widened.')
+
+            # Step 2: one shared, finer mesh around the combined rough
+            # bounding box, scanned in both directions. Sharing a single
+            # mesh (instead of one per direction) halves the refine cost.
+            # delta_* is a safety margin, e.g. for samples with a high
+            # suspension ratio.
+            delta_beta = max(beta_rough.max() - beta_rough.min(), 1e-6)
+            delta_eta = max(eta_rough.max() - eta_rough.min(), 1e-6)
+            beta_range = np.linspace(max(beta_rough.min() - delta_beta, 1e-6),
+                                      beta_rough.max() + delta_beta, 1000)
+            eta_range = np.linspace(max(eta_rough.min() - delta_eta, 1e-6),
+                                     eta_rough.max() + delta_eta, 1000)
+
+            bb, ee = np.meshgrid(beta_range, eta_range, indexing='ij')
+            z_fine = lr_z(bb, ee)
+
+            beta_eta_pts, eta_eta_pts, group_eta, n_beta = scan_axis(
+                z_fine, beta_range, eta_range, along='eta')
+            beta_beta_pts, eta_beta_pts, group_beta, n_eta = scan_axis(
+                z_fine, beta_range, eta_range, along='beta')
+
+            # Step 3: workaround for rows/columns with only one crossing.
+            extra_beta_1, extra_eta_1 = refine_lone_crossings(
+                beta_eta_pts, eta_eta_pts, group_eta, n_beta,
+                fixed_range=beta_range, other_range=eta_range, is_beta_fixed=True)
+            extra_beta_2, extra_eta_2 = refine_lone_crossings(
+                beta_beta_pts, eta_beta_pts, group_beta, n_eta,
+                fixed_range=eta_range, other_range=beta_range, is_beta_fixed=False)
+
+            beta_pairs_lrb = np.concatenate(
+                [beta_eta_pts, beta_beta_pts, extra_beta_1, extra_beta_2])
+            eta_pairs_lrb = np.concatenate(
+                [eta_eta_pts, eta_beta_pts, extra_eta_1, extra_eta_2])
 
             return (beta_pairs_lrb, eta_pairs_lrb)
 
@@ -1566,24 +1796,18 @@ class Analysis:
         # Create mesh
         bb, ee = np.meshgrid(self.beta_range_init, self.eta_range_init, indexing='ij')
 
+        # Precompute the reference log-likelihood and chi-squared
+        # critical value once, both reused for every mesh/refinement
+        # evaluation inside lr_z().
+        self.chi2_val = chi2.ppf(self.cl_lrb, 1)
+        self.ll_ref = ll_func(b, eta)
+
         # Ignore log(-inf) since this is not relevant
         with np.errstate(divide='ignore', invalid='ignore'):
-            if self.ds is None:
-                self.z = (2 * np.log(np.exp(
-                    ll_full_no_cens(bb, ee, self.df)
-                    - ll_full_no_cens(np.array([b]), np.array([eta]),
-                                      self.df))) + chi2.ppf(self.cl_lrb, 1))
-                self.beta_lrb, self.eta_lrb = zerofinder(self.beta_range_init,
-                                                         self.eta_range_init,
-                                                         self.z)
-            else:
-                self.z = (2 * np.log(np.exp(
-                    ll_full(bb, ee, self.df, self.ds)
-                    - ll_full(np.array([b]), np.array([eta]),
-                              self.df,self.ds))) + chi2.ppf(self.cl_lrb, 1))
-                self.beta_lrb, self.eta_lrb = zerofinder(self.beta_range_init,
-                                                         self.eta_range_init,
-                                                         self.z)
+            self.z = lr_z(bb, ee)
+            self.beta_lrb, self.eta_lrb = zerofinder(self.beta_range_init,
+                                                     self.eta_range_init,
+                                                     self.z)
 
         # Calculate Solutions with Zerofinder
         self.bounds_lower, self.bounds_upper = t_bounds_from_pars(self.beta_lrb,
@@ -2474,8 +2698,11 @@ class PlotAll:
         if color is not None:
             color = iter(color)
         else:
-            color = iter(['royalblue', 'salmon', 'mediumseagreen',
-                               'darkorange', 'peru', 'darkcyan'])
+            cmap = Analysis._get_cmap('Set2')
+            num_colors = len(self.objects)
+            color = iter([cmap(i) for i in np.linspace(0, 1, num_colors)])
+            #color = iter(['royalblue', 'salmon', 'mediumseagreen',
+            #                   'darkorange', 'peru', 'darkcyan'])
         
         # Check linestyle input
         if linestyle is not None:
@@ -2881,7 +3108,7 @@ class PlotAll:
 
         plt.show()
 
-    def contour_plot(self, show=True, style='spline', show_legend=True, color=None, x_label=r'$\widehat\beta$',
+    def contour_plot(self, show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=r'$\widehat\beta$',
                      y_label=r'$\widehat\eta$', plot_title='Contour Plot', xy_fontsize=12,
                      plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8), save=False, **kwargs):
         """
@@ -2891,63 +3118,59 @@ class PlotAll:
         """
         # Configure plot
         plt.style.use(self.plot_style)
-        plt.figure(figsize=fig_size)
-        plt.title(plot_title, fontsize=plot_title_fontsize)
+        fig, ax = plt.subplots(figsize=fig_size)
+        ax.set_title(plot_title, fontsize=plot_title_fontsize)
         
 
         # Set colormap
         if color is not None:
             color = iter(color)
         else:
-            color = iter(['royalblue', 'salmon', 'mediumseagreen',
-                               'darkorange', 'peru', 'darkcyan'])
+            cmap = Analysis._get_cmap('Set2')
+            num_colors = len(self.objects)
+            color = iter([cmap(i) for i in np.linspace(0, 1, num_colors)])
 
-        # Get beta and eta pairs from object
         if style == 'scatter':
             for key, val in self.objects.items():
                 beta = getattr(val, 'beta_lrb')
                 eta = getattr(val, 'eta_lrb')
                 conf_level = getattr(val, 'cl')
-                plt.scatter(beta, eta, s=3, c=next(color),
+                ax.scatter(beta, eta, s=3, c=next(color),
                             label=f'{key}: {conf_level*100}%')
-        elif style == 'spline':
+        elif style == 'hull':
             for key, val in self.objects.items():
                 beta = getattr(val, 'beta_lrb')
                 eta = getattr(val, 'eta_lrb')
                 conf_level = getattr(val, 'cl')
-                beta_sorted = list(beta[0::2]) + list(beta[1::2][::-1]) + list(beta[0:1])
-                eta_sorted = list(eta[0::2]) + list(eta[1::2][::-1]) + list(eta[0:1])
+                
+                # Create Convex Hull around points
+                points = np.column_stack((beta, eta))
+                hull = ConvexHull(points)
+                hull_points = points[hull.vertices]
+                hull_points = np.vstack([hull_points, hull_points[0]])
 
-                # Compute Spline
-                tck, u = splprep([beta_sorted, eta_sorted], s=0, per=True)
-                beta_spline, eta_spline = splev(np.linspace(0, 1, 800), tck)
-                plt.plot(beta_spline, eta_spline,linewidth=1.5, markersize=4, label=f'{key}: {conf_level*100}%')
-        elif style == 'angular_line':
-            for key, val in self.objects.items():
-                beta = getattr(val, 'beta_lrb')
-                eta = getattr(val, 'eta_lrb')
-                conf_level = getattr(val, 'cl')
-                beta_sorted = list(beta[0::2]) + list(beta[1::2][::-1]) + list(beta[0:1])
-                eta_sorted = list(eta[0::2]) + list(eta[1::2][::-1]) + list(eta[0:1])
-                plt.plot(beta_sorted, eta_sorted, '-o', linewidth=1.5, markersize=4, label=f'{key}: {conf_level*100}%')
+                # Plot points and hull
+                ax.plot(hull_points[:, 0], hull_points[:, 1], c=next(color), linewidth=1.5, markersize=4, label=f'{key}: {conf_level*100}%')
 
-        plt.xlabel(x_label, fontsize=xy_fontsize)
-        plt.ylabel(y_label, fontsize=xy_fontsize)
-        plt.grid(True, which='both')
-        plt.tight_layout()
+        ax.set_xlabel(x_label, fontsize=xy_fontsize)
+        ax.set_ylabel(y_label, fontsize=xy_fontsize)
+        ax.grid(True, which='both')
+        fig.tight_layout()
 
         if show_legend:
-            plt.legend(fontsize=legend_fontsize)
+            ax.legend(fontsize=legend_fontsize)
 
         # Save plot
         if save:
             try:
-                plt.savefig(kwargs['path'])
+                ax.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
-
+        if show_weibull==True:
+            return fig
         if show:
             plt.show()
+
 
     def weibull_pdf(self, beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels = None,
                     x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=9,
@@ -3141,5 +3364,15 @@ if __name__ == '__main__':
     failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
               0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
               1.3201853093496474, 1.492172669340363]
-    x = Analysis(df=failures_a, bounds='npbb', bounds_type='2s', show=True)
-    x.mle()
+
+    #
+    #PlotAll(objects).contour_plot()
+    
+    contour_decision = True
+    objects = {}
+    if contour_decision == True:
+        for cl in [0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]:
+            key = f"variable_{str(cl).replace('.', '_')}"
+            objects[key] = Analysis(df=failures_a, bounds='lrb', bounds_type='2s', show=False, cl=cl)
+            objects[key].mle()
+        PlotAll(objects).contour_plot()
