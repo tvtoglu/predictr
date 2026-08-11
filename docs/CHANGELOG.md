@@ -10,10 +10,10 @@ All notable changes to this project will be documented in this file.
 ## [0.1.31] - 2025-08-11
 ### Improved
  Long time no see! I’m back! Expect many exciting updates as we make Predictr the best reliability tool out there!  
- - Vectorized MCPB for MRR: up to 300x faster
- - Vectorized parametric and non-parametric bootstrap bias correction: up to 900x faster
- - Vectorized bootstrap bounds: up to x900 faster
- - Vectorized LRB: up to 200x faster
+ - Vectorized MCPB for MRR: up to 300x faster  
+ - Vectorized parametric and non-parametric bootstrap bias correction: up to 900x faster  
+ - Vectorized bootstrap bounds: up to x900 faster  
+ - Vectorized LRB: up to 200x faster  
 ### Fixed
  - PlotAll.contour_plot() now searches for beta solutions for a fixed eta value, hence, adding more solutions to the contour plot. The curve now looks smoother.
 
