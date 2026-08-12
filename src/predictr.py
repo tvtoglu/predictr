@@ -2794,7 +2794,7 @@ class PlotAll:
 
     def mult_weibull(self, x_label='Time To Failure', y_label='Unreliability',
                      plot_title='Weibull Probability Plot', xy_fontsize=12,
-                     plot_title_fontsize=12, legend_fontsize=9, fig_size=(6, 7),
+                     plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7),
                      x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None,
                      **kwargs):
         """

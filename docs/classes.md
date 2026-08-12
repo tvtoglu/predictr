@@ -16,14 +16,15 @@ This table provides information on alle arguments that are passed to the Analysi
 | cl                  | 0.9                        | float           | Sets the confidence level when bounds are used                                                     |
 | bs_size             | 5000                       | int             | Number of bootstrap samples                                                                        |
 | est_type            | 'median'                   | str             | Sets the statistic to compute from the bootstrap samples                                           |
-| plot_style          | 'ggplot'                   | str             | Choose a style according to your needs. See matplotlib style references for more available styles. |
+| plot_style          | 'predictr'                 | str             | Choose a style according to your needs. 'predictr' is predictr's own built-in style (no setup required); see matplotlib style references for other available styles. |
 | unit                | '-'                        | str             | Unit of failures and suspensions, e.g. 's', 'ms', 'no. of cycle' etc.                              |
 | x_label             | 'Time to Failure'          | string          | Label for the x-axis                                                                               |
 | y_label             | 'Unreliability'            | string          | Label for the y-axis                                                                               |
-| xy_fontsize         | 12                         | float           | fontsize for the axes label and ticks                                                              |
+| xy_fontsize         | 12                         | float           | Fontsize for the axes label                                                                        |
+| tick_fontsize       | 10                         | float           | Fontsize for the tick labels (the numbers on the axes)                                             |
 | legend_fontsize     | 9                          | float           | Fontsize for the legend                                                                            |
 | plot_title          | 'Weibull Probability Plot' | string          | Title for the plot                                                                                 |
-| plot_title_fontsize | 12                         | float           | Fontsize of the plot title                                                                         |
+| plot_title_fontsize | 14                         | float           | Fontsize of the plot title                                                                         |
 | fig_size            | (6, 7)                     | tuple of floats | Sets figure width and height in inches: (width, height)                                            |
 | save                | False                      | boolean         | the beta and eta length of lists.                                                                  |
 | plot_ranks          | True                       | boolean         | If True, median ranks will be plotted.                                                             |
@@ -166,15 +167,15 @@ By default, the markers for the median ranks will be plotted. Set plot_ranks=Fal
 The figure size can be modified with fig_size=(width, height). Width and height set the figure size in inches.
 ```python
 failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
-prototype_a = Analysis(df=failures, bounds='fb',show=True, show_legend=True, legend_fontsize=10, show_ranks=False, fig_size=(7, 7))
+prototype_a = Analysis(df=failures, bounds='fb',show=True, show_legend=True, legend_fontsize=10, plot_ranks=False, fig_size=(7, 7))
 prototype_a.mle()
 ```
 ![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Analysis_Plot_Modification2.png){: width="500" }
 
 ## PlotAll
 PlotAll plots class objects from Analysis in one figure. Currently, only data from mle() is supported.
-Theoretically, you can plot as many objects as you like -> provide a list of colors as a kwarg in PlotAll(objects, **kwargs).mult_weibull(). <b>
-For now, six colors are supported by default, but you can pass an infinit amount of colors to the mult_weibull() method.
+Theoretically, you can plot as many objects as you like -> provide a list of colors (and, for mult_weibull(), optionally a matching list of linestyles) as a kwarg in PlotAll(objects, **kwargs).mult_weibull() / .contour_plot(). <b>
+By default, predictr uses its own 6-color categorical palette. If you plot more than 6 datasets without passing your own `color`, the palette repeats, but the linestyle automatically advances (solid -> dashed -> dotted -> dash-dot) with every full pass through the palette, so up to 24 datasets stay visually distinguishable by color+shape before anything repeats outright.
 
 **Available methods**:
 
@@ -190,33 +191,40 @@ Most of the arguments are either self explanatory or already defined in [default
 
 | Methods          | Default arguments                                                                                                                                                                                                                                         |
 |------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| mult_weibull()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, linestyle=None, legend_fontsize=9, **kwargs               |
-| contour_plot()   | show_legend=True, style='spline', x_label=r'$\widehat\beta$', y_label=r'$\widehat\eta$', plot_title='Contour Plot', xy_fontsize=12, plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8), save=False, **kwargs                                  |
-| weibull_pdf()    | beta=None, eta=None, linestyle=None, labels = None,x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8, plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None, fig_size=None, color=None, save=False, plot_style='ggplot', **kwargs |
-| simple_weibull() | beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, plot_title_fontsize=12, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs  |
+| mult_weibull()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, **kwargs    |
+| contour_plot()   | show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=r'$\widehat\beta$', y_label=None, plot_title='Contour Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6.4, 4.8), save=False, scale_mode='auto', log_ratio_threshold=10, cl_set=None, curve_fill=True, fill_alpha=0.25, **kwargs |
+| weibull_pdf()    | beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels=None, x_label=None, y_label=None, xy_fontsize=12, tick_fontsize=10, legend_fontsize=9, plot_title='Weibull PDF', plot_title_fontsize=14, x_bounds=None, fig_size=None, color=None, save=False, plot_style='predictr', **kwargs |
+| simple_weibull() | beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10, plot_title_fontsize=14, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs |
 
 
 | Parameter(s)        | default value              | type            | description                                                                                        |
 |---------------------|----------------------------|-----------------|----------------------------------------------------------------------------------------------------|
 | df                  | None                       | list of floats  | List of failures                                                                                   |
 | ds                  | None                       | list of floats  | List of suspensions (right-censored only)                                                          |
-| plot_style          | 'ggplot'                   | str             | Choose a style according to your needs. See matplotlib style references for more available styles. |
+| plot_style          | 'predictr'                 | str             | Choose a style according to your needs. 'predictr' is predictr's own built-in style (no setup required); see matplotlib style references for other available styles. Only weibull_pdf() exposes this as its own argument - mult_weibull()/contour_plot()/simple_weibull() inherit it from the Analysis object(s) passed in. |
 | unit                | '-'                        | str             | Unit of failures and suspensions, e.g. 's', 'ms', 'no. of cycle' etc.                              |
 | x_label             | depends on method          | string          | Label for the x-axis                                                                               |
 | y_label             | depends on method          | string          | Label for the y-axis                                                                               |
 | labels              |                            | string          | List containing the labels for the plot legend in weibull_pdf()                                    |
-| xy_fontsize         | 12                         | float           | fontsize for the axes label and ticks                                                              |
+| xy_fontsize         | 12                         | float           | Fontsize for the axes label                                                                        |
+| tick_fontsize       | 10                         | float           | Fontsize for the tick labels (the numbers on the axes). weibull_pdf() and simple_weibull() only.    |
 | legend_fontsize     | 9                          | float           | Fontsize for the legend                                                                            |
 | plot_title          | 'Weibull Probability Plot' | string          | Title for the plot                                                                                 |
-| plot_title_fontsize | 12                         | float           | Fontsize of the plot title                                                                         |
+| plot_title_fontsize | 14                         | float           | Fontsize of the plot title                                                                         |
 | fig_size            | (6, 7)                     | tuple of floats | Sets figure width and height in inches: (width, height)                                            |
 | save                | False                      | boolean         | If True, the plot is saved according to the path (kwargs)                                          |
-| style               | 'spline'                   | string          | Defines the style being used for the contour plot: 'scatter', 'angular_line'                       |
+| style               | 'hull'                     | string          | contour_plot() only. Defines how each dataset's confidence region is drawn: 'hull' (convex hull outline, optionally filled) or 'scatter' (raw sampled points)                       |
+| show_weibull        | False                      | boolean         | contour_plot() only. If True, returns the matplotlib Figure object instead of just showing/saving it        |
+| scale_mode          | 'auto'                     | string          | contour_plot() only. Scaling of the eta (y) axis: 'auto' switches to a log scale when eta spans more than log_ratio_threshold across datasets, 'linear'/'log' force the respective scale |
+| log_ratio_threshold | 10                         | float           | contour_plot() only. max(eta)/min(eta) ratio above which scale_mode='auto' switches to a log scale  |
+| cl_set              | None                       | list of floats  | contour_plot() only. Confidence levels to draw per dataset, e.g. [0.95, 0.9, 0.8]. If None, each object's own cl attribute is used (one curve per object, as before) |
+| curve_fill          | True                       | boolean         | contour_plot() only. If True, the area enclosed by each confidence-region curve is filled          |
+| fill_alpha          | 0.25                       | float           | contour_plot() only. Opacity used for curve_fill                                                    |
 | plot_ranks          | True                       | boolean         | If True, median ranks will be plotted.                                                             |
 | show_legend         | True                       | boolean         | If True, the legend will be plotted                                                                |
 | weibull_pdf: beta, eta| None, None               | list of floats or None | Attributes from Analysis object. Pairs of beta and eta values to be plotted. Each parameter pair must have the same index value.|
-| linestyle         |    ['-', '--', ':', '-.']   | list of strings      | Defines the linestyle(s) in the plot. Must be greater or equal to the length of beta ans eta lists                 |
-|color        |             None               | list of strings         | List containing the colormap for the plotted lines. Length of list must be equal to the beta and eta length of lists or the number of Analysis objects.  |
+| linestyle         |    ['-', '--', ':', '-.']   | list of strings      | weibull_pdf(): required, must match the length of beta/eta. mult_weibull(): optional, must match the number of objects if given.                 |
+|color        |             None               | list of strings         | List containing the colors for the plotted lines/datasets. If not given, predictr's built-in 6-color palette is used (see note above the "Available methods" table for what happens with more than 6 datasets). If given, length must match the beta/eta length (weibull_pdf()) or the number of Analysis objects (mult_weibull(), contour_plot()).  |
 | x_bounds    |                            | list of floats          | Sets x-axis boundaries: [start, stop] or [start, end, steps inbetween], respectively.|
 | simple_weibull:beta, eta    |                            | float          | Weibull parameter pair which will be plotted|
 | kwarg: path         |                            | string          | Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'                  |
@@ -309,6 +317,8 @@ PlotAll(objects).mult_weibull(plot_ranks=False, color=colors)
 ### contour_plot()
 contour_plot() only works for likelihood ratio bounds. Hence, you have to use bounds='lrb' in the Analysis class. This method supports all bounds types and all confidence levels. You can pass as many objects as you want to.
 
+Each dataset's confidence region is drawn as a filled hull by default (curve_fill=True), with its confidence level labeled directly on the curve and its point estimate marked as a dot - see the "Default Arguments of each method" and parameter table above for style, cl_set, curve_fill, scale_mode and log_ratio_threshold.
+
 #### Plot a single Analysis object
 ```python
 from predictr import Analysis, PlotAll
@@ -350,10 +360,11 @@ PlotAll(objects).contour_plot()
 This method plots one or more Weibull probability density functions. Axes are completely customizable.
 
 Arguments:
-weibull_pdf(self, beta=None, eta=None, linestyle=None, labels = None,
-                    x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8,
-                    plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None,
-                    fig_size=None, color=None, save=False, plot_style='ggplot', kwargs)
+weibull_pdf(self, beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels=None,
+                    x_label=None, y_label=None, xy_fontsize=12, tick_fontsize=10,
+                    legend_fontsize=9, plot_title='Weibull PDF', plot_title_fontsize=14,
+                    x_bounds=None, fig_size=None, color=None, save=False,
+                    plot_style='predictr', **kwargs)
 ```python
 from predictr import Analysis, PlotAll
 
