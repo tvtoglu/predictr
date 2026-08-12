@@ -24,6 +24,84 @@ from scipy.stats.distributions import weibull_min
 from scipy.spatial import ConvexHull
 
 
+# predictr's default matplotlib style. Kept in sync with src/predictr.mplstyle
+# (the human-editable reference copy) but embedded here as a plain dict so
+# 'predictr' works everywhere right after `pip install predictr`, with no
+# extra file to ship/discover and no per-machine registration in
+# matplotlib's stylelib directory required.
+PREDICTR_STYLE = {
+    'lines.linewidth': 4,
+    'lines.solid_capstyle': 'butt',
+
+    'legend.fancybox': True,
+    'legend.frameon': True,
+    'legend.facecolor': '#f7f7f7',
+    'legend.edgecolor': '#bababa',
+    'legend.framealpha': 0.9,
+    'legend.borderpad': 0.5,
+    'legend.title_fontsize': 10.0,
+
+    'axes.prop_cycle': plt.cycler('color', ['#008fd5', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b', '#810f7c']),
+    'axes.facecolor': '#fefefe',
+    'axes.labelsize': 12,
+    'axes.axisbelow': True,
+    'axes.grid': True,
+    'axes.edgecolor': '#fefefe',
+    'axes.linewidth': 3.0,
+    'axes.titlesize': 'x-large',
+    'axes.titlepad': 15.0,
+    'axes.labelpad': 8.0,
+
+    'patch.edgecolor': '#f0f0f0',
+    'patch.linewidth': 0.5,
+
+    'svg.fonttype': 'path',
+
+    'grid.linestyle': '-',
+    'grid.linewidth': 1.0,
+    'grid.color': '#c7c7c7',
+
+    'xtick.major.size': 5,
+    'xtick.major.width': 1.2,
+    'xtick.major.pad': 6,
+    'xtick.minor.size': 3,
+    'xtick.minor.width': 0.8,
+    'xtick.minor.visible': False,
+    'xtick.color': '#333333',
+    'xtick.labelsize': 10,
+
+    'ytick.major.size': 5,
+    'ytick.major.width': 1.2,
+    'ytick.major.pad': 6,
+    'ytick.minor.size': 0,
+    'ytick.color': '#333333',
+    'ytick.labelsize': 10,
+
+    'font.size': 11.0,
+
+    'figure.subplot.left': 0.08,
+    'figure.subplot.right': 0.95,
+    'figure.subplot.bottom': 0.07,
+    'figure.facecolor': '#ffffff',
+    'figure.dpi': 120,
+
+    'savefig.dpi': 300,
+}
+
+
+def _apply_plot_style(style):
+    """
+    Applies a matplotlib plot style. 'predictr' is handled directly via
+    PREDICTR_STYLE (no file/registration needed); anything else (a built-in
+    style name, a custom style name registered in matplotlib's stylelib, or
+    a path to a .mplstyle file) is passed through to plt.style.use().
+    """
+    if style == 'predictr':
+        plt.rcParams.update(PREDICTR_STYLE)
+    else:
+        plt.style.use(style)
+
+
 class Analysis:
     """
     Analysis provides parameter estimations, confidence bounds
@@ -186,10 +264,11 @@ class Analysis:
         return beta_k, eta_k
 
     def __init__(self, df: list = None, ds: list = None, show: bool = False,
-                 plot_style='ggplot', bounds=None, bounds_type='2s',
+                 plot_style='predictr', bounds=None, bounds_type='2s',
                  cl=0.9, bcm=None, bs_size=5000, est_type='median',
                  unit='-', x_label = 'Time to Failure',
-                 y_label = 'Unreliability', xy_fontsize=12, plot_title_fontsize=12,
+                 y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10,
+                 plot_title_fontsize=14,
                  plot_title='Weibull Probability Plot', plot_ranks=True,
                  fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, **kwargs):
         """
@@ -202,7 +281,7 @@ class Analysis:
         show : bool, optional
             If True, plot will be shown. The default is False.
         plot_style : string, optional
-            Sets. The default is 'ggplot'.
+            Sets. The default is 'predictr'.
         bounds : string, optional
             Sets the bounds method. The default is None.
         bounds_type : string, optional
@@ -222,19 +301,21 @@ class Analysis:
         y_label : string, optional
             Label for the y-axis. The default is 'Unreliability'.
         xy_fontsize : float, optional
-            Fontsize for the axes label and ticks. The default is 12.
+            Fontsize for the axes labels (xlabel/ylabel). The default is 12.
+        tick_fontsize : float, optional
+            Fontsize for the tick labels (the numbers on the axes). The default is 10.
         legend_fontsize : float, optional
             Fontsize for the legend. The default is 9.
         plot_title : string, optional
             Title for the plot. The default is 'Weibull Probability Plot'.
         plot_title_fontsize : float, optional
-            Fontsize of the plot title. The default is 12.
+            Fontsize of the plot title. The default is 14.
         fig_size : tuple of floats, optional
             Sets width and height in inches: (width, height)
         save : boolean, optional
             If True, the plot is saved according to the path. The default is False.
         plot_style : string, optional
-            Matplotlib plot style. The default is 'ggplot'.
+            Matplotlib plot style. The default is 'predictr'.
         plot_ranks : boolean, optional
             If True, median ranks will be plotted.
         show_legend : boolean, optional
@@ -275,6 +356,7 @@ class Analysis:
         self.plot_style = plot_style
         self.x_label, self.y_label, self.plot_title = x_label, y_label, plot_title
         self.xy_fontsize, self.plot_title_fontsize = xy_fontsize, plot_title_fontsize
+        self.tick_fontsize = tick_fontsize
         self.show_legend, self.legend_fontsize = show_legend, legend_fontsize
         self.fig_size, self.plot_ranks, self.save = fig_size, plot_ranks, save
         if self.save:
@@ -1027,7 +1109,7 @@ class Analysis:
             return ((-np.log(1 -perc)) ** (1 / beta)) * eta
 
         # Generate Weibull Plot Figure
-        plt.style.use(self.plot_style)
+        _apply_plot_style(self.plot_style)
         plt.figure(figsize=self.fig_size)
 
         # Y-Axis
@@ -1091,9 +1173,9 @@ class Analysis:
         # Set labels and legends
         plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
         plt.xlabel(f'{self.x_label}{" in "+self.unit if self.unit!="-" else ""}', color='black', fontsize=self.xy_fontsize)
-        plt.xticks(fontsize=self.xy_fontsize)
+        plt.xticks(fontsize=self.tick_fontsize)
         plt.ylabel(self.y_label + ' in %', color='black', fontsize=self.xy_fontsize)
-        plt.yticks(fontsize=self.xy_fontsize)
+        plt.yticks(fontsize=self.tick_fontsize)
 
         # Plot legend
         if self.ds is None:
@@ -1348,6 +1430,33 @@ class Analysis:
                              markersize=4, alpha=.5, linestyle='None', zorder= 3)
 
         plt.tight_layout()
+
+        # bbox_to_anchor=(0.65, 0.0) above can push the legend past the
+        # right edge of the figure depending on bounds/bounds_type; widen
+        # the figure so the legend stays fully visible instead of being
+        # clipped. Measured via a throwaway Agg renderer so this works
+        # reliably regardless of the active display backend (interactive
+        # backends like macosx don't reliably populate a renderer via a
+        # plain canvas.draw()). Must run AFTER tight_layout(): tight_layout
+        # tightens the axes margins, shifting the (axes-relative) legend
+        # anchor further right - measuring before it would just get
+        # squeezed away again. Deliberately not calling tight_layout()
+        # again afterwards, so the added width stays as real margin instead
+        # of being re-absorbed.
+        legend = plt.gca().get_legend()
+        if legend is not None:
+            fig = plt.gcf()
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            original_canvas = fig.canvas
+            FigureCanvasAgg(fig)
+            fig.canvas.draw()
+            legend_bbox = legend.get_window_extent(fig.canvas.get_renderer())
+            fig.canvas = original_canvas
+            fig_px_width = fig.get_size_inches()[0] * fig.dpi
+            if legend_bbox.x1 > fig_px_width:
+                extra_in = (legend_bbox.x1 - fig_px_width) / fig.dpi
+                width_in, height_in = fig.get_size_inches()
+                fig.set_size_inches(width_in + extra_in + 0.25, height_in)
         plt.grid(True, which='both')
 
         # Save plot
@@ -1897,7 +2006,7 @@ class Analysis:
             return ((-np.log(1 -perc)) ** (1 / beta)) * eta
 
         # Generate Weibull Plot Figure
-        plt.style.use(self.plot_style)
+        _apply_plot_style(self.plot_style)
         plt.figure(figsize=self.fig_size)
 
         # Y-Axis
@@ -1995,9 +2104,9 @@ class Analysis:
         # Set labels and legends
         plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
         plt.xlabel(f'{self.x_label}{" in "+self.unit if self.unit!="-" else ""}', color='black', fontsize=self.xy_fontsize)
-        plt.xticks(fontsize=self.xy_fontsize)
+        plt.xticks(fontsize=self.tick_fontsize)
         plt.ylabel(f'{self.y_label} in %', color='black', fontsize=self.xy_fontsize)
-        plt.yticks(fontsize=self.xy_fontsize)
+        plt.yticks(fontsize=self.tick_fontsize)
 
         # General style properties
         self.unrel = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01,
@@ -2501,6 +2610,33 @@ class Analysis:
                              markersize=4, alpha=.5, linestyle='None', zorder= 3)
 
         plt.tight_layout()
+
+        # bbox_to_anchor=(0.65, 0.0) above can push the legend past the
+        # right edge of the figure depending on bounds/bounds_type; widen
+        # the figure so the legend stays fully visible instead of being
+        # clipped. Measured via a throwaway Agg renderer so this works
+        # reliably regardless of the active display backend (interactive
+        # backends like macosx don't reliably populate a renderer via a
+        # plain canvas.draw()). Must run AFTER tight_layout(): tight_layout
+        # tightens the axes margins, shifting the (axes-relative) legend
+        # anchor further right - measuring before it would just get
+        # squeezed away again. Deliberately not calling tight_layout()
+        # again afterwards, so the added width stays as real margin instead
+        # of being re-absorbed.
+        legend = plt.gca().get_legend()
+        if legend is not None:
+            fig = plt.gcf()
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            original_canvas = fig.canvas
+            FigureCanvasAgg(fig)
+            fig.canvas.draw()
+            legend_bbox = legend.get_window_extent(fig.canvas.get_renderer())
+            fig.canvas = original_canvas
+            fig_px_width = fig.get_size_inches()[0] * fig.dpi
+            if legend_bbox.x1 > fig_px_width:
+                extra_in = (legend_bbox.x1 - fig_px_width) / fig.dpi
+                width_in, height_in = fig.get_size_inches()
+                fig.set_size_inches(width_in + extra_in + 0.25, height_in)
         plt.grid(True, which='both')
 
         # Save plot
@@ -2799,7 +2935,7 @@ class PlotAll:
             x_axis_max = x_bounds[1]
 
         # Generate Weibull Plot Figure
-        plt.style.use(self.plot_style)
+        _apply_plot_style(self.plot_style)
         plt.figure(figsize=fig_size)
 
         # Y-Axis
@@ -3140,7 +3276,7 @@ class PlotAll:
 
     def contour_plot(self, show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=r'$\widehat\beta$',
                      y_label=None, plot_title='Contour Plot', xy_fontsize=12,
-                     plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8), save=False,
+                     plot_title_fontsize=14, legend_fontsize=9, fig_size=(6.4, 4.8), save=False,
                      scale_mode='auto', log_ratio_threshold=10, cl_set=None,
                      curve_fill=True, fill_alpha=0.25, **kwargs):
         """
@@ -3191,7 +3327,7 @@ class PlotAll:
             cl_set = sorted(cl_set, reverse=True)
 
         # Configure plot
-        plt.style.use(self.plot_style)
+        _apply_plot_style(self.plot_style)
         fig, ax = plt.subplots(figsize=fig_size)
         ax.set_title(plot_title, fontsize=plot_title_fontsize)
 
@@ -3380,9 +3516,10 @@ class PlotAll:
 
 
     def weibull_pdf(self, beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels = None,
-                    x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=9,
-                    plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None,
-                    fig_size=None, color=None, save=False, plot_style='ggplot', **kwargs):
+                    x_label = None, y_label=None, xy_fontsize=12, tick_fontsize=10,
+                    legend_fontsize=9,
+                    plot_title='Weibull PDF', plot_title_fontsize=14, x_bounds=None,
+                    fig_size=None, color=None, save=False, plot_style='predictr', **kwargs):
         """
         Parameters
         ----------
@@ -3399,13 +3536,15 @@ class PlotAll:
         y_label : string, optional
             Label for the y-axis. The default is None.
         xy_fontsize : float, optional
-            Fontsize for the axes label and ticks. The default is 10.
+            Fontsize for the axes labels. The default is 12.
+        tick_fontsize : float, optional
+            Fontsize for the tick labels. The default is 10.
         legend_fontsize : float, optional
-            Fontsize for the legend. The default is 8.
+            Fontsize for the legend. The default is 9.
         plot_title : string, optional
             Title for the plot. The default is 'Weibull PDF'.
         plot_title_fontsize : float, optional
-            Fontsize of the plot title. The default is 12.
+            Fontsize of the plot title. The default is 14.
         x_bounds : list of floats,
             Sets x-axis boundaries: [start, end, steps]
         fig_size : tuple of floats, optional
@@ -3416,7 +3555,7 @@ class PlotAll:
         save : boolean, optional
             If True, the plot is saved according to the path. The default is False.
         plot_style : TYPE, optional
-            DESCRIPTION. The default is 'ggplot'.
+            DESCRIPTION. The default is 'predictr'.
         **kwargs :
             path: string
                 Path defines the directory and format of the figure E.g. r'var/user/.../test.pdf'
@@ -3450,7 +3589,7 @@ class PlotAll:
         xvals = np.linspace(x_bounds[0], x_bounds[1], x_bounds[2])
 
         # Configure plot
-        plt.style.use(plot_style)
+        _apply_plot_style(plot_style)
 
         # Check if custom size for plot is set
         if fig_size is not None:
@@ -3464,12 +3603,12 @@ class PlotAll:
         if x_label is not None:
             plt.xlabel(x_label, fontsize=xy_fontsize)
         else:
-            plt.xticks(fontsize=xy_fontsize)
+            plt.xticks(fontsize=tick_fontsize)
 
         if y_label is not None:
             plt.ylabel(y_label, fontsize=xy_fontsize)
         else:
-            plt.yticks(fontsize=xy_fontsize)
+            plt.yticks(fontsize=tick_fontsize)
 
         # Check if multiple lines need to be plotted
         if type(beta)==list and type(eta) == list:
@@ -3497,8 +3636,8 @@ class PlotAll:
         plt.show()
 
     def simple_weibull(self, beta, eta, unit='-', x_label = 'Time to Failure',
-                       y_label = 'Unreliability', xy_fontsize=12,
-                       plot_title_fontsize=12, plot_title='Weibull Probability Plot',
+                       y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10,
+                       plot_title_fontsize=14, plot_title='Weibull Probability Plot',
                        fig_size=(6, 7), show_legend=True, legend_fontsize=9,
                        save=False, df=None, ds=None, **kwargs):
         """
@@ -3511,19 +3650,21 @@ class PlotAll:
         y_label : string, optional
             Label for the y-axis. The default is None.
         xy_fontsize : float, optional
-            Fontsize for the axes label and ticks. The default is 10.
+            Fontsize for the axes labels. The default is 12.
+        tick_fontsize : float, optional
+            Fontsize for the tick labels. The default is 10.
         legend_fontsize : float, optional
-            Fontsize for the legend. The default is 8.
+            Fontsize for the legend. The default is 9.
         plot_title : string, optional
             Title for the plot. The default is 'Weibull PDF'.
         plot_title_fontsize : float, optional
-            Fontsize of the plot title. The default is 12.
+            Fontsize of the plot title. The default is 14.
         size : tuple of floats, optional
             Sets width and height in inches: (width, height)
         save : boolean, optional
             If True, the plot is saved according to the path. The default is False.
         plot_style : TYPE, optional
-            DESCRIPTION. The default is 'ggplot'.
+            DESCRIPTION. The default is 'predictr' (inherited from Analysis).
         unit : TYPE, optional
             DESCRIPTION. The default is '-'.
         show_legend : TYPE, optional
@@ -3551,6 +3692,7 @@ class PlotAll:
         setattr(x, 'x_label', x_label)
         setattr(x, 'y_label', y_label)
         setattr(x, 'xy_fontsize', xy_fontsize)
+        setattr(x, 'tick_fontsize', tick_fontsize)
         setattr(x, 'plot_title', plot_title)
         setattr(x, 'plot_title_fontsize', plot_title_fontsize)
         setattr(x, 'fig_size', fig_size)
@@ -3598,3 +3740,7 @@ if __name__ == '__main__':
 
     obj = {'x': x, 'y':y }
     PlotAll(obj).contour_plot(curve_fill= True, scale_mode='auto', cl_set=[.7, 0.8, 0.9])
+
+    failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+    prototype_a = Analysis(df=failures, bounds='bbb', show=True)
+    prototype_a.mrr()
