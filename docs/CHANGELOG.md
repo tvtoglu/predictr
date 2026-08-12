@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.32] - 2025-08-12
+### Fixed
+ - Fixed import handling for get_cmap in order to ensure compability throughout different matplotlib version
+
 ## [0.1.31] - 2025-08-11
 ### Improved
  Long time no see! I’m back! Expect many exciting updates as we make Predictr the best reliability tool out there!  
