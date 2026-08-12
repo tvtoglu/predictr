@@ -10,7 +10,10 @@ from math import floor, ceil
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from matplotlib.cm import get_cmap
+try:
+    from matplotlib.cm import get_cmap
+except ImportError:
+    get_cmap = None
 import pandas as pd
 from scipy import optimize
 from scipy.special import gamma
@@ -36,6 +39,8 @@ class Analysis:
         try:
             return mpl.colormaps[name]
         except (TypeError, AttributeError):
+            if get_cmap is None:
+                raise
             return get_cmap(name)
 
     @staticmethod
