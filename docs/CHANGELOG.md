@@ -15,6 +15,13 @@ All notable changes to this project will be documented in this file.
     - cl_set: is a list containing confidence levels to be drawn for each dataset
  - The confidence level each object is now shown as a contour line label (clabel). Hence, the legend is now decluttered  
  - Point estimates of each dataset are shown as a scatter point
+ - New built-in matplotlib style 'predictr' (the new default plot_style), with tuned defaults for presentation/documentation use: colors, tick padding/size, title spacing, and a new tick_fontsize argument to size axis-label and tick-number text independently
+ - Unified categorical color palette used across mult_weibull(), contour_plot() and weibull_pdf() (previously three different, uncoordinated color sources). For more than 6 datasets, the palette now cycles color together with linestyle (solid/dashed/dotted/dash-dot), so datasets stay visually distinguishable instead of silently repeating a color
+### Fixed
+ - MLE/MRR plots no longer clip the legend at the right figure edge when its position overflows the canvas (widened automatically instead)
+ - contour_plot(save=True) no longer crashes with an AttributeError
+ - weibull_pdf() no longer reuses a previous plot's leftover axes (log scale, probability-paper formatting) when no fig_size is given, and its line widths no longer default to an overly thick 4pt
+ - The plot border is no longer thicker and lighter than the grid lines, which could make the outermost gridline invisible
 
 ## [0.1.32] - 2025-08-12
 ### Fixed
