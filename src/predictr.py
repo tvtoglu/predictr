@@ -9,6 +9,7 @@ from logging import raiseExceptions
 from math import floor, ceil
 import copy
 import colorsys
+import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -22,6 +23,31 @@ from scipy.special import gamma
 from scipy.stats import norm, chi2, beta, linregress, trim_mean
 from scipy.stats.distributions import weibull_min
 from scipy.spatial import ConvexHull
+
+
+# predictr's categorical palette (up to 6 clearly distinct series) and the
+# linestyles used to extend it beyond 6 - see _categorical_style() below.
+PREDICTR_PALETTE = ['#008b8b', '#008fd5', '#810f7c', '#8b8b8b', '#fc4f30', '#e5c494']
+PREDICTR_LINESTYLES = ['-', '--', ':', '-.']
+
+
+def _categorical_style(n):
+    """
+    Returns n (color, linestyle) pairs for plotting n series/datasets.
+    The first len(PREDICTR_PALETTE) series get one of predictr's palette
+    colors each, all solid. Past that, colors repeat from the start of the
+    palette but the linestyle advances to the next one in PREDICTR_LINESTYLES
+    for every full pass through the palette - so up to
+    len(PREDICTR_PALETTE) * len(PREDICTR_LINESTYLES) series stay
+    distinguishable by color+shape before any (color, linestyle)
+    combination repeats. A generated hue is never invented for a 7th+
+    series, as that would silently blur into an existing one instead of
+    reusing an already-distinct combination.
+    """
+    n_colors = len(PREDICTR_PALETTE)
+    colors = [PREDICTR_PALETTE[i % n_colors] for i in range(n)]
+    linestyles = [PREDICTR_LINESTYLES[(i // n_colors) % len(PREDICTR_LINESTYLES)] for i in range(n)]
+    return colors, linestyles
 
 
 # predictr's default matplotlib style. Kept in sync with src/predictr.mplstyle
@@ -41,7 +67,7 @@ PREDICTR_STYLE = {
     'legend.borderpad': 0.5,
     'legend.title_fontsize': 10.0,
 
-    'axes.prop_cycle': plt.cycler('color', ['#008fd5', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b', '#810f7c']),
+    'axes.prop_cycle': plt.cycler('color', PREDICTR_PALETTE),
     'axes.facecolor': '#fefefe',
     'axes.labelsize': 12,
     'axes.axisbelow': True,
@@ -2859,27 +2885,33 @@ class PlotAll:
             adj_ranks = bernard(adj_ranks, n, cl)
             return adj_ranks
 
-        # Check colormap
-        # Set line color
-        if color is not None:
-            color = iter(color)
+        # Set line color/linestyle. When neither is given, predictr's
+        # categorical palette is used and, for more than 6 objects, the
+        # linestyle is cycled alongside the color so each dataset stays
+        # visually distinguishable instead of repeating a bare color (see
+        # _categorical_style()).
+        num_objects = len(self.objects)
+        if color is None and linestyle is None:
+            default_colors, default_linestyles = _categorical_style(num_objects)
+            color = iter(default_colors)
+            l_style = iter(default_linestyles)
         else:
-            cmap = Analysis._get_cmap('Set2')
-            num_colors = len(self.objects)
-            color = iter([cmap(i) for i in np.linspace(0, 1, num_colors)])
-            #color = iter(['royalblue', 'salmon', 'mediumseagreen',
-            #                   'darkorange', 'peru', 'darkcyan'])
-        
-        # Check linestyle input
-        if linestyle is not None:
-            l_style = iter(linestyle)
-            # Check if provided number of linstyle is in accordance with number of objects
-            if len(self.objects) != len(linestyle):
-                raise ValueError(f'Number of linestyles ({len(linestyle)}) is'\
-                                 ' not in accordance with the number of'\
-                                     f' objects ({len(self.objects)}).')
-        else:
-            l_style = iter(len(self.objects) * ['-'])
+            if color is not None:
+                color = iter(color)
+            else:
+                default_colors, _ = _categorical_style(num_objects)
+                color = iter(default_colors)
+
+            # Check linestyle input
+            if linestyle is not None:
+                # Check if provided number of linstyle is in accordance with number of objects
+                if num_objects != len(linestyle):
+                    raise ValueError(f'Number of linestyles ({len(linestyle)}) is'\
+                                     ' not in accordance with the number of'\
+                                         f' objects ({num_objects}).')
+                l_style = iter(linestyle)
+            else:
+                l_style = iter(num_objects * ['-'])
 
         # Get t_min and t_max to plot
         temp_list = []
@@ -3332,13 +3364,19 @@ class PlotAll:
         ax.set_title(plot_title, fontsize=plot_title_fontsize)
 
 
-        # Set colormap
+        # Set color/linestyle per dataset. When color isn't given explicitly,
+        # predictr's categorical palette is used and, for more than 6
+        # datasets, the linestyle is cycled alongside the color (see
+        # _categorical_style()) so identity stays distinguishable instead of
+        # silently repeating a bare color.
+        num_objects = len(self.objects)
         if color is not None:
             color = iter(color)
+            base_linestyles = iter(['-'] * num_objects)
         else:
-            cmap = Analysis._get_cmap('Set2')
-            num_colors = len(self.objects)
-            color = iter([cmap(i) for i in np.linspace(0, 1, num_colors)])
+            default_colors, default_linestyles = _categorical_style(num_objects)
+            color = iter(default_colors)
+            base_linestyles = iter(default_linestyles)
 
         def shade_of(c, t, value_drop=0.5, saturation_gain=0.2):
             """
@@ -3438,6 +3476,7 @@ class PlotAll:
 
         for key, val in self.objects.items():
             base_color = next(color)
+            base_linestyle = next(base_linestyles)
             n_curves = len(curves[key])
             # t=0 for the (only) curve when cl_set is not used, so the
             # single-curve case keeps using the plain base color as before.
@@ -3467,7 +3506,8 @@ class PlotAll:
                     ax.scatter(beta, eta, s=3, c=[curve_color], label=label, zorder=3)
                 elif style == 'hull':
                     ax.plot(hull_points[:, 0], hull_points[:, 1], c=curve_color,
-                             linewidth=1.5, markersize=4, label=label, zorder=3)
+                             linewidth=1.5, markersize=4, label=label, zorder=3,
+                             linestyle=base_linestyle)
 
                 # Inline confidence-level label (analogous to
                 # matplotlib.axes.Axes.clabel on a regular contour plot),
@@ -3579,22 +3619,30 @@ class PlotAll:
         if len(linestyle) != len(beta) or len(linestyle) != len(eta):
             raise ValueError('Number of linestyles must match the list length of beta and eta.')
 
-        # Set line color
+        # Set line color. linestyle is required to already match len(beta),
+        # so distinguishing series beyond the 6-color palette is left to the
+        # caller's own linestyle list here; itertools.cycle just keeps the
+        # color from running out (instead of raising StopIteration) if more
+        # than 6 curves are plotted.
         if color is not None:
             color = iter(color)
         else:
-            color = iter(['royalblue', 'salmon', 'mediumseagreen',
-                               'darkorange', 'peru', 'darkcyan'])
+            color = itertools.cycle(PREDICTR_PALETTE)
         # Set x-axis
         xvals = np.linspace(x_bounds[0], x_bounds[1], x_bounds[2])
 
         # Configure plot
         _apply_plot_style(plot_style)
 
-        # Check if custom size for plot is set
-        if fig_size is not None:
-            width, height = (fig_size[0], fig_size[1])
-            plt.figure(figsize=(width, height))
+        # Always start a fresh figure/axes - without this, if fig_size is
+        # left at its default (None), the plot would silently land on
+        # whatever axes happen to still be active (e.g. a previous
+        # mle()/mrr() Weibull probability plot), inheriting its log x-scale
+        # and probability-paper y-axis formatting instead of a clean linear
+        # PDF plot.
+        if fig_size is None:
+            fig_size = (6.4, 4.8)
+        plt.figure(figsize=fig_size)
 
         # Set title
         plt.title(plot_title, fontsize=plot_title_fontsize)
@@ -3615,7 +3663,7 @@ class PlotAll:
             if labels is not None:
                 for i, j, lab, line in zip(beta, eta, labels, linestyle):
                     plt.plot(xvals, wei_pdf(xvals, i, j),
-                             linestyle=line, label=lab, color=next(color))
+                             linestyle=line, label=lab, color=next(color), linewidth=1.5)
 
                 # Set legend
 
@@ -3623,7 +3671,7 @@ class PlotAll:
             else:
                 for i, j, line in zip(beta, eta, linestyle):
                     plt.plot(xvals, wei_pdf(xvals, i, j),
-                             linestyle=line, color=next(color))
+                             linestyle=line, color=next(color), linewidth=1.5)
         plt.tight_layout()
 
         # Save plot

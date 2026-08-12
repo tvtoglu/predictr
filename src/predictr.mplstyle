@@ -21,7 +21,7 @@ legend.framealpha: 0.9
 legend.borderpad: 0.5
 legend.title_fontsize: 10.0
 
-axes.prop_cycle: cycler('color', ['008fd5', 'fc4f30', 'e5ae38', '6d904f', '8b8b8b', '810f7c'])
+axes.prop_cycle: cycler('color', ['008b8b', '008fd5', '810f7c', '8b8b8b', 'fc4f30', 'e5c494'])
 axes.facecolor: fefefe
 axes.labelsize: 12
 axes.axisbelow: true
