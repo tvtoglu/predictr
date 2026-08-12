@@ -7,7 +7,10 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
-## [0.1.33] - 2025-08-XX
+## [0.1.33] - 2025-08-13
+### Improved
+ - Say hello to the brand-new 'predictr' style, now replacing 'ggplot' as the default across all classes! Update to the latest version and see for yourself, or check out the docs for a sneak peek
+ - Unified categorical color palette used across mult_weibull(), contour_plot() and weibull_pdf() (previously three different, uncoordinated color sources). For more than 6 datasets, the palette now cycles color together with linestyle (solid/dashed/dotted/dash-dot), so datasets stay visually distinguishable instead of silently repeating a color
 ### Added
  - contour_plot() no support the args: curve_fill, scale_mode and cl_set  
     - curve_fill: if True, the contour plot will be filled
@@ -16,7 +19,6 @@ All notable changes to this project will be documented in this file.
  - The confidence level each object is now shown as a contour line label (clabel). Hence, the legend is now decluttered  
  - Point estimates of each dataset are shown as a scatter point
  - New built-in matplotlib style 'predictr' (the new default plot_style), with tuned defaults for presentation/documentation use: colors, tick padding/size, title spacing, and a new tick_fontsize argument to size axis-label and tick-number text independently
- - Unified categorical color palette used across mult_weibull(), contour_plot() and weibull_pdf() (previously three different, uncoordinated color sources). For more than 6 datasets, the palette now cycles color together with linestyle (solid/dashed/dotted/dash-dot), so datasets stay visually distinguishable instead of silently repeating a color
 ### Fixed
  - MLE/MRR plots no longer clip the legend at the right figure edge when its position overflows the canvas (widened automatically instead)
  - contour_plot(save=True) no longer crashes with an AttributeError
