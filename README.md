@@ -9,8 +9,7 @@ predictr already includes many methods (see list below). A guideline on when to 
 ![](https://img.shields.io/pypi/pyversions/predictr)
 ![](https://img.shields.io/pypi/l/predictr)
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20428659.svg)](https://doi.org/10.5281/zenodo.20428659)
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21901236.svg)](https://doi.org/10.5281/zenodo.21901236)
 
 ### Main Features
 #### Parameter Estimation
