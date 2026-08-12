@@ -3506,7 +3506,7 @@ class PlotAll:
         # Save plot
         if save:
             try:
-                ax.savefig(kwargs['path'])
+                fig.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
         if show_weibull==True:
