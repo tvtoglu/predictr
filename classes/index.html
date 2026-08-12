@@ -1105,9 +1105,9 @@
 </tr>
 <tr>
 <td>plot_style</td>
-<td>'ggplot'</td>
+<td>'predictr'</td>
 <td>str</td>
-<td>Choose a style according to your needs. See matplotlib style references for more available styles.</td>
+<td>Choose a style according to your needs. 'predictr' is predictr's own built-in style (no setup required); see matplotlib style references for other available styles.</td>
 </tr>
 <tr>
 <td>unit</td>
@@ -1131,7 +1131,13 @@
 <td>xy_fontsize</td>
 <td>12</td>
 <td>float</td>
-<td>fontsize for the axes label and ticks</td>
+<td>Fontsize for the axes label</td>
+</tr>
+<tr>
+<td>tick_fontsize</td>
+<td>10</td>
+<td>float</td>
+<td>Fontsize for the tick labels (the numbers on the axes)</td>
 </tr>
 <tr>
 <td>legend_fontsize</td>
@@ -1147,7 +1153,7 @@
 </tr>
 <tr>
 <td>plot_title_fontsize</td>
-<td>12</td>
+<td>14</td>
 <td>float</td>
 <td>Fontsize of the plot title</td>
 </tr>
@@ -1391,14 +1397,14 @@ prototype_a.mle()
 By default, the markers for the median ranks will be plotted. Set plot_ranks=False if you don't want median rank markers in your plot.
 The figure size can be modified with fig_size=(width, height). Width and height set the figure size in inches.</p>
 <pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
-prototype_a = Analysis(df=failures, bounds='fb',show=True, show_legend=True, legend_fontsize=10, show_ranks=False, fig_size=(7, 7))
+prototype_a = Analysis(df=failures, bounds='fb',show=True, show_legend=True, legend_fontsize=10, plot_ranks=False, fig_size=(7, 7))
 prototype_a.mle()
 </code></pre>
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Analysis_Plot_Modification2.png" width="500" /></p>
 <h2 id="plotall">PlotAll</h2>
 <p>PlotAll plots class objects from Analysis in one figure. Currently, only data from mle() is supported.
-Theoretically, you can plot as many objects as you like -&gt; provide a list of colors as a kwarg in PlotAll(objects, **kwargs).mult_weibull(). <b>
-For now, six colors are supported by default, but you can pass an infinit amount of colors to the mult_weibull() method.</p>
+Theoretically, you can plot as many objects as you like -&gt; provide a list of colors (and, for mult_weibull(), optionally a matching list of linestyles) as a kwarg in PlotAll(objects, **kwargs).mult_weibull() / .contour_plot(). <b>
+By default, predictr uses its own 6-color categorical palette. If you plot more than 6 datasets without passing your own <code>color</code>, the palette repeats, but the linestyle automatically advances (solid -&gt; dashed -&gt; dotted -&gt; dash-dot) with every full pass through the palette, so up to 24 datasets stay visually distinguishable by color+shape before anything repeats outright.</p>
 <p><strong>Available methods</strong>:</p>
 <table>
 <thead>
@@ -1438,19 +1444,19 @@ For now, six colors are supported by default, but you can pass an infinit amount
 <tbody>
 <tr>
 <td>mult_weibull()</td>
-<td>x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=12, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, linestyle=None, legend_fontsize=9, **kwargs</td>
+<td>x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, **kwargs</td>
 </tr>
 <tr>
 <td>contour_plot()</td>
-<td>show_legend=True, style='spline', x_label=r'$\widehat\beta$', y_label=r'$\widehat\eta$', plot_title='Contour Plot', xy_fontsize=12, plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8), save=False, **kwargs</td>
+<td>show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=r'$\widehat\beta$', y_label=None, plot_title='Contour Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6.4, 4.8), save=False, scale_mode='auto', log_ratio_threshold=10, cl_set=None, curve_fill=True, fill_alpha=0.25, **kwargs</td>
 </tr>
 <tr>
 <td>weibull_pdf()</td>
-<td>beta=None, eta=None, linestyle=None, labels = None,x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8, plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None, fig_size=None, color=None, save=False, plot_style='ggplot', **kwargs</td>
+<td>beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels=None, x_label=None, y_label=None, xy_fontsize=12, tick_fontsize=10, legend_fontsize=9, plot_title='Weibull PDF', plot_title_fontsize=14, x_bounds=None, fig_size=None, color=None, save=False, plot_style='predictr', **kwargs</td>
 </tr>
 <tr>
 <td>simple_weibull()</td>
-<td>beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, plot_title_fontsize=12, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs</td>
+<td>beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10, plot_title_fontsize=14, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs</td>
 </tr>
 </tbody>
 </table>
@@ -1478,9 +1484,9 @@ For now, six colors are supported by default, but you can pass an infinit amount
 </tr>
 <tr>
 <td>plot_style</td>
-<td>'ggplot'</td>
+<td>'predictr'</td>
 <td>str</td>
-<td>Choose a style according to your needs. See matplotlib style references for more available styles.</td>
+<td>Choose a style according to your needs. 'predictr' is predictr's own built-in style (no setup required); see matplotlib style references for other available styles. Only weibull_pdf() exposes this as its own argument - mult_weibull()/contour_plot()/simple_weibull() inherit it from the Analysis object(s) passed in.</td>
 </tr>
 <tr>
 <td>unit</td>
@@ -1510,7 +1516,13 @@ For now, six colors are supported by default, but you can pass an infinit amount
 <td>xy_fontsize</td>
 <td>12</td>
 <td>float</td>
-<td>fontsize for the axes label and ticks</td>
+<td>Fontsize for the axes label</td>
+</tr>
+<tr>
+<td>tick_fontsize</td>
+<td>10</td>
+<td>float</td>
+<td>Fontsize for the tick labels (the numbers on the axes). weibull_pdf() and simple_weibull() only.</td>
 </tr>
 <tr>
 <td>legend_fontsize</td>
@@ -1526,7 +1538,7 @@ For now, six colors are supported by default, but you can pass an infinit amount
 </tr>
 <tr>
 <td>plot_title_fontsize</td>
-<td>12</td>
+<td>14</td>
 <td>float</td>
 <td>Fontsize of the plot title</td>
 </tr>
@@ -1544,9 +1556,45 @@ For now, six colors are supported by default, but you can pass an infinit amount
 </tr>
 <tr>
 <td>style</td>
-<td>'spline'</td>
+<td>'hull'</td>
 <td>string</td>
-<td>Defines the style being used for the contour plot: 'scatter', 'angular_line'</td>
+<td>contour_plot() only. Defines how each dataset's confidence region is drawn: 'hull' (convex hull outline, optionally filled) or 'scatter' (raw sampled points)</td>
+</tr>
+<tr>
+<td>show_weibull</td>
+<td>False</td>
+<td>boolean</td>
+<td>contour_plot() only. If True, returns the matplotlib Figure object instead of just showing/saving it</td>
+</tr>
+<tr>
+<td>scale_mode</td>
+<td>'auto'</td>
+<td>string</td>
+<td>contour_plot() only. Scaling of the eta (y) axis: 'auto' switches to a log scale when eta spans more than log_ratio_threshold across datasets, 'linear'/'log' force the respective scale</td>
+</tr>
+<tr>
+<td>log_ratio_threshold</td>
+<td>10</td>
+<td>float</td>
+<td>contour_plot() only. max(eta)/min(eta) ratio above which scale_mode='auto' switches to a log scale</td>
+</tr>
+<tr>
+<td>cl_set</td>
+<td>None</td>
+<td>list of floats</td>
+<td>contour_plot() only. Confidence levels to draw per dataset, e.g. [0.95, 0.9, 0.8]. If None, each object's own cl attribute is used (one curve per object, as before)</td>
+</tr>
+<tr>
+<td>curve_fill</td>
+<td>True</td>
+<td>boolean</td>
+<td>contour_plot() only. If True, the area enclosed by each confidence-region curve is filled</td>
+</tr>
+<tr>
+<td>fill_alpha</td>
+<td>0.25</td>
+<td>float</td>
+<td>contour_plot() only. Opacity used for curve_fill</td>
 </tr>
 <tr>
 <td>plot_ranks</td>
@@ -1570,13 +1618,13 @@ For now, six colors are supported by default, but you can pass an infinit amount
 <td>linestyle</td>
 <td>['-', '--', ':', '-.']</td>
 <td>list of strings</td>
-<td>Defines the linestyle(s) in the plot. Must be greater or equal to the length of beta ans eta lists</td>
+<td>weibull_pdf(): required, must match the length of beta/eta. mult_weibull(): optional, must match the number of objects if given.</td>
 </tr>
 <tr>
 <td>color</td>
 <td>None</td>
 <td>list of strings</td>
-<td>List containing the colormap for the plotted lines. Length of list must be equal to the beta and eta length of lists or the number of Analysis objects.</td>
+<td>List containing the colors for the plotted lines/datasets. If not given, predictr's built-in 6-color palette is used (see note above the "Available methods" table for what happens with more than 6 datasets). If given, length must match the beta/eta length (weibull_pdf()) or the number of Analysis objects (mult_weibull(), contour_plot()).</td>
 </tr>
 <tr>
 <td>x_bounds</td>
@@ -1679,6 +1727,7 @@ PlotAll(objects).mult_weibull(plot_ranks=False, color=colors)
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_2s_custom_colors.png" width="500" /></p>
 <h3 id="contour_plot">contour_plot()</h3>
 <p>contour_plot() only works for likelihood ratio bounds. Hence, you have to use bounds='lrb' in the Analysis class. This method supports all bounds types and all confidence levels. You can pass as many objects as you want to.</p>
+<p>Each dataset's confidence region is drawn as a filled hull by default (curve_fill=True), with its confidence level labeled directly on the curve and its point estimate marked as a dot - see the "Default Arguments of each method" and parameter table above for style, cl_set, curve_fill, scale_mode and log_ratio_threshold.</p>
 <h4 id="plot-a-single-analysis-object">Plot a single Analysis object</h4>
 <pre><code class="language-python">from predictr import Analysis, PlotAll
 
@@ -1715,10 +1764,11 @@ PlotAll(objects).contour_plot()
 <h3 id="weibull_pdf">weibull_pdf()</h3>
 <p>This method plots one or more Weibull probability density functions. Axes are completely customizable.</p>
 <p>Arguments:
-weibull_pdf(self, beta=None, eta=None, linestyle=None, labels = None,
-                    x_label = None, y_label=None, xy_fontsize=10, legend_fontsize=8,
-                    plot_title='Weibull PDF', plot_title_fontsize=12, x_bounds=None,
-                    fig_size=None, color=None, save=False, plot_style='ggplot', kwargs)</p>
+weibull_pdf(self, beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels=None,
+                    x_label=None, y_label=None, xy_fontsize=12, tick_fontsize=10,
+                    legend_fontsize=9, plot_title='Weibull PDF', plot_title_fontsize=14,
+                    x_bounds=None, fig_size=None, color=None, save=False,
+                    plot_style='predictr', **kwargs)</p>
 <pre><code class="language-python">from predictr import Analysis, PlotAll
 
 # Use analysis for the parameter estimation
