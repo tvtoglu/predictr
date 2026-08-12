@@ -26,8 +26,8 @@ axes.facecolor: fefefe
 axes.labelsize: 12
 axes.axisbelow: true
 axes.grid: true
-axes.edgecolor: fefefe
-axes.linewidth: 3.0
+axes.edgecolor: c7c7c7
+axes.linewidth: 1.0
 axes.titlesize: x-large
 axes.titlepad: 15.0
 axes.labelpad: 8.0
