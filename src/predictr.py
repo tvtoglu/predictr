@@ -7,6 +7,8 @@
 from array import array
 from logging import raiseExceptions
 from math import floor, ceil
+import copy
+import colorsys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -42,6 +44,29 @@ class Analysis:
             if get_cmap is None:
                 raise
             return get_cmap(name)
+
+    @staticmethod
+    def _point_estimate(val):
+        """
+        Returns the (beta, eta) point estimate of an Analysis object,
+        preferring the bias-corrected values when a bias-correction method
+        (bcm) was applied - mirrors the bcm dispatch used in fisher_bounds()
+        and lrb(), where the bias-corrected point is also what the
+        confidence region is centered on.
+        """
+        bcm = getattr(val, 'bcm')
+        if bcm is None:
+            return getattr(val, 'beta'), getattr(val, 'eta')
+        elif bcm == 'c4':
+            return getattr(val, 'beta_c4'), getattr(val, 'eta_c4')
+        elif bcm == 'hrbu':
+            return getattr(val, 'beta_hrbu'), getattr(val, 'eta_hrbu')
+        elif bcm == 'np_bs':
+            return getattr(val, 'beta_np_bs'), getattr(val, 'eta_np_bs')
+        elif bcm == 'p_bs':
+            return getattr(val, 'beta_p_bs'), getattr(val, 'eta_p_bs')
+        else:
+            raise ValueError(f'"{bcm}" is not a supported bias-correction method.')
 
     @staticmethod
     def _vectorized_weibull_mle(samples):
@@ -3114,18 +3139,62 @@ class PlotAll:
         plt.show()
 
     def contour_plot(self, show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=r'$\widehat\beta$',
-                     y_label=r'$\widehat\eta$', plot_title='Contour Plot', xy_fontsize=12,
-                     plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8), save=False, **kwargs):
+                     y_label=None, plot_title='Contour Plot', xy_fontsize=12,
+                     plot_title_fontsize=12, legend_fontsize=9, fig_size=(6.4, 4.8), save=False,
+                     scale_mode='auto', log_ratio_threshold=10, cl_set=None,
+                     curve_fill=True, fill_alpha=0.25, **kwargs):
         """
         Plots the contour plot when likelihood ratio bounds are being used.
         Multiple objects can be used as well.
 
+        Parameters
+        ----------
+        scale_mode : {'auto', 'linear', 'log'}, optional
+            Scaling of the eta (y) axis. 'auto' (default) inspects the eta_lrb
+            range across all objects and switches to a logarithmic scale when
+            it spans more than `log_ratio_threshold`x in magnitude. This
+            avoids small-scale ellipses being crushed into a flat line next
+            to large-scale ones when several objects with very different eta
+            magnitudes are plotted together. 'linear' and 'log' force the
+            respective scale regardless of the data.
+        log_ratio_threshold : float, optional
+            Ratio of max(eta) / min(eta) across all objects above which
+            'auto' switches to a logarithmic scale. Default = 10.
+        cl_set : list of float, optional
+            Confidence levels to draw per dataset, e.g. [0.95, 0.9, 0.8].
+            If None or empty (default), each object's own `cl` attribute is
+            used, i.e. exactly one curve per object, unchanged from before.
+            When given, `cl_set` is sorted from largest to smallest and, for
+            every object, its contour is recomputed and drawn once per
+            confidence level - via a temporary deep copy of the object, so
+            the original object's own `cl`/`beta_lrb`/`eta_lrb` are left
+            untouched. All curves of a dataset share the same base hue and
+            are progressively shaded darker from the largest to the smallest
+            confidence level (see the `shade_of` helper below), so that the
+            different confidence levels of the same dataset stay clearly
+            distinguishable without ever washing out towards black or grey.
+        curve_fill : bool, optional
+            If True, the area enclosed by each curve is filled with that
+            curve's own (possibly shaded) color at `fill_alpha` opacity.
+            Default = False.
+        fill_alpha : float, optional
+            Opacity used for the curve fill when `curve_fill` is True.
+            Default = 0.25.
+
         """
+        if scale_mode not in ('auto', 'linear', 'log'):
+            raise ValueError("scale_mode must be one of 'auto', 'linear', 'log'.")
+
+        if cl_set:
+            if any(not (0 < c < 1) for c in cl_set):
+                raise ValueError('All values in cl_set must be between 0 and 1.')
+            cl_set = sorted(cl_set, reverse=True)
+
         # Configure plot
         plt.style.use(self.plot_style)
         fig, ax = plt.subplots(figsize=fig_size)
         ax.set_title(plot_title, fontsize=plot_title_fontsize)
-        
+
 
         # Set colormap
         if color is not None:
@@ -3135,30 +3204,163 @@ class PlotAll:
             num_colors = len(self.objects)
             color = iter([cmap(i) for i in np.linspace(0, 1, num_colors)])
 
-        if style == 'scatter':
-            for key, val in self.objects.items():
-                beta = getattr(val, 'beta_lrb')
-                eta = getattr(val, 'eta_lrb')
-                conf_level = getattr(val, 'cl')
-                ax.scatter(beta, eta, s=3, c=next(color),
-                            label=f'{key}: {conf_level*100}%')
-        elif style == 'hull':
-            for key, val in self.objects.items():
-                beta = getattr(val, 'beta_lrb')
-                eta = getattr(val, 'eta_lrb')
-                conf_level = getattr(val, 'cl')
-                
-                # Create Convex Hull around points
-                points = np.column_stack((beta, eta))
-                hull = ConvexHull(points)
-                hull_points = points[hull.vertices]
-                hull_points = np.vstack([hull_points, hull_points[0]])
+        def shade_of(c, t, value_drop=0.5, saturation_gain=0.2):
+            """
+            Returns a shade of color `c` for t in [0, 1]: t=0 is the color
+            itself, t=1 is the darkest shade. Works in HSV space and only
+            ramps value down (by up to `value_drop`, i.e. never below
+            (1 - value_drop) of the original brightness) while nudging
+            saturation up (by up to `saturation_gain`), keeping the hue
+            fixed. This keeps a family of shades of the same base color
+            (e.g. several cl_set levels of one dataset) clearly
+            distinguishable and visibly the same hue - unlike naively
+            multiplying all RGB channels by a shrinking factor, which
+            desaturates towards black/grey and erases the hue after a few
+            steps.
+            """
+            r, g, b = mpl.colors.to_rgb(c)
+            h, s, v = colorsys.rgb_to_hsv(r, g, b)
+            v = v * (1 - value_drop * t)
+            s = min(1.0, s + saturation_gain * t)
+            return colorsys.hsv_to_rgb(h, s, v)
 
-                # Plot points and hull
-                ax.plot(hull_points[:, 0], hull_points[:, 1], c=next(color), linewidth=1.5, markersize=4, label=f'{key}: {conf_level*100}%')
+        # Collect the (cl, beta_lrb, eta_lrb) curve(s) to draw per object. If
+        # cl_set is given, the LRB region is recomputed for every requested
+        # confidence level on a deep copy of the object, leaving the
+        # original object untouched; otherwise the object's own cl/beta_lrb/
+        # eta_lrb (as computed by .mle()/.lrb()) is used, as before.
+        curves = {}
+        for key, val in self.objects.items():
+            if cl_set:
+                object_curves = []
+                for cl_value in cl_set:
+                    val_cl = copy.deepcopy(val)
+                    val_cl.cl = cl_value
+                    val_cl.lrb()
+                    object_curves.append((cl_value, val_cl.beta_lrb, val_cl.eta_lrb))
+                curves[key] = object_curves
+            else:
+                curves[key] = [(getattr(val, 'cl'), getattr(val, 'beta_lrb'), getattr(val, 'eta_lrb'))]
+
+        # Analyze the eta_lrb data across all objects/confidence levels to decide on the y-axis scale
+        all_eta = np.concatenate([np.asarray(eta) for object_curves in curves.values()
+                                  for _, _, eta in object_curves])
+        if scale_mode == 'log':
+            use_log = True
+        elif scale_mode == 'linear':
+            use_log = False
+        else:
+            use_log = (all_eta.max() / all_eta.min()) > log_ratio_threshold
+        if use_log and np.any(all_eta <= 0):
+            raise ValueError('Logarithmic eta scale requires strictly positive eta_lrb values.')
+
+        def label_anchors(object_curves):
+            """
+            Picks, for one object's family of curves, which of the 4 cardinal
+            directions (top/bottom/left/right of each curve) best separates
+            the inline confidence-level labels from each other, and returns
+            one anchor point + (ha, va) alignment per curve in that
+            direction.
+
+            Nested cl_set curves of the same dataset can be strongly
+            elongated (e.g. a wide beta range but a narrow eta range, or vice
+            versa), so always anchoring at the topmost point can bunch all
+            labels together on one side while leaving them far apart on
+            another. Comparing the (scale-appropriate) spread of the topmost/
+            bottommost/leftmost/rightmost points across the curve family and
+            using whichever direction spreads them out the most keeps the
+            labels legible regardless of the region's shape.
+            """
+            directions = {
+                'top': (lambda b, e: np.argmax(e), 'y', 'center', 'bottom'),
+                'bottom': (lambda b, e: np.argmin(e), 'y', 'center', 'top'),
+                'right': (lambda b, e: np.argmax(b), 'x', 'left', 'center'),
+                'left': (lambda b, e: np.argmin(b), 'x', 'right', 'center'),
+            }
+            best_name, best_pts, best_spread = None, None, -1
+            for name, (pick_idx, coord, ha, va) in directions.items():
+                pts = []
+                for _, beta, eta in object_curves:
+                    beta_arr, eta_arr = np.asarray(beta), np.asarray(eta)
+                    idx = pick_idx(beta_arr, eta_arr)
+                    pts.append((beta_arr[idx], eta_arr[idx]))
+                if coord == 'y':
+                    vals = [np.log10(p[1]) for p in pts] if use_log else [p[1] for p in pts]
+                else:
+                    vals = [p[0] for p in pts]
+                spread = (max(vals) - min(vals)) if len(vals) > 1 else 0
+                if spread > best_spread:
+                    best_name, best_pts, best_spread = name, pts, spread
+            ha, va = directions[best_name][2], directions[best_name][3]
+            return best_pts, ha, va
+
+        # Curves only use shading up to CURVE_T_MAX, reserving headroom up to
+        # t=1.0 for the point estimate marker (see below), so the marker is
+        # always one visible tick darker than the dataset's darkest curve,
+        # regardless of how many cl_set levels that dataset has.
+        CURVE_T_MAX = 0.8
+
+        for key, val in self.objects.items():
+            base_color = next(color)
+            n_curves = len(curves[key])
+            # t=0 for the (only) curve when cl_set is not used, so the
+            # single-curve case keeps using the plain base color as before.
+            t_values = np.linspace(0, CURVE_T_MAX, n_curves) if n_curves > 1 else [0.0]
+            anchor_pts, anchor_ha, anchor_va = label_anchors(curves[key])
+
+            for idx, (conf_level, beta, eta) in enumerate(curves[key]):
+                curve_color = shade_of(base_color, t_values[idx])
+                # One legend entry per dataset (its name from the objects
+                # dict, as before), attached to its first/lightest curve;
+                # the confidence level itself is now labeled inline on the
+                # curve (see below), not in the legend anymore.
+                label = key if idx == 0 else None
+
+                if curve_fill or style == 'hull':
+                    # Create Convex Hull around points
+                    points = np.column_stack((beta, eta))
+                    hull = ConvexHull(points)
+                    hull_points = points[hull.vertices]
+                    hull_points = np.vstack([hull_points, hull_points[0]])
+
+                    if curve_fill:
+                        ax.fill(hull_points[:, 0], hull_points[:, 1],
+                                color=curve_color, alpha=fill_alpha, zorder=1)
+
+                if style == 'scatter':
+                    ax.scatter(beta, eta, s=3, c=[curve_color], label=label, zorder=3)
+                elif style == 'hull':
+                    ax.plot(hull_points[:, 0], hull_points[:, 1], c=curve_color,
+                             linewidth=1.5, markersize=4, label=label, zorder=3)
+
+                # Inline confidence-level label (analogous to
+                # matplotlib.axes.Axes.clabel on a regular contour plot),
+                # placed at whichever side (top/bottom/left/right) best
+                # separates this dataset's nested curves (see label_anchors).
+                # A small pill in the axes background color sits behind the
+                # text - the same trick clabel uses to break the line - so
+                # the label stays readable without covering more of the
+                # curve/grid than necessary.
+                anchor_x, anchor_y = anchor_pts[idx]
+                ax.text(anchor_x, anchor_y, f'{conf_level*100:.0f}%',
+                        color=curve_color, fontsize=xy_fontsize * 0.6,
+                        ha=anchor_ha, va=anchor_va, zorder=4,
+                        bbox=dict(boxstyle='round,pad=0.15', facecolor=ax.get_facecolor(),
+                                  edgecolor='none', alpha=0.85))
+
+            # Point estimate marker (bias-corrected if a bcm was used), always
+            # one tick darker (t=1.0) than the dataset's darkest curve (which
+            # tops out at CURVE_T_MAX < 1.0)
+            point_beta, point_eta = Analysis._point_estimate(val)
+            ax.scatter(point_beta, point_eta, s=40,
+                        c=[shade_of(base_color, 1.0)], marker='o', zorder=5)
 
         ax.set_xlabel(x_label, fontsize=xy_fontsize)
+        if y_label is None:
+            y_label = r'$\log(\widehat\eta)$' if use_log else r'$\widehat\eta$'
         ax.set_ylabel(y_label, fontsize=xy_fontsize)
+        if use_log:
+            ax.set_yscale('log')
         ax.grid(True, which='both')
         fig.tight_layout()
 
@@ -3373,7 +3575,7 @@ if __name__ == '__main__':
     #
     #PlotAll(objects).contour_plot()
     
-    contour_decision = True
+    contour_decision = False
     objects = {}
     if contour_decision == True:
         for cl in [0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]:
@@ -3381,3 +3583,18 @@ if __name__ == '__main__':
             objects[key] = Analysis(df=failures_a, bounds='lrb', bounds_type='2s', show=False, cl=cl)
             objects[key].mle()
         PlotAll(objects).contour_plot()
+
+
+    df = [0.670659, 0.976145, 1.41494, 0.859942, 0.468364, 1.17272, 0.648734, 0.972926, 0.851652, 1.08389]
+    df_caf = [1400699, 45477, 49358, 53379, 70695, 74721, 116451]
+    ds_caf = [3_000_000] * 3
+
+
+    x = Analysis(df=df, bounds='lrb')
+    x.mle()
+
+    y = Analysis(df=failures_a, bounds='lrb')
+    y.mle()
+
+    obj = {'x': x, 'y':y }
+    PlotAll(obj).contour_plot(curve_fill= True, scale_mode='auto', cl_set=[.7, 0.8, 0.9])
