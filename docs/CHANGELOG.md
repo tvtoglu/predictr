@@ -7,6 +7,15 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.33] - 2025-08-XX
+### Added
+ - contour_plot() no support the args: curve_fill, scale_mode and cl_set  
+    - curve_fill: if True, the contour plot will be filled
+    - scale_mode: standard: 'auto' ('linear', 'log') -> if a linear scale would not properly show the curves due to big differences in x and y values of the datasets, eta will be show as log(eta).  
+    - cl_set: is a list containing confidence levels to be drawn for each dataset
+ - The confidence level each object is now shown as a contour line label (clabel). Hence, the legend is now decluttered  
+ - Point estimates of each dataset are shown as a scatter point
+
 ## [0.1.32] - 2025-08-12
 ### Fixed
  - Fixed import handling for get_cmap in order to ensure compability throughout different matplotlib version
