@@ -10,9 +10,6 @@ predict + reliability, in other words: A tool to predict the reliability.
 ![](https://img.shields.io/github/stars/tvtoglu/predictr?style=flat)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21901236.svg)](https://doi.org/10.5281/zenodo.21901236)
 
-## Why predictr
-
-Most Weibull tools either stop at point estimates or bury confidence bounds and bias-correction behind a paywall or a GUI. predictr brings all three together in one package: fit a model, correct for small-sample bias, add the confidence bounds appropriate for your data, and plot the result — in a few lines of code.
 
 ## Installation
 
