@@ -84,4 +84,4 @@ MIT — see [LICENSE.txt](LICENSE.txt).
 
 ## Contacte me
 
-If you have any questiond and / or suggestions, don't hesitate to contact me.
+If you have any questions and / or suggestions, don't hesitate to contact me.
