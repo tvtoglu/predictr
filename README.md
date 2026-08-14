@@ -1,4 +1,5 @@
-# predictr
+# predictr. 
+predict + reliability, in other words: A tool to predict the reliability.  
 
 **predictr** is a Python package for Weibull-based life data analysis (reliability engineering). It covers parameter estimation, bias-correction, confidence bounds, and publication-ready Weibull plots in a single, consistent API.
 
