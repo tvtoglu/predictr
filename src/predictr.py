@@ -146,7 +146,7 @@ class Analysis:
     # Distributions Analysis can be configured for via dist=. Only 'weibull'
     # is implemented so far; this set is the single place future
     # distributions get registered as they're added.
-    SUPPORTED_DISTRIBUTIONS = {'weibull', 'normal'}
+    SUPPORTED_DISTRIBUTIONS = {'weibull', 'normal', 'lognormal', 'exponential'}
 
     @staticmethod
     def _get_cmap(name):
@@ -335,10 +335,11 @@ class Analysis:
         ds : list
             Contains suspensions. The default is None.
         dist : string, optional
-            Sets the distribution to fit: 'weibull' or 'normal'. More
-            distributions will be added over time. The default is
-            'weibull'. For 'normal', only bounds='fb' (Fisher bounds) and
-            bcm=None are currently supported.
+            Sets the distribution to fit: 'weibull', 'normal', 'lognormal',
+            or 'exponential'. More distributions will be added over time.
+            The default is 'weibull'. For all but 'weibull', only
+            bounds='fb' (Fisher bounds) and bcm=None are currently
+            supported.
         show : bool, optional
             If True, plot will be shown. The default is False.
         plot_style : string, optional
@@ -441,8 +442,9 @@ class Analysis:
         self.show = show
         self.plot_style = plot_style
         if plot_title is None:
-            plot_title = ('Weibull Probability Plot' if dist == 'weibull'
-                           else f'{dist.capitalize()} Probability Plot')
+            _dist_titles = {'weibull': 'Weibull', 'normal': 'Normal',
+                             'lognormal': 'Log-Normal', 'exponential': 'Exponential'}
+            plot_title = f'{_dist_titles.get(dist, dist.capitalize())} Probability Plot'
         self.x_label, self.y_label, self.plot_title = x_label, y_label, plot_title
         self.xy_fontsize, self.plot_title_fontsize = xy_fontsize, plot_title_fontsize
         self.tick_fontsize = tick_fontsize
@@ -465,10 +467,12 @@ class Analysis:
         self.censoring = None
         self.beta, self.eta = None, None
         self.mu, self.sigma = None, None
+        self.theta = None
         self.beta_hrbu, self.eta_hrbu = None, None
         self.f, self.f_inv= None, None
         self.k_a_bound, self.se_beta,self.se_eta = None, None, None
         self.se_mu, self.se_sigma = None, None
+        self.se_theta = None
         self.tmin_plot, self.tmax_plot, self.xplot = None, None, None
         self.unrel = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01,
                                0.02, 0.03, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4,
@@ -500,13 +504,13 @@ class Analysis:
             and self.bounds != 'pbb'
             and self.bounds != 'npbb'):
             raise ValueError(f'"{self.bounds}" is not supported by mle')
-        if self.dist == 'normal' and self.bounds not in (None, 'fb'):
+        if self.dist != 'weibull' and self.bounds not in (None, 'fb'):
             raise ValueError(f'"{self.bounds}" is not yet supported for '
-                              f'dist="normal". Only bounds="fb" is '
+                              f'dist="{self.dist}". Only bounds="fb" is '
                               f'currently implemented.')
-        if self.dist == 'normal' and self.bcm is not None:
-            raise ValueError('Bias-correction methods (bcm) are not yet '
-                              'supported for dist="normal".')
+        if self.dist != 'weibull' and self.bcm is not None:
+            raise ValueError(f'Bias-correction methods (bcm) are not yet '
+                              f'supported for dist="{self.dist}".')
         # Needed Log-Likelihood equations for uncensored data
         def ll_weib_beta_uncen(beta_, df):
             """
@@ -752,7 +756,22 @@ class Analysis:
                 self.eta = ((1 / len(self.df))
                             * np.sum(np.fromiter(iter_eta, float))) ** (1 / self.beta)
 
-        elif self.dist == 'normal':
+        elif self.dist in ('normal', 'lognormal'):
+            # LogNormal is fit as Normal on ln(data): if T is LogNormal(mu,
+            # sigma) then ln(T) is Normal(mu, sigma) by definition, so mu/
+            # sigma below are always the parameters of the underlying
+            # Normal distribution of ln(T), same convention scipy.stats
+            # uses. fisher_bounds() mirrors this (fit in log space, then
+            # exponentiate the resulting time bounds back).
+            if self.dist == 'lognormal':
+                if any(x <= 0 for x in self.df + (self.ds or [])):
+                    raise ValueError('LogNormal requires strictly positive '
+                                     'data (df/ds).')
+                fit_df = list(np.log(self.df))
+                fit_ds = list(np.log(self.ds)) if self.ds is not None else None
+            else:
+                fit_df, fit_ds = self.df, self.ds
+
             # Score equations (d ln L / d mu, d ln L / d sigma) for the
             # Normal distribution with right-censored (suspended) data,
             # following Lawless ch. 3.2. For failures x_i and suspensions
@@ -801,22 +820,37 @@ class Analysis:
                                       - np.sum(z * g_prime) / sigma_ ** 2)
                 return [[h_mumu, h_musigma], [h_musigma, h_sigmasigma]]
 
-            if self.ds is None:
+            if fit_ds is None:
                 # Closed-form solution of the score equations above with
                 # no suspension terms.
-                data = np.asarray(self.df, dtype=float)
+                data = np.asarray(fit_df, dtype=float)
                 self.mu = data.mean()
                 self.sigma = np.sqrt(np.mean((data - self.mu) ** 2))
             else:
                 self.censoring = 'right-censored'
-                mu_init = float(np.mean(self.df))
-                sigma_init = float(np.std(self.df)) if len(self.df) > 1 else 1.0
+                mu_init = float(np.mean(fit_df))
+                sigma_init = float(np.std(fit_df)) if len(fit_df) > 1 else 1.0
                 self.mu, self.sigma = optimize.fsolve(
                     normal_score, x0=[mu_init, sigma_init],
-                    fprime=normal_score_jac, args=(self.df, self.ds))
+                    fprime=normal_score_jac, args=(fit_df, fit_ds))
                 if self.sigma <= 0:
                     raise ValueError('Sigma estimation is not valid. '
                                      'Check the input data.')
+
+        elif self.dist == 'exponential':
+            # Closed-form MLE, valid for both complete and right-censored
+            # (Type I/II) data (see e.g. Meeker & Escobar, "Statistical
+            # Methods for Reliability Data", ch. 7.3): the log-likelihood
+            #   lnL(theta) = -r*ln(theta) - (1/theta) * (sum(x_i) + sum(s_j))
+            # (r = number of failures) has a single stationary point at
+            #   theta_hat = total time on test / r,
+            # i.e. total observed time divided by the number of failures -
+            # no root-finding needed.
+            r = len(self.df)
+            total_time = sum(self.df) + (sum(self.ds) if self.ds is not None else 0)
+            self.theta = total_time / r
+            if self.ds is not None:
+                self.censoring = 'right-censored'
 
         # Bias corrections
         if self.bcm is not None:
@@ -945,6 +979,10 @@ class Analysis:
         Median ranks and Binomial confidence bounds
 
         """
+        if self.dist != 'weibull':
+            raise ValueError(f'mrr() only supports dist="weibull" so far, '
+                              f'not dist="{self.dist}". Use mle() instead.')
+
         # Check for configuration errors
         if (self.bounds is not None
             and self.bounds != 'bbb'
@@ -1640,6 +1678,12 @@ class Analysis:
         if self.dist == 'normal':
             self._fisher_bounds_normal()
             return
+        elif self.dist == 'lognormal':
+            self._fisher_bounds_lognormal()
+            return
+        elif self.dist == 'exponential':
+            self._fisher_bounds_exponential()
+            return
 
         # Check if parameters are bias-corrected
         if self.bcm is None:
@@ -1787,6 +1831,95 @@ class Analysis:
             # adding it (as fisher_bounds()'s Weibull branch also does for
             # 1sl) correctly pulls the bound below t_p.
             self.bounds_lower = t_p + k_a_p_bound * np.sqrt(var_t)
+
+    def _fisher_bounds_lognormal(self):
+        """
+        Fisher bounds for the LogNormal distribution: identical to
+        _fisher_bounds_normal() above but computed on ln(data), since mu/
+        sigma are the Normal parameters of ln(T) (see mle()). The bounds
+        are built on ln(t_p) - same reasoning as Weibull's log/exp
+        round-trip - and only exponentiated back to the original time
+        scale as the very last step, rather than doing the delta method
+        directly in the (always-positive) time domain.
+        """
+        mu, sigma = self.mu, self.sigma
+        log_df = np.log(self.df)
+        log_ds = np.log(self.ds) if self.ds else None
+
+        resid = log_df - mu
+        r = len(self.df)
+        h_mumu = -r / sigma ** 2
+        h_musigma = -2 * np.sum(resid) / sigma ** 3
+        h_sigmasigma = r / sigma ** 2 - 3 * np.sum(resid ** 2) / sigma ** 4
+        if log_ds is not None:
+            z = (log_ds - mu) / sigma
+            h = self._inv_mills_ratio(z)
+            h_prime = h * (h - z)
+            g = z * h
+            g_prime = h + z * h_prime
+            h_mumu += -np.sum(h * (h - z)) / sigma ** 2
+            h_musigma += -np.sum(h) / sigma ** 2 - np.sum(z * h_prime) / sigma ** 2
+            h_sigmasigma += -np.sum(g) / sigma ** 2 - np.sum(z * g_prime) / sigma ** 2
+
+        self.f = np.matrix([[-h_mumu, -h_musigma], [-h_musigma, -h_sigmasigma]])
+        self.f_inv = np.linalg.inv(self.f)
+
+        if self.bounds_type == '2s':
+            self.k_a_bound = norm.ppf((1.0 - self.cl) / 2 + self.cl)
+        elif self.bounds_type == '1su':
+            self.k_a_bound = norm.ppf(self.cl)
+        elif self.bounds_type == '1sl':
+            self.k_a_bound = norm.ppf(1.0 - self.cl)
+
+        self.se_mu = (self.f_inv.item(0)) ** 0.5
+        self.se_sigma = (self.f_inv.item(3)) ** 0.5
+        k_a_p_bound = self.k_a_bound
+
+        z_p = norm.ppf(np.array(self.unrel))
+        var_ln_t = (self.f_inv.item(0) + z_p ** 2 * self.f_inv.item(3)
+                    + 2 * z_p * self.f_inv.item(1))
+        ln_t_p = mu + sigma * z_p
+
+        if self.bounds_type == '2s':
+            self.bounds_lower = np.exp(ln_t_p - k_a_p_bound * np.sqrt(var_ln_t))
+            self.bounds_upper = np.exp(ln_t_p + k_a_p_bound * np.sqrt(var_ln_t))
+        elif self.bounds_type == '1su':
+            self.bounds_upper = np.exp(ln_t_p + k_a_p_bound * np.sqrt(var_ln_t))
+        elif self.bounds_type == '1sl':
+            self.bounds_lower = np.exp(ln_t_p + k_a_p_bound * np.sqrt(var_ln_t))
+
+    def _fisher_bounds_exponential(self):
+        """
+        Fisher bounds for the Exponential distribution. Single parameter
+        theta, so the observed Fisher information is a scalar:
+        I(theta) = r/theta^2 (see mle()'s docstring for the log-
+        likelihood), giving Var(theta_hat) = theta_hat^2/r and, by the
+        delta method, Var(ln(theta_hat)) = 1/r exactly (no p-dependence,
+        since ln(t_p) = ln(theta) + ln(-ln(1-p)) is additively shifted by
+        a constant that doesn't depend on theta). Bounds are built in log
+        space, like Weibull/LogNormal, to keep theta positive.
+        """
+        r = len(self.df)
+        self.se_theta = self.theta / np.sqrt(r)
+
+        if self.bounds_type == '2s':
+            self.k_a_bound = norm.ppf((1.0 - self.cl) / 2 + self.cl)
+        elif self.bounds_type == '1su':
+            self.k_a_bound = norm.ppf(self.cl)
+        elif self.bounds_type == '1sl':
+            self.k_a_bound = norm.ppf(1.0 - self.cl)
+        k_a_p_bound = self.k_a_bound
+
+        se_ln_theta = 1.0 / np.sqrt(r)
+        ln_t_p = np.log(self.theta) + np.log(-np.log(1 - np.array(self.unrel)))
+
+        if self.bounds_type == '2s':
+            self.bounds_lower = np.exp(ln_t_p - k_a_p_bound * se_ln_theta)
+            self.bounds_upper = np.exp(ln_t_p + k_a_p_bound * se_ln_theta)
+        elif self.bounds_type == '1su':
+            self.bounds_upper = np.exp(ln_t_p + k_a_p_bound * se_ln_theta)
+        elif self.bounds_type == '1sl':
+            self.bounds_lower = np.exp(ln_t_p + k_a_p_bound * se_ln_theta)
 
     def lrb(self):
         """
@@ -2187,6 +2320,12 @@ class Analysis:
         """
         if self.dist == 'normal':
             self._plot_normal()
+            return
+        elif self.dist == 'lognormal':
+            self._plot_lognormal()
+            return
+        elif self.dist == 'exponential':
+            self._plot_exponential()
             return
 
         # Some needed functions:
@@ -3024,6 +3163,224 @@ class Analysis:
         if self.show:
             plt.show()
 
+    def _plot_lognormal(self):
+        """
+        Creates the LogNormal probability plot. Combines both of the other
+        two axis conventions at once: the y-axis is probit-transformed
+        exactly like _plot_normal() (mu/sigma are the Normal parameters of
+        ln(T), so the same z = Phi^-1(F) linearizes it), but the x-axis is
+        log-scaled like Weibull's plot() - because it's ln(T), not T
+        itself, that's linear in z. That combination is exactly why
+        LogNormal needs its own probability paper rather than reusing
+        either of the other two as-is.
+        """
+        def normal_ticks(y_i, _):
+            return '{:.1f}'.format(100 * norm.cdf(y_i))
+
+        _apply_plot_style(self.plot_style)
+        plt.figure(figsize=self.fig_size)
+
+        ax = plt.gca()
+        ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(normal_ticks))
+        y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= self.y_min)
+                                          & (PROBABILITY_PLOT_TICKS <= self.y_max)]
+        z_ticks = norm.ppf(y_ticks)
+        plt.yticks(z_ticks, color='black')
+        ax.set_yticks([0.0], minor=True)
+        plt.grid(True, which='minor', axis='y', linestyle='--')
+
+        x_data = np.array(self.df, dtype=float)
+        susp_num = len(self.ds) if self.ds is not None else 0
+
+        # Fitted MLE line, evaluated across a fixed wide percentile range
+        # like _plot_normal() - see that method's comment for why.
+        z_line = norm.ppf(np.array([0.0001, 0.9999]))
+        x_line = np.exp(self.mu + self.sigma * z_line)
+        plt.semilogx(x_line, z_line, color='mediumblue', linestyle='-',
+                     linewidth=1.5, zorder=2)
+
+        leg_title = 'MLE'
+        leg_text = ('n = {} (f: {} | s: {})\n'.format(len(self.df) + susp_num,
+                                                        len(self.df), susp_num)
+                    + r'$\widehat\mu={:.3f}$ | '.format(self.mu)
+                    + r'$\widehat\sigma={:.3f}$'.format(self.sigma))
+        legend_labels = (leg_text,)
+
+        if self.bounds == 'fb' and (self.bounds_lower is not None
+                                     or self.bounds_upper is not None):
+            z_p = norm.ppf(self.unrel)
+            if self.bounds_type == '2s':
+                plt.semilogx(self.bounds_lower, z_p, color='royalblue',
+                             linestyle='-', linewidth=1)
+                plt.semilogx(self.bounds_upper, z_p, color='royalblue',
+                             linestyle='-', linewidth=1, label='_nolegend_')
+                plt.fill_betweenx(y=z_p, x1=self.bounds_lower, x2=self.bounds_upper,
+                                   alpha=0.1, color='royalblue', label='_nolegend_')
+                bt_legend = '2s'
+            elif self.bounds_type == '1su':
+                plt.semilogx(self.bounds_upper, z_p, color='royalblue',
+                             linestyle='-', linewidth=1)
+                bt_legend = '1su'
+            elif self.bounds_type == '1sl':
+                plt.semilogx(self.bounds_lower, z_p, color='royalblue',
+                             linestyle='-', linewidth=1)
+                bt_legend = '1sl'
+            legend_labels = (leg_text, '\nFisher bounds:\n{} @{}%'.format(
+                bt_legend, self.cl * 100))
+
+        plt.xlabel(f'{self.x_label}{" in " + self.unit if self.unit != "-" else ""}',
+                   color='black', fontsize=self.xy_fontsize)
+        plt.ylabel(self.y_label + ' in %', color='black', fontsize=self.xy_fontsize)
+        plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
+        plt.tick_params(labelsize=self.tick_fontsize)
+        plt.grid(True, which='major')
+        if self.show_legend:
+            plt.legend(legend_labels, loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                       fontsize=self.legend_fontsize, title=leg_title)
+
+        if self.plot_ranks:
+            ranks = np.array(self.median_rank() if self.ds is None
+                              else self.median_rank_cens())
+            y_data = norm.ppf(ranks)
+            plt.semilogx(x_data, y_data, marker='o', markerfacecolor='mediumblue',
+                         markeredgecolor='mediumblue', markersize=4, alpha=.5,
+                         linestyle='None', zorder=3)
+
+        ax.set_ylim(bottom=norm.ppf(self.y_min), top=norm.ppf(self.y_max))
+
+        plt.tight_layout()
+
+        legend = plt.gca().get_legend()
+        if legend is not None:
+            fig = plt.gcf()
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            original_canvas = fig.canvas
+            FigureCanvasAgg(fig)
+            fig.canvas.draw()
+            legend_bbox = legend.get_window_extent(fig.canvas.get_renderer())
+            fig.canvas = original_canvas
+            fig_px_width = fig.get_size_inches()[0] * fig.dpi
+            if legend_bbox.x1 > fig_px_width:
+                extra_in = (legend_bbox.x1 - fig_px_width) / fig.dpi
+                width_in, height_in = fig.get_size_inches()
+                fig.set_size_inches(width_in + extra_in + 0.25, height_in)
+
+        if self.save:
+            try:
+                plt.savefig(self.save_path)
+            except:
+                raise ValueError('Path is faulty.')
+        if self.show:
+            plt.show()
+
+    def _plot_exponential(self):
+        """
+        Creates the Exponential probability plot. Simpler than the other
+        three: since the shape is fixed (no free beta the way Weibull has),
+        the CDF F(t) = 1 - exp(-t/theta) is already linear in t once you
+        take y = -ln(1-F) - no second log and no log-x needed the way
+        Weibull's plot() needs both to linearize an unknown shape.
+        """
+        def exponential_ticks(y_i, _):
+            return '{:.1f}'.format(100 * (1 - np.exp(-y_i)))
+
+        _apply_plot_style(self.plot_style)
+        plt.figure(figsize=self.fig_size)
+
+        ax = plt.gca()
+        ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(exponential_ticks))
+        y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= self.y_min)
+                                          & (PROBABILITY_PLOT_TICKS <= self.y_max)]
+        w_ticks = -np.log(1 - y_ticks)
+        plt.yticks(w_ticks, color='black')
+        ax.set_yticks([-np.log(1 - 0.632)], minor=True)
+        plt.grid(True, which='minor', axis='y', linestyle='--')
+
+        x_data = np.array(self.df, dtype=float)
+        susp_num = len(self.ds) if self.ds is not None else 0
+
+        # Fitted MLE line: t_p = theta * (-ln(1-p)), i.e. x = theta*w is an
+        # exact line through the origin on this axis - 2 points suffice,
+        # evaluated across a fixed wide percentile range like the other
+        # _plot_*() methods.
+        w_line = -np.log(1 - np.array([0.0001, 0.9999]))
+        x_line = self.theta * w_line
+        plt.plot(x_line, w_line, color='mediumblue', linestyle='-',
+                 linewidth=1.5, zorder=2)
+
+        leg_title = 'MLE'
+        leg_text = ('n = {} (f: {} | s: {})\n'.format(len(self.df) + susp_num,
+                                                        len(self.df), susp_num)
+                    + r'$\widehat\theta={:.3f}$'.format(self.theta))
+        legend_labels = (leg_text,)
+
+        if self.bounds == 'fb' and (self.bounds_lower is not None
+                                     or self.bounds_upper is not None):
+            w_p = -np.log(1 - np.array(self.unrel))
+            if self.bounds_type == '2s':
+                plt.plot(self.bounds_lower, w_p, color='royalblue',
+                         linestyle='-', linewidth=1)
+                plt.plot(self.bounds_upper, w_p, color='royalblue',
+                         linestyle='-', linewidth=1, label='_nolegend_')
+                plt.fill_betweenx(y=w_p, x1=self.bounds_lower, x2=self.bounds_upper,
+                                   alpha=0.1, color='royalblue', label='_nolegend_')
+                bt_legend = '2s'
+            elif self.bounds_type == '1su':
+                plt.plot(self.bounds_upper, w_p, color='royalblue',
+                         linestyle='-', linewidth=1)
+                bt_legend = '1su'
+            elif self.bounds_type == '1sl':
+                plt.plot(self.bounds_lower, w_p, color='royalblue',
+                         linestyle='-', linewidth=1)
+                bt_legend = '1sl'
+            legend_labels = (leg_text, '\nFisher bounds:\n{} @{}%'.format(
+                bt_legend, self.cl * 100))
+
+        plt.xlabel(f'{self.x_label}{" in " + self.unit if self.unit != "-" else ""}',
+                   color='black', fontsize=self.xy_fontsize)
+        plt.ylabel(self.y_label + ' in %', color='black', fontsize=self.xy_fontsize)
+        plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
+        plt.tick_params(labelsize=self.tick_fontsize)
+        plt.grid(True, which='major')
+        if self.show_legend:
+            plt.legend(legend_labels, loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                       fontsize=self.legend_fontsize, title=leg_title)
+
+        if self.plot_ranks:
+            ranks = np.array(self.median_rank() if self.ds is None
+                              else self.median_rank_cens())
+            y_data = -np.log(1 - np.array(ranks))
+            plt.plot(x_data, y_data, marker='o', markerfacecolor='mediumblue',
+                     markeredgecolor='mediumblue', markersize=4, alpha=.5,
+                     linestyle='None', zorder=3)
+
+        ax.set_ylim(bottom=-np.log(1 - self.y_min), top=-np.log(1 - self.y_max))
+
+        plt.tight_layout()
+
+        legend = plt.gca().get_legend()
+        if legend is not None:
+            fig = plt.gcf()
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            original_canvas = fig.canvas
+            FigureCanvasAgg(fig)
+            fig.canvas.draw()
+            legend_bbox = legend.get_window_extent(fig.canvas.get_renderer())
+            fig.canvas = original_canvas
+            fig_px_width = fig.get_size_inches()[0] * fig.dpi
+            if legend_bbox.x1 > fig_px_width:
+                extra_in = (legend_bbox.x1 - fig_px_width) / fig.dpi
+                width_in, height_in = fig.get_size_inches()
+                fig.set_size_inches(width_in + extra_in + 0.25, height_in)
+
+        if self.save:
+            try:
+                plt.savefig(self.save_path)
+            except:
+                raise ValueError('Path is faulty.')
+        if self.show:
+            plt.show()
+
     @classmethod
     def get_bx_percentile(cls, time, beta_, eta_):
         """
@@ -3163,6 +3520,11 @@ class PlotAll:
         if not (0 < y_min < y_max < 1):
             raise ValueError('y_min and y_max must satisfy 0 < y_min < '
                               'y_max < 1.')
+        non_weibull = [key for key, val in self.objects.items()
+                       if getattr(val, 'dist', 'weibull') != 'weibull']
+        if non_weibull:
+            raise ValueError(f'mult_weibull() only supports Analysis objects '
+                              f'with dist="weibull", but {non_weibull} do not.')
 
         def inverse_weibull(perc, beta, eta):
             return ((-np.log(1 -perc)) ** (1 / beta)) * eta
