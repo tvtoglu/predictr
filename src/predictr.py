@@ -134,6 +134,11 @@ class Analysis:
     computations, bias corrections, and plotting of the data.
     """
 
+    # Distributions Analysis can be configured for via dist=. Only 'weibull'
+    # is implemented so far; this set is the single place future
+    # distributions get registered as they're added.
+    SUPPORTED_DISTRIBUTIONS = {'weibull'}
+
     @staticmethod
     def _get_cmap(name):
         """
@@ -289,7 +294,8 @@ class Analysis:
         eta_k = np.exp(intercept / (-1 * beta_k))
         return beta_k, eta_k
 
-    def __init__(self, df: list = None, ds: list = None, show: bool = False,
+    def __init__(self, df: list = None, ds: list = None, dist='weibull',
+                 show: bool = False,
                  plot_style='predictr', bounds=None, bounds_type='2s',
                  cl=0.9, bcm=None, bs_size=5000, est_type='median',
                  unit='-', x_label = 'Time to Failure',
@@ -304,6 +310,10 @@ class Analysis:
             Contains failures. The default is None.
         ds : list
             Contains suspensions. The default is None.
+        dist : string, optional
+            Sets the distribution to fit. Currently only 'weibull' is
+            supported; more distributions will be added over time. The
+            default is 'weibull'.
         show : bool, optional
             If True, plot will be shown. The default is False.
         plot_style : string, optional
@@ -360,6 +370,13 @@ class Analysis:
         # Raise error if show argument is not bool
         if not isinstance(show, bool):
             raise ValueError('Argument show must be of type bool.')
+
+        # Raise error if dist is not supported
+        if dist not in self.SUPPORTED_DISTRIBUTIONS:
+            raise ValueError(f'"{dist}" is not a supported distribution. '
+                              f'Supported distributions: '
+                              f'{sorted(self.SUPPORTED_DISTRIBUTIONS)}')
+        self.dist = dist
 
         # Raise error if bounds type is not supported
         if bounds is None and (bounds_type != '2s'
@@ -422,16 +439,11 @@ class Analysis:
         self.eta_range_init, self.beta_range_init = None, None
         self.beta_f_range, self.eta_f_range = None, None
 
-    def mle(self, dist='weibull'):
+    def mle(self):
         """
-        mle() conducts a maximum likelihood estimation for a
-        given distribution. It handles uncensored and censored data.
-
-        Parameters
-        ----------
-        dist : str, optional
-            Sets the distribution. The default is 'weibull'.
-
+        mle() conducts a maximum likelihood estimation for the
+        distribution set via dist= in the constructor. It handles
+        uncensored and censored data.
         """
         # Check for configuration errors
         if (self.bounds is not None
@@ -591,7 +603,7 @@ class Analysis:
             eta_bs = (1 / len(sample) * np.sum(np.fromiter(it, float))) ** (1 / beta_bs)
             return beta_bs, eta_bs
 
-        if dist == 'weibull':
+        if self.dist == 'weibull':
             def beta_init(df, ds=None):
                 """
                 Analytic method for the initial estimation of beta.
