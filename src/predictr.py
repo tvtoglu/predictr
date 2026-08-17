@@ -2885,48 +2885,74 @@ class Analysis:
         ax.set_yticks([0.0], minor=True)
         plt.grid(True, which='minor', axis='y', linestyle='--')
 
-        # Data points via median ranks - identical machinery to the
-        # Weibull plot, since plotting positions don't depend on the
-        # assumed distribution, only the axis transform applied to them
-        # afterwards does.
+        # PREDICTR_PALETTE (the categorical 6-color palette) is for telling
+        # multiple *different* Analysis objects apart, e.g. in PlotAll -
+        # not for the elements of a single result. A single fit instead
+        # uses predictr's own single-result convention, exactly like
+        # Weibull's plot() above: mediumblue for the MLE line/markers,
+        # royalblue (thinner, plus a light fill) for the bounds.
         x_data = np.array(self.df, dtype=float)
-        if self.ds is None:
-            ranks = np.array(self.median_rank())
-        else:
-            ranks = np.array(self.median_rank_cens())
-        y_data = norm.ppf(ranks)
-
-        if self.plot_ranks:
-            plt.plot(x_data, y_data, 'o', color=PREDICTR_PALETTE[0],
-                     label='Failures (median ranks)')
+        susp_num = len(self.ds) if self.ds is not None else 0
 
         # Fitted MLE line - directly linear in x, no inverse-CDF sampling
         # needed the way Weibull's inverse_weibull() draws its line.
         pad = 0.2 * (x_data.max() - x_data.min()) if x_data.max() > x_data.min() else max(abs(x_data.min()), 1.0)
         x_line = np.linspace(x_data.min() - pad, x_data.max() + pad, 200)
         y_line = (x_line - self.mu) / self.sigma
-        susp_num = len(self.ds) if self.ds is not None else 0
-        plt.plot(x_line, y_line, '-', color=PREDICTR_PALETTE[1],
-                 label='n = {} (f: {} | s: {})\nMLE: '.format(
-                     len(self.df) + susp_num, len(self.df), susp_num)
-                 + r'$\hat\mu$={:.4f}, $\hat\sigma$={:.4f}'.format(self.mu, self.sigma))
+        plt.plot(x_line, y_line, color='mediumblue', linestyle='-',
+                 linewidth=1.5, zorder=2)
 
-        if self.bounds == 'fb' and self.bounds_lower is not None:
+        leg_title = 'MLE'
+        leg_text = ('n = {} (f: {} | s: {})\n'.format(len(self.df) + susp_num,
+                                                        len(self.df), susp_num)
+                    + r'$\widehat\mu={:.3f}$ | '.format(self.mu)
+                    + r'$\widehat\sigma={:.3f}$'.format(self.sigma))
+        legend_labels = (leg_text,)
+
+        if self.bounds == 'fb' and (self.bounds_lower is not None
+                                     or self.bounds_upper is not None):
             z_p = norm.ppf(self.unrel)
-            if self.bounds_lower is not None:
-                plt.plot(self.bounds_lower, z_p, '--', color=PREDICTR_PALETTE[2],
-                         label='{:.0f}% Fisher bounds (lower)'.format(self.cl * 100))
-            if self.bounds_upper is not None:
-                plt.plot(self.bounds_upper, z_p, '--', color=PREDICTR_PALETTE[3],
-                         label='{:.0f}% Fisher bounds (upper)'.format(self.cl * 100))
+            if self.bounds_type == '2s':
+                plt.plot(self.bounds_lower, z_p, color='royalblue',
+                         linestyle='-', linewidth=1)
+                plt.plot(self.bounds_upper, z_p, color='royalblue',
+                         linestyle='-', linewidth=1, label='_nolegend_')
+                plt.fill_betweenx(y=z_p, x1=self.bounds_lower, x2=self.bounds_upper,
+                                   alpha=0.1, color='royalblue', label='_nolegend_')
+                bt_legend = '2s'
+            elif self.bounds_type == '1su':
+                plt.plot(self.bounds_upper, z_p, color='royalblue',
+                         linestyle='-', linewidth=1)
+                bt_legend = '1su'
+            elif self.bounds_type == '1sl':
+                plt.plot(self.bounds_lower, z_p, color='royalblue',
+                         linestyle='-', linewidth=1)
+                bt_legend = '1sl'
+            legend_labels = (leg_text, '\nFisher bounds:\n{} @{}%'.format(
+                bt_legend, self.cl * 100))
 
-        plt.xlabel(self.x_label, fontsize=self.xy_fontsize)
-        plt.ylabel(self.y_label, fontsize=self.xy_fontsize)
-        plt.title(self.plot_title, fontsize=self.plot_title_fontsize)
+        plt.xlabel(f'{self.x_label}{" in " + self.unit if self.unit != "-" else ""}',
+                   color='black', fontsize=self.xy_fontsize)
+        plt.ylabel(self.y_label + ' in %', color='black', fontsize=self.xy_fontsize)
+        plt.title(self.plot_title, color='black', fontsize=self.plot_title_fontsize)
         plt.tick_params(labelsize=self.tick_fontsize)
         plt.grid(True, which='major')
         if self.show_legend:
-            plt.legend(fontsize=self.legend_fontsize)
+            plt.legend(legend_labels, loc='lower left', bbox_to_anchor=(0.65, 0.0),
+                       fontsize=self.legend_fontsize, title=leg_title)
+
+        # Data points via median ranks (plotted after legend(), like
+        # Weibull's plot_ranks block, so they're never picked up as an
+        # extra legend entry) - identical machinery to the Weibull plot,
+        # since plotting positions don't depend on the assumed
+        # distribution, only the axis transform applied to them afterwards.
+        if self.plot_ranks:
+            ranks = np.array(self.median_rank() if self.ds is None
+                              else self.median_rank_cens())
+            y_data = norm.ppf(ranks)
+            plt.plot(x_data, y_data, marker='o', markerfacecolor='mediumblue',
+                     markeredgecolor='mediumblue', markersize=4, alpha=.5,
+                     linestyle='None', zorder=3)
 
         plt.tight_layout()
 
@@ -4062,9 +4088,9 @@ if __name__ == '__main__':
     ds_caf = [3_000_000] * 3
 
 
-    x = Analysis(df=df, bounds='lrb')
+    x = Analysis(df=df, bounds='fb', dist='normal', show=True)
     x.mle()
-
+"""
     y = Analysis(df=failures_a, bounds='lrb')
     y.mle()
 
@@ -4074,3 +4100,4 @@ if __name__ == '__main__':
     failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
     prototype_a = Analysis(df=failures, bounds='bbb', show=True)
     prototype_a.mrr()
+"""
