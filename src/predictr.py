@@ -30,6 +30,15 @@ from scipy.spatial import ConvexHull
 PREDICTR_PALETTE = ['#008b8b', '#008fd5', '#810f7c', '#8b8b8b', '#fc4f30', '#e5c494']
 PREDICTR_LINESTYLES = ['-', '--', ':', '-.']
 
+# Fixed candidate tick values for probability plots' y-axis. Which of these
+# actually get drawn/labeled is controlled by Analysis(y_min=, y_max=) -
+# only the candidates that fall within [y_min, y_max] are used, so the
+# step spacing stays the same no matter how the visible range is narrowed.
+PROBABILITY_PLOT_TICKS = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01,
+                                    0.02, 0.03, 0.05, 0.07, 0.1, 0.2, 0.3,
+                                    0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95,
+                                    0.99, 0.999])
+
 
 def _categorical_style(n):
     """
@@ -316,7 +325,7 @@ class Analysis:
                  unit='-', x_label = 'Time to Failure',
                  y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10,
                  plot_title_fontsize=14,
-                 plot_title=None, plot_ranks=True,
+                 plot_title=None, plot_ranks=True, y_min=0.01, y_max=0.99,
                  fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, **kwargs):
         """
         Parameters
@@ -364,6 +373,16 @@ class Analysis:
             'Normal Probability Plot') unless explicitly set.
         plot_title_fontsize : float, optional
             Fontsize of the plot title. The default is 14.
+        y_min : float, optional
+            Lower y-axis limit (unreliability, as a fraction) shown on the
+            probability plot. Must satisfy 0 < y_min < y_max < 1. The
+            default is 0.01. Only the fixed step values in
+            PROBABILITY_PLOT_TICKS that fall within [y_min, y_max] are
+            drawn, so narrowing the range doesn't change the tick spacing.
+        y_max : float, optional
+            Upper y-axis limit (unreliability, as a fraction) shown on the
+            probability plot. Must satisfy 0 < y_min < y_max < 1. The
+            default is 0.99.
         fig_size : tuple of floats, optional
             Sets width and height in inches: (width, height)
         save : boolean, optional
@@ -395,6 +414,12 @@ class Analysis:
                               f'Supported distributions: '
                               f'{sorted(self.SUPPORTED_DISTRIBUTIONS)}')
         self.dist = dist
+
+        # Raise error if the y-axis display range is not valid
+        if not (0 < y_min < y_max < 1):
+            raise ValueError('y_min and y_max must satisfy 0 < y_min < '
+                              'y_max < 1.')
+        self.y_min, self.y_max = y_min, y_max
 
         # Raise error if bounds type is not supported
         if bounds is None and (bounds_type != '2s'
@@ -1249,11 +1274,9 @@ class Analysis:
         # Y-Axis
         ax = plt.gca()
         ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(weibull_ticks))
-        y_ticks = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01, 0.02,
-                            0.03, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6,
-                            0.7, 0.8, 0.9, 0.95, 0.99, 0.999])
+        y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= self.y_min)
+                                          & (PROBABILITY_PLOT_TICKS <= self.y_max)]
         lny_ticks = np.log(-np.log(1 - y_ticks))
-        plt.ylim(bottom=0.001, top=0.999)
         plt.yticks(lny_ticks, color='black')
         ax.set_yticks([weibull_prob_paper(0.632)], minor=True)
 
@@ -1563,6 +1586,13 @@ class Analysis:
                              markerfacecolor='mediumblue', markeredgecolor='mediumblue',
                              markersize=4, alpha=.5, linestyle='None', zorder= 3)
 
+        # Pin the y-axis to [y_min, y_max] as the very last step: fill_between/
+        # fill_betweenx above auto-expand the view when they're added
+        # (matplotlib's add_collection autoscales regardless of an earlier
+        # plt.ylim() call), so setting this any earlier would get silently
+        # overridden once the bounds shading is drawn.
+        ax.set_ylim(bottom=weibull_prob_paper(self.y_min),
+                    top=weibull_prob_paper(self.y_max))
         plt.tight_layout()
 
         # bbox_to_anchor=(0.65, 0.0) above can push the legend past the
@@ -2214,11 +2244,9 @@ class Analysis:
         # Y-Axis
         ax = plt.gca()
         ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(weibull_ticks))
-        y_ticks = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01, 0.02,
-                            0.03, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6,
-                            0.7, 0.8, 0.9, 0.95, 0.99, 0.999])
+        y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= self.y_min)
+                                          & (PROBABILITY_PLOT_TICKS <= self.y_max)]
         lny_ticks = np.log(-np.log(1 - y_ticks))
-        plt.ylim(bottom=0.001, top=0.999)
         plt.yticks(lny_ticks, color='black')
         ax.set_yticks([weibull_prob_paper(0.632)], minor=True)
 
@@ -2811,6 +2839,13 @@ class Analysis:
                              markerfacecolor='mediumblue', markeredgecolor='mediumblue',
                              markersize=4, alpha=.5, linestyle='None', zorder= 3)
 
+        # Pin the y-axis to [y_min, y_max] as the very last step: fill_between/
+        # fill_betweenx above auto-expand the view when they're added
+        # (matplotlib's add_collection autoscales regardless of an earlier
+        # plt.ylim() call), so setting this any earlier would get silently
+        # overridden once the bounds shading is drawn.
+        ax.set_ylim(bottom=weibull_prob_paper(self.y_min),
+                    top=weibull_prob_paper(self.y_max))
         plt.tight_layout()
 
         # bbox_to_anchor=(0.65, 0.0) above can push the legend past the
@@ -2876,11 +2911,9 @@ class Analysis:
         # Y-axis: probit scale, same tick percentages as the Weibull plot
         ax = plt.gca()
         ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(normal_ticks))
-        y_ticks = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01, 0.02,
-                            0.03, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6,
-                            0.7, 0.8, 0.9, 0.95, 0.99, 0.999])
+        y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= self.y_min)
+                                          & (PROBABILITY_PLOT_TICKS <= self.y_max)]
         z_ticks = norm.ppf(y_ticks)
-        plt.ylim(bottom=z_ticks[0], top=z_ticks[-1])
         plt.yticks(z_ticks, color='black')
         ax.set_yticks([0.0], minor=True)
         plt.grid(True, which='minor', axis='y', linestyle='--')
@@ -2953,6 +2986,11 @@ class Analysis:
             plt.plot(x_data, y_data, marker='o', markerfacecolor='mediumblue',
                      markeredgecolor='mediumblue', markersize=4, alpha=.5,
                      linestyle='None', zorder=3)
+
+        # Pin the y-axis to [y_min, y_max] as the very last step - see the
+        # identical comment in plot()/plot_mrr() for why fill_betweenx above
+        # would otherwise silently re-expand the view.
+        ax.set_ylim(bottom=norm.ppf(self.y_min), top=norm.ppf(self.y_max))
 
         plt.tight_layout()
 
@@ -4090,10 +4128,10 @@ if __name__ == '__main__':
 
     x = Analysis(df=df, bounds='fb', dist='normal', show=True)
     x.mle()
-"""
-    y = Analysis(df=failures_a, bounds='lrb')
-    y.mle()
 
+    y = Analysis(df=failures_a, bounds='lrb', show=True, dist='weibull')
+    y.mle()
+"""
     obj = {'x': x, 'y':y }
     PlotAll(obj).contour_plot(curve_fill= True, scale_mode='auto', cl_set=[.7, 0.8, 0.9])
 
