@@ -137,7 +137,7 @@ class Analysis:
     # Distributions Analysis can be configured for via dist=. Only 'weibull'
     # is implemented so far; this set is the single place future
     # distributions get registered as they're added.
-    SUPPORTED_DISTRIBUTIONS = {'weibull'}
+    SUPPORTED_DISTRIBUTIONS = {'weibull', 'normal'}
 
     @staticmethod
     def _get_cmap(name):
@@ -153,6 +153,21 @@ class Analysis:
             if get_cmap is None:
                 raise
             return get_cmap(name)
+
+    @staticmethod
+    def _inv_mills_ratio(z):
+        """
+        Inverse Mills ratio h(z) = phi(z) / (1 - Phi(z)) of the standard
+        normal distribution - the term that appears in the score and
+        Hessian of the Normal/LogNormal log-likelihood for right-censored
+        (suspended) observations, since d/dz[ln(1-Phi(z))] = -h(z) (see
+        e.g. Lawless, "Statistical Models and Methods for Lifetime Data",
+        2nd ed., ch. 3.2). Its derivative satisfies the identity
+        h'(z) = h(z) * (h(z) - z), used by fisher_bounds()/mle() to build
+        the observed Fisher information without a separate closed-form
+        second derivative.
+        """
+        return norm.pdf(z) / (1 - norm.cdf(z))
 
     @staticmethod
     def _point_estimate(val):
@@ -301,7 +316,7 @@ class Analysis:
                  unit='-', x_label = 'Time to Failure',
                  y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10,
                  plot_title_fontsize=14,
-                 plot_title='Weibull Probability Plot', plot_ranks=True,
+                 plot_title=None, plot_ranks=True,
                  fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, **kwargs):
         """
         Parameters
@@ -311,9 +326,10 @@ class Analysis:
         ds : list
             Contains suspensions. The default is None.
         dist : string, optional
-            Sets the distribution to fit. Currently only 'weibull' is
-            supported; more distributions will be added over time. The
-            default is 'weibull'.
+            Sets the distribution to fit: 'weibull' or 'normal'. More
+            distributions will be added over time. The default is
+            'weibull'. For 'normal', only bounds='fb' (Fisher bounds) and
+            bcm=None are currently supported.
         show : bool, optional
             If True, plot will be shown. The default is False.
         plot_style : string, optional
@@ -343,7 +359,9 @@ class Analysis:
         legend_fontsize : float, optional
             Fontsize for the legend. The default is 9.
         plot_title : string, optional
-            Title for the plot. The default is 'Weibull Probability Plot'.
+            Title for the plot. Defaults to "<Dist> Probability Plot" for
+            the chosen dist (e.g. 'Weibull Probability Plot',
+            'Normal Probability Plot') unless explicitly set.
         plot_title_fontsize : float, optional
             Fontsize of the plot title. The default is 14.
         fig_size : tuple of floats, optional
@@ -397,6 +415,9 @@ class Analysis:
         # Plot related attributes
         self.show = show
         self.plot_style = plot_style
+        if plot_title is None:
+            plot_title = ('Weibull Probability Plot' if dist == 'weibull'
+                           else f'{dist.capitalize()} Probability Plot')
         self.x_label, self.y_label, self.plot_title = x_label, y_label, plot_title
         self.xy_fontsize, self.plot_title_fontsize = xy_fontsize, plot_title_fontsize
         self.tick_fontsize = tick_fontsize
@@ -418,9 +439,11 @@ class Analysis:
         self.beta_init = None
         self.censoring = None
         self.beta, self.eta = None, None
+        self.mu, self.sigma = None, None
         self.beta_hrbu, self.eta_hrbu = None, None
         self.f, self.f_inv= None, None
         self.k_a_bound, self.se_beta,self.se_eta = None, None, None
+        self.se_mu, self.se_sigma = None, None
         self.tmin_plot, self.tmax_plot, self.xplot = None, None, None
         self.unrel = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01,
                                0.02, 0.03, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4,
@@ -452,6 +475,13 @@ class Analysis:
             and self.bounds != 'pbb'
             and self.bounds != 'npbb'):
             raise ValueError(f'"{self.bounds}" is not supported by mle')
+        if self.dist == 'normal' and self.bounds not in (None, 'fb'):
+            raise ValueError(f'"{self.bounds}" is not yet supported for '
+                              f'dist="normal". Only bounds="fb" is '
+                              f'currently implemented.')
+        if self.dist == 'normal' and self.bcm is not None:
+            raise ValueError('Bias-correction methods (bcm) are not yet '
+                              'supported for dist="normal".')
         # Needed Log-Likelihood equations for uncensored data
         def ll_weib_beta_uncen(beta_, df):
             """
@@ -696,6 +726,72 @@ class Analysis:
                 iter_eta = (x ** self.beta for x in self.df + self.ds)
                 self.eta = ((1 / len(self.df))
                             * np.sum(np.fromiter(iter_eta, float))) ** (1 / self.beta)
+
+        elif self.dist == 'normal':
+            # Score equations (d ln L / d mu, d ln L / d sigma) for the
+            # Normal distribution with right-censored (suspended) data,
+            # following Lawless ch. 3.2. For failures x_i and suspensions
+            # s_j, with r = number of failures and z_j = (s_j - mu) / sigma:
+            #   d lnL/d mu    = sum(x_i - mu)/sigma^2 + sum(h(z_j))/sigma
+            #   d lnL/d sigma = -r/sigma + sum((x_i - mu)^2)/sigma^3
+            #                   + sum(z_j * h(z_j))/sigma
+            # where h is the inverse Mills ratio (_inv_mills_ratio). With
+            # no suspensions both equations reduce to the closed-form
+            # sample mean/variance MLE used directly below.
+            def normal_score(params, df, ds):
+                mu_, sigma_ = params
+                resid = np.asarray(df, dtype=float) - mu_
+                g_mu = np.sum(resid) / sigma_ ** 2
+                g_sigma = -len(df) / sigma_ + np.sum(resid ** 2) / sigma_ ** 3
+                if ds:
+                    z = (np.asarray(ds, dtype=float) - mu_) / sigma_
+                    h = self._inv_mills_ratio(z)
+                    g_mu += np.sum(h) / sigma_
+                    g_sigma += np.sum(z * h) / sigma_
+                return [g_mu, g_sigma]
+
+            def normal_score_jac(params, df, ds):
+                """
+                Jacobian of normal_score, i.e. the Hessian of ln L, built
+                from h(z) via the identity h'(z) = h(z) * (h(z) - z) - see
+                _inv_mills_ratio(). Reused by fisher_bounds() as the
+                observed Fisher information at the MLE.
+                """
+                mu_, sigma_ = params
+                resid = np.asarray(df, dtype=float) - mu_
+                r = len(df)
+                h_mumu = -r / sigma_ ** 2
+                h_musigma = -2 * np.sum(resid) / sigma_ ** 3
+                h_sigmasigma = r / sigma_ ** 2 - 3 * np.sum(resid ** 2) / sigma_ ** 4
+                if ds:
+                    z = (np.asarray(ds, dtype=float) - mu_) / sigma_
+                    h = self._inv_mills_ratio(z)
+                    h_prime = h * (h - z)
+                    g = z * h
+                    g_prime = h + z * h_prime
+                    h_mumu += -np.sum(h * (h - z)) / sigma_ ** 2
+                    h_musigma += (-np.sum(h) / sigma_ ** 2
+                                  - np.sum(z * h_prime) / sigma_ ** 2)
+                    h_sigmasigma += (-np.sum(g) / sigma_ ** 2
+                                      - np.sum(z * g_prime) / sigma_ ** 2)
+                return [[h_mumu, h_musigma], [h_musigma, h_sigmasigma]]
+
+            if self.ds is None:
+                # Closed-form solution of the score equations above with
+                # no suspension terms.
+                data = np.asarray(self.df, dtype=float)
+                self.mu = data.mean()
+                self.sigma = np.sqrt(np.mean((data - self.mu) ** 2))
+            else:
+                self.censoring = 'right-censored'
+                mu_init = float(np.mean(self.df))
+                sigma_init = float(np.std(self.df)) if len(self.df) > 1 else 1.0
+                self.mu, self.sigma = optimize.fsolve(
+                    normal_score, x0=[mu_init, sigma_init],
+                    fprime=normal_score_jac, args=(self.df, self.ds))
+                if self.sigma <= 0:
+                    raise ValueError('Sigma estimation is not valid. '
+                                     'Check the input data.')
 
         # Bias corrections
         if self.bcm is not None:
@@ -1509,8 +1605,12 @@ class Analysis:
 
     def fisher_bounds(self):
         """
-        Computes Fisher bounds for the Weibull analysis
+        Computes Fisher bounds for the fitted distribution (self.dist).
         """
+        if self.dist == 'normal':
+            self._fisher_bounds_normal()
+            return
+
         # Check if parameters are bias-corrected
         if self.bcm is None:
             b = self.beta
@@ -1597,6 +1697,66 @@ class Analysis:
             y_l = (np.log(eta) + (np.log(-np.log(1 - np.array(self.unrel))) / b)
                    + k_a_p_bound * np.sqrt(var_y))
             self.bounds_lower = np.exp(y_l)
+
+    def _fisher_bounds_normal(self):
+        """
+        Fisher bounds for the Normal distribution. Same idea as
+        fisher_bounds() above (invert the observed Fisher information at
+        the MLE to get Var/Cov(mu_hat, sigma_hat), then propagate that to
+        the time quantile t_p via the delta method), but simpler: since
+        t_p = mu + sigma * z_p is already linear in (mu, sigma), the
+        quantile variance is a plain quadratic form and no log/exp
+        round-trip is needed the way Weibull needs it to keep eta positive.
+        """
+        mu, sigma = self.mu, self.sigma
+
+        # Observed Fisher information = -Hessian of ln L at the MLE. Reuses
+        # the same building blocks as mle()'s normal_score_jac.
+        resid = np.asarray(self.df, dtype=float) - mu
+        r = len(self.df)
+        h_mumu = -r / sigma ** 2
+        h_musigma = -2 * np.sum(resid) / sigma ** 3
+        h_sigmasigma = r / sigma ** 2 - 3 * np.sum(resid ** 2) / sigma ** 4
+        if self.ds:
+            z = (np.asarray(self.ds, dtype=float) - mu) / sigma
+            h = self._inv_mills_ratio(z)
+            h_prime = h * (h - z)
+            g = z * h
+            g_prime = h + z * h_prime
+            h_mumu += -np.sum(h * (h - z)) / sigma ** 2
+            h_musigma += -np.sum(h) / sigma ** 2 - np.sum(z * h_prime) / sigma ** 2
+            h_sigmasigma += -np.sum(g) / sigma ** 2 - np.sum(z * g_prime) / sigma ** 2
+
+        self.f = np.matrix([[-h_mumu, -h_musigma], [-h_musigma, -h_sigmasigma]])
+        self.f_inv = np.linalg.inv(self.f)
+
+        if self.bounds_type == '2s':
+            self.k_a_bound = norm.ppf((1.0 - self.cl) / 2 + self.cl)
+        elif self.bounds_type == '1su':
+            self.k_a_bound = norm.ppf(self.cl)
+        elif self.bounds_type == '1sl':
+            self.k_a_bound = norm.ppf(1.0 - self.cl)
+
+        self.se_mu = (self.f_inv.item(0)) ** 0.5
+        self.se_sigma = (self.f_inv.item(3)) ** 0.5
+        k_a_p_bound = self.k_a_bound
+
+        # Delta method: Var(t_p) = Var(mu) + z_p^2*Var(sigma) + 2*z_p*Cov(mu,sigma)
+        z_p = norm.ppf(np.array(self.unrel))
+        var_t = (self.f_inv.item(0) + z_p ** 2 * self.f_inv.item(3)
+                 + 2 * z_p * self.f_inv.item(1))
+        t_p = mu + sigma * z_p
+
+        if self.bounds_type == '2s':
+            self.bounds_lower = t_p - k_a_p_bound * np.sqrt(var_t)
+            self.bounds_upper = t_p + k_a_p_bound * np.sqrt(var_t)
+        elif self.bounds_type == '1su':
+            self.bounds_upper = t_p + k_a_p_bound * np.sqrt(var_t)
+        elif self.bounds_type == '1sl':
+            # k_a_bound = norm.ppf(1 - cl) is negative for cl > 0.5, so
+            # adding it (as fisher_bounds()'s Weibull branch also does for
+            # 1sl) correctly pulls the bound below t_p.
+            self.bounds_lower = t_p + k_a_p_bound * np.sqrt(var_t)
 
     def lrb(self):
         """
@@ -1992,8 +2152,12 @@ class Analysis:
                                                                   self.unrel)
     def plot(self):
         """
-        Creates Weibull probability plots.
+        Creates a probability plot for the distribution set via dist= in
+        the constructor.
         """
+        if self.dist == 'normal':
+            self._plot_normal()
+            return
 
         # Some needed functions:
         def weibull_prob_paper(x):
@@ -2684,6 +2848,112 @@ class Analysis:
             except:
                 raise ValueError('Path is faulty.')
 
+        if self.show:
+            plt.show()
+
+    def _plot_normal(self):
+        """
+        Creates the Normal probability plot. Uses predictr's shared plot
+        style/kwargs (fig_size, fonts, legend, save/show, ...) like the
+        Weibull plot() above, but with axis scaling appropriate for the
+        Normal distribution instead of Weibull's: the x-axis (time) stays
+        linear rather than log-scaled, since the Normal quantile function
+        t_p = mu + sigma*z_p is already linear - there's nothing to
+        linearize by taking logs the way Weibull's plot needs to. The
+        y-axis is transformed via the standard normal quantile function
+        (probit) instead of Weibull's ln(-ln(1-F)).
+        """
+        def normal_ticks(y_i, _):
+            """
+            Converts a z-value on the transformed y-axis back to the
+            unreliability percentage it represents, for the tick labels.
+            """
+            return '{:.1f}'.format(100 * norm.cdf(y_i))
+
+        _apply_plot_style(self.plot_style)
+        plt.figure(figsize=self.fig_size)
+
+        # Y-axis: probit scale, same tick percentages as the Weibull plot
+        ax = plt.gca()
+        ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(normal_ticks))
+        y_ticks = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01, 0.02,
+                            0.03, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6,
+                            0.7, 0.8, 0.9, 0.95, 0.99, 0.999])
+        z_ticks = norm.ppf(y_ticks)
+        plt.ylim(bottom=z_ticks[0], top=z_ticks[-1])
+        plt.yticks(z_ticks, color='black')
+        ax.set_yticks([0.0], minor=True)
+        plt.grid(True, which='minor', axis='y', linestyle='--')
+
+        # Data points via median ranks - identical machinery to the
+        # Weibull plot, since plotting positions don't depend on the
+        # assumed distribution, only the axis transform applied to them
+        # afterwards does.
+        x_data = np.array(self.df, dtype=float)
+        if self.ds is None:
+            ranks = np.array(self.median_rank())
+        else:
+            ranks = np.array(self.median_rank_cens())
+        y_data = norm.ppf(ranks)
+
+        if self.plot_ranks:
+            plt.plot(x_data, y_data, 'o', color=PREDICTR_PALETTE[0],
+                     label='Failures (median ranks)')
+
+        # Fitted MLE line - directly linear in x, no inverse-CDF sampling
+        # needed the way Weibull's inverse_weibull() draws its line.
+        pad = 0.2 * (x_data.max() - x_data.min()) if x_data.max() > x_data.min() else max(abs(x_data.min()), 1.0)
+        x_line = np.linspace(x_data.min() - pad, x_data.max() + pad, 200)
+        y_line = (x_line - self.mu) / self.sigma
+        susp_num = len(self.ds) if self.ds is not None else 0
+        plt.plot(x_line, y_line, '-', color=PREDICTR_PALETTE[1],
+                 label='n = {} (f: {} | s: {})\nMLE: '.format(
+                     len(self.df) + susp_num, len(self.df), susp_num)
+                 + r'$\hat\mu$={:.4f}, $\hat\sigma$={:.4f}'.format(self.mu, self.sigma))
+
+        if self.bounds == 'fb' and self.bounds_lower is not None:
+            z_p = norm.ppf(self.unrel)
+            if self.bounds_lower is not None:
+                plt.plot(self.bounds_lower, z_p, '--', color=PREDICTR_PALETTE[2],
+                         label='{:.0f}% Fisher bounds (lower)'.format(self.cl * 100))
+            if self.bounds_upper is not None:
+                plt.plot(self.bounds_upper, z_p, '--', color=PREDICTR_PALETTE[3],
+                         label='{:.0f}% Fisher bounds (upper)'.format(self.cl * 100))
+
+        plt.xlabel(self.x_label, fontsize=self.xy_fontsize)
+        plt.ylabel(self.y_label, fontsize=self.xy_fontsize)
+        plt.title(self.plot_title, fontsize=self.plot_title_fontsize)
+        plt.tick_params(labelsize=self.tick_fontsize)
+        plt.grid(True, which='major')
+        if self.show_legend:
+            plt.legend(fontsize=self.legend_fontsize)
+
+        plt.tight_layout()
+
+        # Same legend-overflow-safety as plot()/plot_mrr() above: widen the
+        # figure if the legend box would otherwise get clipped at the right
+        # edge. See the comment on the first occurrence of this pattern
+        # (plot()) for why it must run after tight_layout().
+        legend = plt.gca().get_legend()
+        if legend is not None:
+            fig = plt.gcf()
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            original_canvas = fig.canvas
+            FigureCanvasAgg(fig)
+            fig.canvas.draw()
+            legend_bbox = legend.get_window_extent(fig.canvas.get_renderer())
+            fig.canvas = original_canvas
+            fig_px_width = fig.get_size_inches()[0] * fig.dpi
+            if legend_bbox.x1 > fig_px_width:
+                extra_in = (legend_bbox.x1 - fig_px_width) / fig.dpi
+                width_in, height_in = fig.get_size_inches()
+                fig.set_size_inches(width_in + extra_in + 0.25, height_in)
+
+        if self.save:
+            try:
+                plt.savefig(self.save_path)
+            except:
+                raise ValueError('Path is faulty.')
         if self.show:
             plt.show()
 
