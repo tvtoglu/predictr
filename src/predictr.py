@@ -2927,12 +2927,15 @@ class Analysis:
         x_data = np.array(self.df, dtype=float)
         susp_num = len(self.ds) if self.ds is not None else 0
 
-        # Fitted MLE line - directly linear in x, no inverse-CDF sampling
-        # needed the way Weibull's inverse_weibull() draws its line.
-        pad = 0.2 * (x_data.max() - x_data.min()) if x_data.max() > x_data.min() else max(abs(x_data.min()), 1.0)
-        x_line = np.linspace(x_data.min() - pad, x_data.max() + pad, 200)
-        y_line = (x_line - self.mu) / self.sigma
-        plt.plot(x_line, y_line, color='mediumblue', linestyle='-',
+        # Fitted MLE line. Evaluated across a fixed, wide percentile range
+        # (matching Weibull's inverse_weibull(np.array([0.001, 0.9999]), ...)
+        # convention) rather than padded around the data's x-range, so the
+        # line always reaches the edges of whatever [y_min, y_max] window is
+        # actually visible instead of stopping short of it. Only 2 points
+        # are needed since the line is exactly straight on this axis.
+        z_line = norm.ppf(np.array([0.0001, 0.9999]))
+        x_line = self.mu + self.sigma * z_line
+        plt.plot(x_line, z_line, color='mediumblue', linestyle='-',
                  linewidth=1.5, zorder=2)
 
         leg_title = 'MLE'
@@ -3142,11 +3145,24 @@ class PlotAll:
                      plot_title='Weibull Probability Plot', xy_fontsize=12,
                      plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7),
                      x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None,
+                     y_min=0.01, y_max=0.99,
                      **kwargs):
         """
         Plots multiple Analysis class objects in one figure
 
+        Parameters
+        ----------
+        y_min : float, optional
+            Lower y-axis limit (unreliability, as a fraction) shown on the
+            plot. Must satisfy 0 < y_min < y_max < 1. The default is 0.01,
+            matching Analysis's default - see Analysis(y_min=, y_max=).
+        y_max : float, optional
+            Upper y-axis limit (unreliability, as a fraction) shown on the
+            plot. Must satisfy 0 < y_min < y_max < 1. The default is 0.99.
         """
+        if not (0 < y_min < y_max < 1):
+            raise ValueError('y_min and y_max must satisfy 0 < y_min < '
+                              'y_max < 1.')
 
         def inverse_weibull(perc, beta, eta):
             return ((-np.log(1 -perc)) ** (1 / beta)) * eta
@@ -3319,11 +3335,9 @@ class PlotAll:
         # Y-Axis
         ax = plt.gca()
         ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(weibull_ticks))
-        y_ticks = np.array([0.001, 0.002, 0.003, 0.005, 0.007, 0.01, 0.02,
-                            0.03, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6,
-                            0.7, 0.8, 0.9, 0.95, 0.99, 0.999])
+        y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= y_min)
+                                          & (PROBABILITY_PLOT_TICKS <= y_max)]
         lny_ticks = np.log(-np.log(1 - y_ticks))
-        plt.ylim(bottom=0.001, top=0.999)
         plt.yticks(lny_ticks, color='black')
         ax.set_yticks([weibull_prob_paper(0.632)], minor=True)
 
@@ -3639,6 +3653,12 @@ class PlotAll:
                                  marker='o',
                                  markerfacecolor=col, markeredgecolor='black',
                                  markersize=4, alpha=.5, linestyle='None', zorder= 3)
+
+        # Pin the y-axis to [y_min, y_max] as the very last step - see the
+        # identical comment in Analysis.plot()/plot_mrr() for why the
+        # fill_betweenx calls above would otherwise silently re-expand it.
+        ax.set_ylim(bottom=weibull_prob_paper(y_min), top=weibull_prob_paper(y_max))
+
         plt.tight_layout()
         plt.grid(True, which='both')
         plt.legend(fontsize= legend_fontsize)
