@@ -91,7 +91,7 @@ If you use predictr in academic work, please cite it via its [Zenodo DOI](https:
 
 ## License
 
-MIT — see [LICENSE.txt](LICENSE.txt).
+MIT — see [LICENSE.txt](https://github.com/tvtoglu/predictr/blob/main/LICENSE.txt).
 
 ## Contacte me
 
