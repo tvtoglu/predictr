@@ -323,16 +323,34 @@ class Analysis:
         `1 - norm.cdf(z)` directly: the naive form catastrophically cancels
         to exactly 0.0 once z is only ~9 or so (norm.cdf(z) already rounds
         to 1.0 there), while norm.sf(z) stays accurate out to z ~ 37 before
-        the true tail probability itself underflows float64's range - i.e.
-        a suspension several sigma out from the fit no longer silently
-        breaks the censored MLE/Fisher bounds into NaN. Even norm.sf(z)
-        genuinely reaches 0 for a large enough z (there's no way to
-        represent 1e-300+ in a float64 double no matter how it's computed),
-        so an extreme enough suspension - relative to the fitted mu/sigma -
-        can still legitimately produce h(z) = inf (division by a true
-        zero); that's a real floating-point limit, not a bug this fixes.
+        the true tail probability itself underflows float64's range.
+
+        Beyond that point, norm.pdf(z) itself has *already* underflowed to
+        0.0 (its exp(-z**2/2) term decays faster than norm.sf's erfc-based
+        tail does), so the direct ratio collapses to 0/0 = nan right where
+        h(z) is needed most - a suspension several tens of sigma out from
+        the fitted mu/sigma is not a pathological input for MLE fitting on
+        small, heavily censored samples (see e.g. mle()'s docstring for
+        why this matters for the Normal/LogNormal Fisher bounds). Rather
+        than let that silently poison the whole confidence-bound
+        computation with a nan, values of z above the direct formula's
+        breakdown point fall back to the classical asymptotic expansion of
+        the Mills ratio, h(z) ~ z + 1/z (leading terms of Abramowitz &
+        Stegun 26.2.13's continued-fraction expansion for the normal
+        hazard function), which stays finite and within ~1e-4 relative
+        error of the true value out there - letting the Fisher-information
+        matrix stay finite (rather than nan) for exactly the inputs where
+        the direct ratio would otherwise wipe it out.
         """
-        return norm.pdf(z) / norm.sf(z)
+        z_in = np.asarray(z, dtype=float)
+        z_flat = np.atleast_1d(z_in)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            ratio = norm.pdf(z_flat) / norm.sf(z_flat)
+        unstable = ~np.isfinite(ratio) & (z_flat > 0)
+        if np.any(unstable):
+            z_u = z_flat[unstable]
+            ratio[unstable] = z_u + 1.0 / z_u
+        return ratio.reshape(z_in.shape) if z_in.ndim else ratio.item()
 
     @staticmethod
     def _point_estimate(val):
@@ -356,6 +374,89 @@ class Analysis:
             return getattr(val, 'beta_p_bs'), getattr(val, 'eta_p_bs')
         else:
             raise ValueError(f'"{bcm}" is not a supported bias-correction method.')
+
+    @staticmethod
+    def _lrb_param_names(dist):
+        """
+        Which pair of attribute names holds the likelihood-ratio bounds'
+        parameter-space coordinates for a given dist. Used by
+        contour_plot() (in the PlotAll class below) to work with Weibull's
+        (beta_lrb, eta_lrb) and Normal/LogNormal's (mu_lrb, sigma_lrb)
+        through the same generic code, instead of hard-coding beta/eta.
+        """
+        if dist == 'weibull':
+            return 'beta_lrb', 'eta_lrb'
+        elif dist in ('normal', 'lognormal'):
+            return 'mu_lrb', 'sigma_lrb'
+        else:
+            raise ValueError(f'contour_plot() has no likelihood-ratio '
+                              f'parameterization for dist="{dist}" '
+                              f'(Exponential has only one free parameter - '
+                              f'a 2D contour doesn\'t apply - and bounds='
+                              f'"lrb" isn\'t offered for it; see '
+                              f'_exact_bounds_exponential()\'s docstring).')
+
+    @classmethod
+    def _lrb_arrays(cls, val):
+        """
+        Returns the (x, y) likelihood-ratio-bounds contour point arrays for
+        an already-fitted Analysis object (val.lrb() must have been run),
+        raising a clear error instead of contour_plot() crashing on a
+        `None` if it wasn't.
+        """
+        x_name, y_name = cls._lrb_param_names(val.dist)
+        x_lrb, y_lrb = getattr(val, x_name), getattr(val, y_name)
+        if x_lrb is None or y_lrb is None:
+            raise ValueError(f'This dist="{val.dist}" object has no '
+                              f'likelihood-ratio bounds computed yet - run '
+                              f'.mle() with bounds="lrb" (or call .lrb() '
+                              f'directly) before contour_plot().')
+        return x_lrb, y_lrb
+
+    @classmethod
+    def _lrb_point(cls, val):
+        """
+        Returns the (x, y) point estimate in the same parameter space as
+        _lrb_arrays(), for the point-estimate marker: Weibull defers to
+        _point_estimate() (bias-correction aware); Normal/LogNormal have
+        no bias-correction methods (bcm is always None for them - see
+        mle()'s config checks), so mu/sigma are used directly.
+        """
+        if val.dist == 'weibull':
+            return cls._point_estimate(val)
+        return val.mu, val.sigma
+
+    @staticmethod
+    def _lrb_axis_labels(dist):
+        """
+        Default (x, y) axis labels for contour_plot(), one pair per dist:
+        Weibull's (beta, eta) are unitless-shape/real-time-scale; Normal's
+        (mu, sigma) are both in the data's own units; LogNormal's (mu,
+        sigma) are the Normal parameters of ln(t) - i.e. in log-space, not
+        the data's units - so they're labeled distinctly from Normal's to
+        avoid implying they're on the same numeric scale (see
+        contour_plot()'s docstring on why dist families can't be mixed on
+        one plot in the first place).
+
+        LogNormal's subscript is written as \\ln(t) (what's being logged),
+        not a bare \\ln, precisely so it can't be misread as "ln applied to
+        mu" instead of its intended meaning "the mu that belongs to ln(t)"
+        - mu itself is never logged, it's already estimated directly on
+        ln(t) (see mle()'s LogNormal branch). This mirrors how the
+        literature handles it: Meeker & Escobar's mu/sigma are always
+        explicitly "of ln(T)" in text, and NIST's Engineering Statistics
+        Handbook defines mu = ln(t50) outright - mu *is* a log-scale
+        quantity by construction, not a log taken of something else - the
+        same idea this subscript spells out explicitly instead of leaving
+        implicit.
+        """
+        if dist == 'weibull':
+            return r'$\widehat\beta$', r'$\widehat\eta$'
+        elif dist == 'normal':
+            return r'$\widehat\mu$', r'$\widehat\sigma$'
+        elif dist == 'lognormal':
+            return r'$\widehat\mu_{\ln(t)}$', r'$\widehat\sigma_{\ln(t)}$'
+        raise ValueError(f'No axis labels defined for dist="{dist}".')
 
     @staticmethod
     def _vectorized_weibull_mle(samples):
@@ -661,6 +762,7 @@ class Analysis:
         self.title = None
         self.mins, self.maxes, self.sol, self._z, self.z= None, None, None, None, None
         self.beta_lrb, self.eta_lrb, self.cl_lrb = None, None, None
+        self.mu_lrb, self.sigma_lrb = None, None
         self.beta_pairs_lrb, self.eta_pairs_lrb = None, None
         self.sol_post, self.sol_b, self.sol_eta = None, None, None
         self.eta_range_init, self.beta_range_init = None, None
@@ -689,7 +791,13 @@ class Analysis:
                                   f'bounds - see '
                                   f'_exact_bounds_exponential()\'s '
                                   f'docstring) are currently implemented.')
-        elif self.dist != 'weibull' and self.bounds not in (None, 'fb'):
+        elif self.dist in ('normal', 'lognormal') and self.bounds not in (None, 'fb', 'lrb'):
+            raise ValueError(f'"{self.bounds}" is not yet supported for '
+                              f'dist="{self.dist}". Only bounds="fb" '
+                              f'(Fisher-information bounds) or bounds="lrb" '
+                              f'(likelihood-ratio bounds - see lrb()\'s '
+                              f'docstring) are currently implemented.')
+        elif self.dist not in ('weibull', 'normal', 'lognormal') and self.bounds not in (None, 'fb'):
             raise ValueError(f'"{self.bounds}" is not yet supported for '
                               f'dist="{self.dist}". Only bounds="fb" is '
                               f'currently implemented.')
@@ -1029,12 +1137,67 @@ class Analysis:
                 self.censoring = 'right-censored'
                 mu_init = float(np.mean(fit_df))
                 sigma_init = float(np.std(fit_df)) if len(fit_df) > 1 else 1.0
-                self.mu, self.sigma = optimize.fsolve(
-                    normal_score, x0=[mu_init, sigma_init],
-                    fprime=normal_score_jac, args=(fit_df, fit_ds))
-                if self.sigma <= 0:
+
+                # Maximize ln L directly (bounded L-BFGS-B, gradient =
+                # normal_score) rather than root-find normal_score == 0
+                # via fsolve: fsolve has no notion of "this is a
+                # likelihood to climb," so on small, heavily censored
+                # samples it can walk the unconstrained (mu, sigma) plane
+                # straight through the true root and off to a spurious
+                # stationary point of the *score* equations at
+                # nonsensical values (e.g. sigma ~ 1e55) instead of
+                # settling on the MLE - confirmed empirically on 5
+                # failures + 3 suspensions, where fsolve's reported
+                # "solution" varied wildly (including diverging) across
+                # otherwise similar suspension times. Bounding sigma away
+                # from 0 and maximizing the likelihood itself keeps the
+                # search anchored to values that actually increase ln L,
+                # so it can't wander into a region with a worse fit than
+                # the starting guess.
+                def neg_loglik(params):
+                    mu_, sigma_ = params
+                    ll = float(np.sum(norm.logpdf(fit_df, mu_, sigma_)))
+                    if fit_ds:
+                        ll += float(np.sum(norm.logsf(fit_ds, mu_, sigma_)))
+                    return -ll
+
+                def neg_loglik_jac(params):
+                    g_mu, g_sigma = normal_score(params, fit_df, fit_ds)
+                    return [-g_mu, -g_sigma]
+
+                sigma_floor = max(sigma_init, 1.0) * 1e-6
+                result = optimize.minimize(
+                    neg_loglik, x0=[mu_init, sigma_init], jac=neg_loglik_jac,
+                    method='L-BFGS-B', bounds=[(None, None), (sigma_floor, None)],
+                    options={'ftol': 1e-15, 'gtol': 1e-12})
+                if not result.success or result.x[1] <= 0:
                     raise ValueError('Sigma estimation is not valid. '
                                      'Check the input data.')
+
+                # L-BFGS-B's own convergence tolerance leaves the score a
+                # little short of machine-precision zero even once it's
+                # unambiguously in the true root's basin (L-BFGS-B
+                # approximates the Hessian; it doesn't use the exact one).
+                # A couple of exact Newton corrections with the analytical
+                # Hessian (normal_score_jac) - safe here precisely because
+                # L-BFGS-B has already done the hard part of finding that
+                # basin - polish the estimate the rest of the way, matching
+                # the tight convergence fsolve gave on well-behaved inputs.
+                params = np.array(result.x, dtype=float)
+                for _ in range(4):
+                    grad = np.asarray(normal_score(params, fit_df, fit_ds))
+                    hess = np.asarray(normal_score_jac(params, fit_df, fit_ds))
+                    try:
+                        step = np.linalg.solve(hess, grad)
+                    except np.linalg.LinAlgError:
+                        break
+                    candidate = params - step
+                    if candidate[1] <= sigma_floor or not np.all(np.isfinite(candidate)):
+                        break
+                    params = candidate
+                    if np.max(np.abs(grad)) < 1e-10:
+                        break
+                self.mu, self.sigma = params
 
             # Log-likelihood at the MLE and AIC (k=2: mu, sigma). For
             # LogNormal this is the log-likelihood of the *original* data T,
@@ -2217,11 +2380,244 @@ class Analysis:
         elif self.bounds_type == '1sl':
             self.bounds_lower = theta_lower * t_p_per_unit_theta
 
+    def _lrb_normal(self):
+        """
+        Likelihood-ratio confidence bounds for Normal/LogNormal, called by
+        lrb()
+        """
+        fit_df = list(np.log(self.df)) if self.dist == 'lognormal' else list(self.df)
+        fit_ds = None
+        if self.ds:
+            fit_ds = list(np.log(self.ds)) if self.dist == 'lognormal' else list(self.ds)
+
+        def ll_func(mu_, sigma_):
+            """Vectorized right-censored Normal log-likelihood (mu_, sigma_
+            broadcastable arrays/mesh), reusing scipy's norm.logpdf/logsf
+            for the same numerical robustness reasons mle() does."""
+            ll = np.zeros(np.broadcast(mu_, sigma_).shape, dtype=np.float64)
+            for x in fit_df:
+                ll = ll + norm.logpdf(x, mu_, sigma_)
+            if fit_ds:
+                for x in fit_ds:
+                    ll = ll + norm.logsf(x, mu_, sigma_)
+            return ll
+
+        def lr_z(mu_, sigma_):
+            return 2 * (ll_func(mu_, sigma_) - self.ll_ref) + self.chi2_val
+
+        def crossing_idx(z, axis):
+            diff = np.diff(np.sign(z), axis=axis)
+            diff = np.ma.array(diff, mask=np.isnan(diff))
+            idx = np.argwhere(diff)
+            return idx[:, 0], idx[:, 1]
+
+        def collapse_to_envelope(fixed_pts, scan_pts, group_idx):
+            if len(group_idx) == 0:
+                return fixed_pts, scan_pts, group_idx
+            order = np.argsort(group_idx, kind='stable')
+            group_sorted = group_idx[order]
+            fixed_sorted = fixed_pts[order]
+            scan_sorted = scan_pts[order]
+            out_fixed, out_scan, out_group = [], [], []
+            start = 0
+            n = len(group_sorted)
+            for end in range(1, n + 1):
+                if end == n or group_sorted[end] != group_sorted[start]:
+                    block_scan = scan_sorted[start:end]
+                    if block_scan.size > 2:
+                        lo, hi = block_scan.min(), block_scan.max()
+                        out_fixed.extend([fixed_sorted[start], fixed_sorted[start]])
+                        out_scan.extend([lo, hi])
+                        out_group.extend([group_sorted[start], group_sorted[start]])
+                    else:
+                        out_fixed.extend(fixed_sorted[start:end])
+                        out_scan.extend(scan_sorted[start:end])
+                        out_group.extend(group_sorted[start:end])
+                    start = end
+            return np.array(out_fixed), np.array(out_scan), np.array(out_group, dtype=int)
+
+        def bisect_refine(fixed_vals, lo, hi, is_mu_fixed, n_iter=40):
+            if is_mu_fixed:
+                f_lo = lr_z(fixed_vals, lo)
+            else:
+                f_lo = lr_z(lo, fixed_vals)
+            for _ in range(n_iter):
+                mid = (lo + hi) / 2
+                f_mid = lr_z(fixed_vals, mid) if is_mu_fixed else lr_z(mid, fixed_vals)
+                keep_lo = (np.sign(f_mid) == np.sign(f_lo)) | (f_mid == 0)
+                lo = np.where(keep_lo, mid, lo)
+                hi = np.where(keep_lo, hi, mid)
+                f_lo = np.where(keep_lo, f_mid, f_lo)
+            return (lo + hi) / 2
+
+        def scan_axis(z, mu_range, sigma_range, along):
+            if along == 'sigma':
+                row, col = crossing_idx(z, axis=1)
+                mu_pts = mu_range[row]
+                sigma_pts = bisect_refine(mu_pts, sigma_range[col], sigma_range[col + 1],
+                                           is_mu_fixed=True)
+                mu_pts, sigma_pts, group_idx = collapse_to_envelope(mu_pts, sigma_pts, row)
+                n_groups = len(mu_range)
+            else:
+                row, col = crossing_idx(z, axis=0)
+                sigma_pts = sigma_range[col]
+                mu_pts = bisect_refine(sigma_pts, mu_range[row], mu_range[row + 1],
+                                        is_mu_fixed=False)
+                sigma_pts, mu_pts, group_idx = collapse_to_envelope(sigma_pts, mu_pts, col)
+                n_groups = len(sigma_range)
+            return mu_pts, sigma_pts, group_idx, n_groups
+
+        def refine_lone_crossings(mu_pts, sigma_pts, group_idx, n_groups,
+                                   fixed_range, other_range, is_mu_fixed,
+                                   n_local=4000, expand=3.0):
+            counts = np.bincount(group_idx, minlength=n_groups)
+            lone = np.where(counts == 1)[0]
+            if lone.size == 0:
+                return np.array([]), np.array([])
+            span = other_range.max() - other_range.min()
+            lo = other_range.min() - expand * span
+            hi = other_range.max() + expand * span
+            if not is_mu_fixed:
+                # other_range == sigma here (mu is the scanned axis's
+                # fixed_range instead), so sigma must stay positive.
+                lo = max(lo, 1e-9)
+            local_vals = np.linspace(lo, hi, n_local)
+            extra_mu, extra_sigma = [], []
+            for i in lone:
+                fixed_val = fixed_range[i]
+                if is_mu_fixed:
+                    mu_local, sigma_local = np.full(n_local, fixed_val), local_vals
+                else:
+                    mu_local, sigma_local = local_vals, np.full(n_local, fixed_val)
+                z_local = lr_z(mu_local, sigma_local)
+                diff_local = np.diff(np.sign(z_local))
+                cross = np.argwhere(np.ma.array(diff_local, mask=np.isnan(diff_local))).ravel()
+                if cross.size >= 2:
+                    lo_c, hi_c = cross.min(), cross.max()
+                    for c in (lo_c, hi_c):
+                        mid = (local_vals[c] + local_vals[c + 1]) / 2
+                        if is_mu_fixed:
+                            extra_mu.append(fixed_val)
+                            extra_sigma.append(mid)
+                        else:
+                            extra_mu.append(mid)
+                            extra_sigma.append(fixed_val)
+            return np.array(extra_mu), np.array(extra_sigma)
+
+        def zerofinder(mu_range_init, sigma_range_init, z):
+            row_s, col_s = crossing_idx(z, axis=1)
+            row_m, col_m = crossing_idx(z, axis=0)
+            mu_rough = np.concatenate([mu_range_init[row_s], mu_range_init[row_m]])
+            sigma_rough = np.concatenate([sigma_range_init[col_s], sigma_range_init[col_m]])
+            if mu_rough.size == 0:
+                raise RuntimeError('lrb(): no solutions found on the initial mesh; '
+                                    'the parameter range may need to be widened.')
+            delta_mu = max(mu_rough.max() - mu_rough.min(), 1e-6)
+            delta_sigma = max(sigma_rough.max() - sigma_rough.min(), 1e-6)
+            mu_range = np.linspace(mu_rough.min() - delta_mu, mu_rough.max() + delta_mu, 1000)
+            sigma_range = np.linspace(max(sigma_rough.min() - delta_sigma, 1e-9),
+                                       sigma_rough.max() + delta_sigma, 1000)
+
+            mm, ss = np.meshgrid(mu_range, sigma_range, indexing='ij')
+            z_fine = lr_z(mm, ss)
+
+            mu_sigma_pts, sigma_sigma_pts, group_sigma, n_mu = scan_axis(
+                z_fine, mu_range, sigma_range, along='sigma')
+            mu_mu_pts, sigma_mu_pts, group_mu, n_sigma = scan_axis(
+                z_fine, mu_range, sigma_range, along='mu')
+
+            extra_mu_1, extra_sigma_1 = refine_lone_crossings(
+                mu_sigma_pts, sigma_sigma_pts, group_sigma, n_mu,
+                fixed_range=mu_range, other_range=sigma_range, is_mu_fixed=True)
+            extra_mu_2, extra_sigma_2 = refine_lone_crossings(
+                mu_mu_pts, sigma_mu_pts, group_mu, n_sigma,
+                fixed_range=sigma_range, other_range=mu_range, is_mu_fixed=False)
+
+            mu_pairs = np.concatenate([mu_sigma_pts, mu_mu_pts, extra_mu_1, extra_mu_2])
+            sigma_pairs = np.concatenate(
+                [sigma_sigma_pts, sigma_mu_pts, extra_sigma_1, extra_sigma_2])
+            return mu_pairs, sigma_pairs
+
+        # Initial (mu, sigma) mesh range from the observed Fisher
+        # information (same building blocks as _fisher_bounds_normal/
+        # _fisher_bounds_lognormal) - only a starting point for the mesh,
+        # not the final bounds themselves.
+        mu, sigma = self.mu, self.sigma
+        resid = np.asarray(fit_df, dtype=float) - mu
+        r = len(fit_df)
+        h_mumu = -r / sigma ** 2
+        h_musigma = -2 * np.sum(resid) / sigma ** 3
+        h_sigmasigma = r / sigma ** 2 - 3 * np.sum(resid ** 2) / sigma ** 4
+        if fit_ds:
+            z_ds = (np.asarray(fit_ds, dtype=float) - mu) / sigma
+            h = self._inv_mills_ratio(z_ds)
+            h_prime = h * (h - z_ds)
+            g = z_ds * h
+            g_prime = h + z_ds * h_prime
+            h_mumu += -np.sum(h * (h - z_ds)) / sigma ** 2
+            h_musigma += -np.sum(h) / sigma ** 2 - np.sum(z_ds * h_prime) / sigma ** 2
+            h_sigmasigma += -np.sum(g) / sigma ** 2 - np.sum(z_ds * g_prime) / sigma ** 2
+
+        f = np.array([[-h_mumu, -h_musigma], [-h_musigma, -h_sigmasigma]])
+        f_inv = np.linalg.inv(f)
+        se_mu = f_inv[0, 0] ** 0.5
+        se_sigma = f_inv[1, 1] ** 0.5
+
+        if self.bounds_type == '2s':
+            k_a_bound = norm.ppf((1.0 - self.cl) / 2 + self.cl)
+            self.cl_lrb = self.cl
+        elif self.bounds_type == '1su':
+            k_a_bound = norm.ppf(self.cl)
+            self.cl_lrb = 2 * self.cl - 1
+        elif self.bounds_type == '1sl':
+            k_a_bound = norm.ppf(1.0 - self.cl)
+            self.cl_lrb = 2 * self.cl - 1
+
+        # Widen the Fisher-based interval (factor 2) so the initial mesh
+        # comfortably contains the (generally wider, non-elliptical) LR
+        # contour before zerofinder() refines around it.
+        mu_lower = mu - 2 * abs(k_a_bound) * se_mu
+        mu_upper = mu + 2 * abs(k_a_bound) * se_mu
+        sigma_lower = max(sigma / np.exp(2 * abs(k_a_bound) * se_sigma / sigma), 1e-9)
+        sigma_upper = sigma * np.exp(2 * abs(k_a_bound) * se_sigma / sigma)
+
+        self.mu_range_init = np.linspace(mu_lower, mu_upper, 400)
+        self.sigma_range_init = np.linspace(sigma_lower, sigma_upper, 400)
+
+        mm_init, ss_init = np.meshgrid(self.mu_range_init, self.sigma_range_init, indexing='ij')
+
+        self.chi2_val = chi2.ppf(self.cl_lrb, 1)
+        self.ll_ref = ll_func(mu, sigma)
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            z_init = lr_z(mm_init, ss_init)
+            self.mu_lrb, self.sigma_lrb = zerofinder(self.mu_range_init,
+                                                      self.sigma_range_init,
+                                                      z_init)
+
+        z_p = norm.ppf(np.array(self.unrel))
+        # t_p(mu, sigma) for every contour point x every unrel level.
+        t_p_grid = self.mu_lrb[:, None] + self.sigma_lrb[:, None] * z_p[None, :]
+        if self.dist == 'lognormal':
+            t_p_grid = np.exp(t_p_grid)
+        lower = t_p_grid.min(axis=0)
+        upper = t_p_grid.max(axis=0)
+
+        if self.bounds_type == '2s':
+            self.bounds_lower, self.bounds_upper = lower, upper
+        elif self.bounds_type == '1su':
+            self.bounds_upper = upper
+        elif self.bounds_type == '1sl':
+            self.bounds_lower = lower
+
     def lrb(self):
         """
         # Goal: Find all solution pairs (beta, eta) for
         # L(beta, eta) = exp(chi ** 2) / -2) * L(beta_mle, eta_mle)
         """
+        if self.dist in ('normal', 'lognormal'):
+            self._lrb_normal()
+            return
 
         def t_bounds_from_pars(beta_, eta, unreliability):
             """
@@ -4381,7 +4777,9 @@ class PlotAll:
     def compare(self, df, ds=None, bounds=None, bounds_type='2s', cl=0.9,
                 x_label='Time to Failure', y_label='Unreliability',
                 fig_size=(7.7, 7), y_min=0.01, y_max=0.99, plot_ranks=False,
-                criteria='aic', plot_pdf=True, show=True, save=False,
+                criteria='aic', plot_pdf=True, pdf_xy_fontsize=12,
+                pdf_tick_fontsize=10, pdf_legend_fontsize=9,
+                pdf_plot_title_fontsize=14, show=True, save=False,
                 plot_style='predictr', **kwargs):
         """
         Fits every distribution predictr supports (see
@@ -4455,6 +4853,17 @@ class PlotAll:
             suspensions, both black). This second figure follows show/save
             the same way the main one does, saved to a '_pdf' suffixed
             filename when save=True. The default is True.
+        pdf_xy_fontsize, pdf_tick_fontsize, pdf_legend_fontsize,
+        pdf_plot_title_fontsize : float, optional
+            Font sizes for the PDF figure (only used when plot_pdf=True).
+            Unlike the probability-plot grid's panel titles/labels/ticks/
+            legend - deliberately shrunk relative to fig_size via a `scale`
+            factor since several panels share that one figure (see
+            _set_log_minor_ticks()'s docstring) - the PDF figure is its own
+            single, full-size figure, so these default to the same fixed
+            sizes any other standalone predictr plot uses (e.g.
+            Analysis.plot()'s xy_fontsize/tick_fontsize/legend_fontsize/
+            plot_title_fontsize defaults), not a fraction of them.
         show : boolean, optional
             If True, the figure is displayed via plt.show(). The default
             is True.
@@ -4751,14 +5160,14 @@ class PlotAll:
                             markeredgecolor='black', linestyle='None',
                             markersize=7, label='Suspensions')
 
-            ax_pdf.set_xlabel(x_label, color='black', fontsize=10 * scale)
+            ax_pdf.set_xlabel(x_label, color='black', fontsize=pdf_xy_fontsize)
             ax_pdf.set_ylabel('Probability Density Function', color='black',
-                               fontsize=10 * scale)
+                               fontsize=pdf_xy_fontsize)
             ax_pdf.set_title('Probability Density Function Comparison', color='black',
-                              fontsize=15 * scale, fontweight='bold')
-            ax_pdf.tick_params(labelsize=10 * scale)
+                              fontsize=pdf_plot_title_fontsize, fontweight='bold')
+            ax_pdf.tick_params(labelsize=pdf_tick_fontsize)
             ax_pdf.grid(True)
-            ax_pdf.legend(fontsize=9 * scale)
+            ax_pdf.legend(fontsize=pdf_legend_fontsize)
             fig_pdf.tight_layout()
 
             if save:
@@ -4776,28 +5185,60 @@ class PlotAll:
 
         return result
 
-    def contour_plot(self, show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=r'$\widehat\beta$',
+    def contour_plot(self, show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=None,
                      y_label=None, plot_title='Contour Plot', xy_fontsize=12,
                      plot_title_fontsize=14, legend_fontsize=9, fig_size=(6.4, 4.8), save=False,
                      scale_mode='auto', log_ratio_threshold=10, cl_set=None,
                      curve_fill=True, fill_alpha=0.25, **kwargs):
         """
-        Plots the contour plot when likelihood ratio bounds are being used.
-        Multiple objects can be used as well.
+        Plots the likelihood-ratio-bounds contour (bounds='lrb') for one or
+        more already-fitted Analysis objects, in whichever of the two
+        parameter spaces its dist uses: Weibull's (beta, eta), or Normal/
+        LogNormal's (mu, sigma) - see Analysis._lrb_param_names().
+
+        Every object plotted together must have the exact same dist. This
+        is a hard requirement, not just a default: Weibull's beta (a
+        unitless shape parameter) and Normal/LogNormal's mu (a location
+        parameter in the data's own units, or in ln(data)'s units for
+        LogNormal) aren't the same kind of quantity, and even Normal vs.
+        LogNormal - despite both using a (mu, sigma) pair - live on
+        different scales (LogNormal's mu/sigma are of ln(data), Normal's
+        are of the data itself; e.g. a LogNormal mu of ~4.6 and a Normal mu
+        of ~100 can be the *same* underlying data). Overlaying curves from
+        different dists on one shared pair of axes would visually compare
+        numbers that don't mean the same thing, so it's rejected outright
+        (ValueError) rather than silently drawn - there's no established
+        reliability-engineering practice (see e.g. Meeker & Escobar) for
+        putting them on one plot; every reference treats each fitted
+        model's contour separately. Cross-distribution comparison belongs
+        in likelihood/AIC space (see PlotAll.compare()), not parameter
+        space.
+
+        Every plotted object must also already have its LRB contour
+        computed (i.e. .mle() was called with bounds='lrb', or .lrb() was
+        called directly) - contour_plot() checks this explicitly per
+        object (see Analysis._lrb_arrays()) and raises a clear error
+        rather than crashing on a missing value.
 
         Parameters
         ----------
+        x_label, y_label : str, optional
+            Axis labels. Default (None) picks the label pair matching the
+            objects' shared dist (see Analysis._lrb_axis_labels()); only
+            override if you want something other than that default.
         scale_mode : {'auto', 'linear', 'log'}, optional
-            Scaling of the eta (y) axis. 'auto' (default) inspects the eta_lrb
-            range across all objects and switches to a logarithmic scale when
-            it spans more than `log_ratio_threshold`x in magnitude. This
-            avoids small-scale ellipses being crushed into a flat line next
-            to large-scale ones when several objects with very different eta
-            magnitudes are plotted together. 'linear' and 'log' force the
-            respective scale regardless of the data.
+            Scaling of the spread-parameter (y) axis - eta for Weibull,
+            sigma for Normal/LogNormal. 'auto' (default) inspects that
+            range across all objects and switches to a logarithmic scale
+            when it spans more than `log_ratio_threshold`x in magnitude.
+            This avoids small-scale ellipses being crushed into a flat
+            line next to large-scale ones when several objects with very
+            different magnitudes are plotted together. 'linear' and 'log'
+            force the respective scale regardless of the data.
         log_ratio_threshold : float, optional
-            Ratio of max(eta) / min(eta) across all objects above which
-            'auto' switches to a logarithmic scale. Default = 10.
+            Ratio of max/min of the spread parameter across all objects
+            above which 'auto' switches to a logarithmic scale.
+            Default = 10.
         cl_set : list of float, optional
             Confidence levels to draw per dataset, e.g. [0.95, 0.9, 0.8].
             If None or empty (default), each object's own `cl` attribute is
@@ -4805,7 +5246,7 @@ class PlotAll:
             When given, `cl_set` is sorted from largest to smallest and, for
             every object, its contour is recomputed and drawn once per
             confidence level - via a temporary deep copy of the object, so
-            the original object's own `cl`/`beta_lrb`/`eta_lrb` are left
+            the original object's own `cl` and LRB arrays are left
             untouched. All curves of a dataset share the same base hue and
             are progressively shaded darker from the largest to the smallest
             confidence level (see the `shade_of` helper below), so that the
@@ -4827,6 +5268,21 @@ class PlotAll:
             if any(not (0 < c < 1) for c in cl_set):
                 raise ValueError('All values in cl_set must be between 0 and 1.')
             cl_set = sorted(cl_set, reverse=True)
+
+        # All objects must share one dist - see docstring for why mixing
+        # parameter spaces on one plot isn't meaningful.
+        dists = {getattr(val, 'dist') for val in self.objects.values()}
+        if len(dists) > 1:
+            raise ValueError(f'contour_plot() cannot mix dists {sorted(dists)} '
+                              f'on one plot - Weibull\'s (beta, eta), Normal\'s '
+                              f'(mu, sigma), and LogNormal\'s (mu, sigma) are not '
+                              f'the same kind of quantity or on the same scale '
+                              f'(see contour_plot()\'s docstring). Plot each dist '
+                              f'separately.')
+        if not dists:
+            raise ValueError('contour_plot() has no objects to plot.')
+        shared_dist = next(iter(dists))
+        x_name, y_name = Analysis._lrb_param_names(shared_dist)
 
         # Configure plot
         _apply_plot_style(self.plot_style)
@@ -4868,11 +5324,14 @@ class PlotAll:
             s = min(1.0, s + saturation_gain * t)
             return colorsys.hsv_to_rgb(h, s, v)
 
-        # Collect the (cl, beta_lrb, eta_lrb) curve(s) to draw per object. If
-        # cl_set is given, the LRB region is recomputed for every requested
-        # confidence level on a deep copy of the object, leaving the
-        # original object untouched; otherwise the object's own cl/beta_lrb/
-        # eta_lrb (as computed by .mle()/.lrb()) is used, as before.
+        # Collect the (cl, x_lrb, y_lrb) curve(s) to draw per object - x/y
+        # being (beta, eta) for Weibull or (mu, sigma) for Normal/LogNormal
+        # (see _lrb_param_names()). If cl_set is given, the LRB region is
+        # recomputed for every requested confidence level on a deep copy of
+        # the object, leaving the original object untouched; otherwise the
+        # object's own cl and already-computed LRB arrays (checked via
+        # _lrb_arrays() - raises a clear error if .lrb() was never called)
+        # are used, as before.
         curves = {}
         for key, val in self.objects.items():
             if cl_set:
@@ -4881,12 +5340,15 @@ class PlotAll:
                     val_cl = copy.deepcopy(val)
                     val_cl.cl = cl_value
                     val_cl.lrb()
-                    object_curves.append((cl_value, val_cl.beta_lrb, val_cl.eta_lrb))
+                    x_lrb, y_lrb = Analysis._lrb_arrays(val_cl)
+                    object_curves.append((cl_value, x_lrb, y_lrb))
                 curves[key] = object_curves
             else:
-                curves[key] = [(getattr(val, 'cl'), getattr(val, 'beta_lrb'), getattr(val, 'eta_lrb'))]
+                x_lrb, y_lrb = Analysis._lrb_arrays(val)
+                curves[key] = [(getattr(val, 'cl'), x_lrb, y_lrb)]
 
-        # Analyze the eta_lrb data across all objects/confidence levels to decide on the y-axis scale
+        # Analyze the spread-parameter (eta/sigma) data across all objects/
+        # confidence levels to decide on the y-axis scale
         all_eta = np.concatenate([np.asarray(eta) for object_curves in curves.values()
                                   for _, _, eta in object_curves])
         if scale_mode == 'log':
@@ -4896,7 +5358,8 @@ class PlotAll:
         else:
             use_log = (all_eta.max() / all_eta.min()) > log_ratio_threshold
         if use_log and np.any(all_eta <= 0):
-            raise ValueError('Logarithmic eta scale requires strictly positive eta_lrb values.')
+            raise ValueError(f'Logarithmic scale requires strictly positive '
+                              f'{y_name} values.')
 
         def label_anchors(object_curves):
             """
@@ -4994,16 +5457,26 @@ class PlotAll:
                         bbox=dict(boxstyle='round,pad=0.15', facecolor=ax.get_facecolor(),
                                   edgecolor='none', alpha=0.85))
 
-            # Point estimate marker (bias-corrected if a bcm was used), always
-            # one tick darker (t=1.0) than the dataset's darkest curve (which
-            # tops out at CURVE_T_MAX < 1.0)
-            point_beta, point_eta = Analysis._point_estimate(val)
-            ax.scatter(point_beta, point_eta, s=40,
+            # Point estimate marker (bias-corrected if a bcm was used - only
+            # applies to Weibull, see _lrb_point()), always one tick darker
+            # (t=1.0) than the dataset's darkest curve (which tops out at
+            # CURVE_T_MAX < 1.0)
+            point_x, point_y = Analysis._lrb_point(val)
+            ax.scatter(point_x, point_y, s=40,
                         c=[shade_of(base_color, 1.0)], marker='o', zorder=5)
 
+        default_x_label, default_y_label = Analysis._lrb_axis_labels(shared_dist)
+        if x_label is None:
+            x_label = default_x_label
         ax.set_xlabel(x_label, fontsize=xy_fontsize)
         if y_label is None:
-            y_label = r'$\log(\widehat\eta)$' if use_log else r'$\widehat\eta$'
+            # default_y_label is a full '$...$' mathtext span; splice the
+            # log(...) wrapper *inside* those delimiters (not around them)
+            # so the result stays one single math span - r'$\log($' here
+            # would leave a stray '$' right after the opening paren,
+            # splitting this into two separate (and here, one malformed)
+            # mathtext spans instead of one.
+            y_label = (r'$\log(' + default_y_label[1:-1] + r')$') if use_log else default_y_label
         ax.set_ylabel(y_label, fontsize=xy_fontsize)
         if use_log:
             ax.set_yscale('log')
@@ -5230,5 +5703,4 @@ class PlotAll:
         return fig
 
 if __name__ == '__main__':
-    s = np.random.normal(loc=100, scale=5, size=5)
-    PlotAll().compare(df=s, ds=[300, 300, 300], plot_ranks=True, criteria='aic', bounds='fb', plot_pdf=True)
+    pass

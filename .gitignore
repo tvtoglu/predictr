@@ -183,3 +183,4 @@ src/tests/test_bootstrap.py
 src/tests/test_bounds.py
 .gitignore
 src/tests/test_mcp_bounds.py
+skill.md

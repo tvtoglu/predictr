@@ -108,7 +108,16 @@ def test_fisher_bounds_direction(bounds_type):
 
 def test_unsupported_bounds_method_raises():
     with pytest.raises(ValueError):
-        Analysis(df=DATA_UNCENSORED, dist='normal', bounds='lrb', show=False).mle()
+        Analysis(df=DATA_UNCENSORED, dist='normal', bounds='npbb', show=False).mle()
+
+
+def test_normal_lrb_bounds_supported():
+    fit = Analysis(df=list(DF_CENSORED), ds=list(DS_CENSORED), dist='normal',
+                    bounds='lrb', bounds_type='2s', cl=0.9, show=False)
+    fit.mle()
+    assert fit.bounds_lower is not None
+    assert fit.bounds_upper is not None
+    assert np.all(fit.bounds_lower <= fit.bounds_upper)
 
 
 def test_unsupported_bias_correction_raises():
