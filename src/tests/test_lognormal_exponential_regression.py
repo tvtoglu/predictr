@@ -101,6 +101,30 @@ def test_lognormal_plot_runs_without_error():
     a.plot()
 
 
+def test_lognormal_plot_uses_weibull_style_log_x_paper():
+    """LogNormal/Exponential plot on the same log-x, double-log-y paper as
+    Weibull (not the alternative linear-x papers considered and rejected -
+    see conversation), and the x-axis must be pinned to a sensible,
+    data-driven range rather than autoscaling to the MLE line's own wide
+    evaluation extremes (evaluated near p=0.0001, which on a log axis can
+    extend towards 0 far past anything meaningful)."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    a = Analysis(df=LOGNORMAL_DATA, dist='lognormal', bounds='fb', show=False)
+    a.mle()
+    a.plot()
+    ax = plt.gca()
+    assert ax.get_xscale() == 'log'
+    left, right = ax.get_xlim()
+    # The actual data spans roughly exp(mu +/- 3*sigma); the axis should be
+    # in the same ballpark, not many orders of magnitude wider.
+    data_min, data_max = min(LOGNORMAL_DATA), max(LOGNORMAL_DATA)
+    assert left > data_min / 100
+    assert right < data_max * 100
+
+
 # --- Exponential ---------------------------------------------------------
 
 def test_exponential_mle_uncensored_matches_sample_mean():
@@ -148,6 +172,48 @@ def test_exponential_plot_runs_without_error():
     a = Analysis(df=EXP_DATA, dist='exponential', bounds='fb', show=False)
     a.mle()
     a.plot()
+
+
+def test_exponential_plot_uses_weibull_style_log_x_paper():
+    """See test_lognormal_plot_uses_weibull_style_log_x_paper() - same
+    reasoning applies to Exponential's plot."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    a = Analysis(df=EXP_DATA, dist='exponential', bounds='fb', show=False)
+    a.mle()
+    a.plot()
+    ax = plt.gca()
+    assert ax.get_xscale() == 'log'
+    left, right = ax.get_xlim()
+    data_min, data_max = min(EXP_DATA), max(EXP_DATA)
+    assert left > data_min / 100
+    assert right < data_max * 100
+
+
+def test_exponential_plot_xlim_matches_bounds_extent_when_bounds_widen_it():
+    """When the Fisher bounds extend past the point-estimate curve's own
+    [0.1%, 99.9%] range (as they legitimately can for small n or a poor
+    exponential fit), the x-axis must grow to match - not stay clipped to
+    the narrower point-estimate range."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    small_n_data = [0.30481336314657737, 0.5793918872111126, 0.633217732127894,
+                     0.7576700925659532, 0.8394342818048925, 0.9118100898948334,
+                     1.0110147142055477, 1.0180126386295232, 1.3201853093496474,
+                     1.492172669340363]
+    a = Analysis(df=small_n_data, dist='exponential', bounds='fb',
+                 bounds_type='2s', show=False)
+    a.mle()
+    a.plot()
+    left, right = plt.gca().get_xlim()
+    expected_left = 10 ** (np.ceil(np.log10(min(a.bounds_lower))) - 1)
+    expected_right = 10 ** (np.ceil(np.log10(max(a.bounds_upper))))
+    assert left == pytest.approx(expected_left)
+    assert right == pytest.approx(expected_right)
 
 
 # --- Shared config guards -------------------------------------------------

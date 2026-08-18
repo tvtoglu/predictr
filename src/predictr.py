@@ -3248,6 +3248,26 @@ class Analysis:
 
         ax.set_ylim(bottom=norm.ppf(self.y_min), top=norm.ppf(self.y_max))
 
+        # Pin the x-axis to a sensible data-driven range too (mirroring
+        # Weibull's plot()): otherwise autoscale would size it to the MLE
+        # line's own evaluation points (z=[norm.ppf(0.0001), ...]), which on
+        # a log axis can extend towards 0 far past anything meaningful.
+        if self.bounds == 'fb' and (self.bounds_lower is not None
+                                     or self.bounds_upper is not None):
+            if self.bounds_type == '2s':
+                tmin_plot, tmax_plot = min(self.bounds_lower), max(self.bounds_upper)
+            elif self.bounds_type == '1su':
+                tmin_plot = np.exp(self.mu + self.sigma * norm.ppf(0.001))
+                tmax_plot = max(self.bounds_upper)
+            elif self.bounds_type == '1sl':
+                tmin_plot = min(self.bounds_lower)
+                tmax_plot = np.exp(self.mu + self.sigma * norm.ppf(0.999))
+        else:
+            tmin_plot = np.exp(self.mu + self.sigma * norm.ppf(0.001))
+            tmax_plot = np.exp(self.mu + self.sigma * norm.ppf(0.999))
+        ax.set_xlim(10 ** (np.ceil(np.log10(tmin_plot)) - 1),
+                    10 ** (np.ceil(np.log10(tmax_plot))))
+
         plt.tight_layout()
 
         legend = plt.gca().get_legend()
@@ -3275,38 +3295,53 @@ class Analysis:
 
     def _plot_exponential(self):
         """
-        Creates the Exponential probability plot. Simpler than the other
-        three: since the shape is fixed (no free beta the way Weibull has),
-        the CDF F(t) = 1 - exp(-t/theta) is already linear in t once you
-        take y = -ln(1-F) - no second log and no log-x needed the way
-        Weibull's plot() needs both to linearize an unknown shape.
+        Creates the Exponential probability plot on the same log-x /
+        double-log-y paper as Weibull's plot() above, rather than the
+        simpler "native" exponential paper (linear x, single-log
+        y = -ln(1-F)) that's also a mathematically valid linearization.
+        Both work because t_p = theta*(-ln(1-p)) is exactly Weibull's
+        quantile function with beta=1, eta=theta: Weibull's
+        ln(t_p) = ln(eta) + (1/beta)*ln(-ln(1-p)) becomes, at beta=1,
+        ln(t_p) = ln(theta) + ln(-ln(1-p)) - a straight (unit-slope) line
+        on Weibull's own paper too. Reliability tools (Minitab,
+        Weibull++) plot Exponential this way rather than on the simpler
+        paper, since it's treated as the beta=1 special case of Weibull
+        within the same "life data" plotting framework - and it avoids
+        the low-percentile compression the simpler paper has (its
+        stretch factor 1/(1-F) is ~1 near F=0 but diverges towards F=1,
+        whereas this double-log transform stretches both tails).
         """
-        def exponential_ticks(y_i, _):
-            return '{:.1f}'.format(100 * (1 - np.exp(-y_i)))
+        def weibull_prob_paper(x):
+            x = np.asarray(x, dtype=float)
+            x = np.where(x > .9999, np.nan, x)
+            return np.log(-np.log(1 - x))
+
+        def weibull_ticks(y_i, _):
+            return '{:.1f}'.format(100 * (1 - np.exp(-np.exp(y_i))))
 
         _apply_plot_style(self.plot_style)
         plt.figure(figsize=self.fig_size)
 
         ax = plt.gca()
-        ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(exponential_ticks))
+        ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(weibull_ticks))
         y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= self.y_min)
                                           & (PROBABILITY_PLOT_TICKS <= self.y_max)]
-        w_ticks = -np.log(1 - y_ticks)
-        plt.yticks(w_ticks, color='black')
-        ax.set_yticks([-np.log(1 - 0.632)], minor=True)
+        lny_ticks = weibull_prob_paper(y_ticks)
+        plt.yticks(lny_ticks, color='black')
+        ax.set_yticks([weibull_prob_paper(0.632)], minor=True)
         plt.grid(True, which='minor', axis='y', linestyle='--')
 
         x_data = np.array(self.df, dtype=float)
         susp_num = len(self.ds) if self.ds is not None else 0
 
-        # Fitted MLE line: t_p = theta * (-ln(1-p)), i.e. x = theta*w is an
-        # exact line through the origin on this axis - 2 points suffice,
-        # evaluated across a fixed wide percentile range like the other
-        # _plot_*() methods.
-        w_line = -np.log(1 - np.array([0.0001, 0.9999]))
-        x_line = self.theta * w_line
-        plt.plot(x_line, w_line, color='mediumblue', linestyle='-',
-                 linewidth=1.5, zorder=2)
+        # Fitted MLE line: t_p = theta*(-ln(1-p)) is Weibull's quantile
+        # function at beta=1, eta=theta - 2 points suffice since it's a
+        # straight line on this paper, evaluated across a fixed wide
+        # percentile range like the other _plot_*() methods.
+        p_line = np.array([0.0001, 0.9999])
+        x_line = self.theta * (-np.log(1 - p_line))
+        plt.semilogx(x_line, weibull_prob_paper(p_line), color='mediumblue',
+                     linestyle='-', linewidth=1.5, zorder=2)
 
         leg_title = 'MLE'
         leg_text = ('n = {} (f: {} | s: {})\n'.format(len(self.df) + susp_num,
@@ -3316,22 +3351,22 @@ class Analysis:
 
         if self.bounds == 'fb' and (self.bounds_lower is not None
                                      or self.bounds_upper is not None):
-            w_p = -np.log(1 - np.array(self.unrel))
+            y_p = weibull_prob_paper(self.unrel)
             if self.bounds_type == '2s':
-                plt.plot(self.bounds_lower, w_p, color='royalblue',
-                         linestyle='-', linewidth=1)
-                plt.plot(self.bounds_upper, w_p, color='royalblue',
-                         linestyle='-', linewidth=1, label='_nolegend_')
-                plt.fill_betweenx(y=w_p, x1=self.bounds_lower, x2=self.bounds_upper,
+                plt.semilogx(self.bounds_lower, y_p, color='royalblue',
+                             linestyle='-', linewidth=1)
+                plt.semilogx(self.bounds_upper, y_p, color='royalblue',
+                             linestyle='-', linewidth=1, label='_nolegend_')
+                plt.fill_betweenx(y=y_p, x1=self.bounds_lower, x2=self.bounds_upper,
                                    alpha=0.1, color='royalblue', label='_nolegend_')
                 bt_legend = '2s'
             elif self.bounds_type == '1su':
-                plt.plot(self.bounds_upper, w_p, color='royalblue',
-                         linestyle='-', linewidth=1)
+                plt.semilogx(self.bounds_upper, y_p, color='royalblue',
+                             linestyle='-', linewidth=1)
                 bt_legend = '1su'
             elif self.bounds_type == '1sl':
-                plt.plot(self.bounds_lower, w_p, color='royalblue',
-                         linestyle='-', linewidth=1)
+                plt.semilogx(self.bounds_lower, y_p, color='royalblue',
+                             linestyle='-', linewidth=1)
                 bt_legend = '1sl'
             legend_labels = (leg_text, '\nFisher bounds:\n{} @{}%'.format(
                 bt_legend, self.cl * 100))
@@ -3349,12 +3384,32 @@ class Analysis:
         if self.plot_ranks:
             ranks = np.array(self.median_rank() if self.ds is None
                               else self.median_rank_cens())
-            y_data = -np.log(1 - np.array(ranks))
-            plt.plot(x_data, y_data, marker='o', markerfacecolor='mediumblue',
-                     markeredgecolor='mediumblue', markersize=4, alpha=.5,
-                     linestyle='None', zorder=3)
+            y_data = weibull_prob_paper(ranks)
+            plt.semilogx(x_data, y_data, marker='o', markerfacecolor='mediumblue',
+                         markeredgecolor='mediumblue', markersize=4, alpha=.5,
+                         linestyle='None', zorder=3)
 
-        ax.set_ylim(bottom=-np.log(1 - self.y_min), top=-np.log(1 - self.y_max))
+        ax.set_ylim(bottom=weibull_prob_paper(self.y_min), top=weibull_prob_paper(self.y_max))
+
+        # Pin the x-axis to a sensible data-driven range too (mirroring
+        # Weibull's plot()): otherwise autoscale would size it to the MLE
+        # line's own evaluation points (p=[0.0001, ...]), which on a log
+        # axis can extend towards 0 far past anything meaningful.
+        if self.bounds == 'fb' and (self.bounds_lower is not None
+                                     or self.bounds_upper is not None):
+            if self.bounds_type == '2s':
+                tmin_plot, tmax_plot = min(self.bounds_lower), max(self.bounds_upper)
+            elif self.bounds_type == '1su':
+                tmin_plot = self.theta * (-np.log(1 - 0.001))
+                tmax_plot = max(self.bounds_upper)
+            elif self.bounds_type == '1sl':
+                tmin_plot = min(self.bounds_lower)
+                tmax_plot = self.theta * (-np.log(1 - 0.999))
+        else:
+            tmin_plot = self.theta * (-np.log(1 - 0.001))
+            tmax_plot = self.theta * (-np.log(1 - 0.999))
+        ax.set_xlim(10 ** (np.ceil(np.log10(tmin_plot)) - 1),
+                    10 ** (np.ceil(np.log10(tmax_plot))))
 
         plt.tight_layout()
 
@@ -4508,16 +4563,22 @@ if __name__ == '__main__':
     ds_caf = [3_000_000] * 3
 
 
-    x = Analysis(df=df, bounds='fb', dist='normal', show=True)
-    x.mle()
+    #x = Analysis(df=df, bounds='fb', dist='normal', show=True)
+    #x.mle()
 
-    y = Analysis(df=failures_a, bounds='lrb', show=True, dist='weibull')
-    y.mle()
-"""
+    #y = Analysis(df=failures_a, bounds='lrb', show=True, dist='weibull')
+    #y.mle()
+
+    w = Analysis(df=failures_a, bounds='fb', show=True, dist='exponential', y_min=0.2)
+    w.mle()
+
+    #z = Analysis(df=failures_a, bounds='fb', show=True, dist='lognormal')
+    #z.mle()
+    """
     obj = {'x': x, 'y':y }
     PlotAll(obj).contour_plot(curve_fill= True, scale_mode='auto', cl_set=[.7, 0.8, 0.9])
 
     failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
     prototype_a = Analysis(df=failures, bounds='bbb', show=True)
     prototype_a.mrr()
-"""
+    """
