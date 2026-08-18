@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
       name='predictr',
-      version='0.1.33',
+      version='0.1.34',
       description='Life Data Analysis for Reliability Engineers - Weibull Analysis, Detailed Plots, Compute Statistics',
       author='Tamer Tevetoglu',
       author_email="predictr@outlook.com",

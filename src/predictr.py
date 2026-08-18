@@ -59,8 +59,7 @@ def _categorical_style(n):
     return colors, linestyles
 
 
-# predictr's default matplotlib style. Kept in sync with src/predictr.mplstyle
-# (the human-editable reference copy) but embedded here as a plain dict so
+# predictr's default matplotlib style, embedded here as a plain dict so
 # 'predictr' works everywhere right after `pip install predictr`, with no
 # extra file to ship/discover and no per-machine registration in
 # matplotlib's stylelib directory required.
