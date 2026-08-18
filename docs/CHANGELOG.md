@@ -7,6 +7,28 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.34] - 2026-08-18
+### Added
+ - Added support for following distributions: **normal**, **lognormal**, and **exponential**
+   - predictr had the arg dist='weibull' since the first release. Now, I have updated the classes with dist='normal', dist='lognormal' and dist='exponential'. Check the documentation for use cases
+ - New class method: PlotAll().compare() for goodness-of-fit tests for a given dataset:
+   - plots pdfs and cdf
+   - AIC and AD criterion available
+   - optional: plot median ranks and confidence bounds for each distribution
+
+   | Ranked by AIC | PDF comparison |
+   |:---:|:---:|
+   | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal.png" alt="PlotAll().compare() ranked by AIC for a random normal sample of 7" width="260"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal_pdf.png" alt="PlotAll().compare() PDF comparison figure" width="260"> |
+
+ - bounds='lrb' (likelihood-ratio bounds) for dist='normal' and dist='lognormal', profiling the (mu, sigma) log-likelihood the same way lrb() already does for Weibull's (beta, eta)
+ - contour_plot() now supports dist='normal'/'lognormal' objects fitted with bounds='lrb', with axis labels matching each distribution's own parameters ($\widehat\mu$/$\widehat\sigma$ for Normal, $\widehat\mu_{\ln(t)}$/$\widehat\sigma_{\ln(t)}$ for LogNormal). Objects with different dist can no longer be plotted together on one contour_plot() (they'd share axes that don't mean the same thing), and a clear error is raised if an object's LRB bounds weren't computed yet
+### Fixed
+ - Censored Normal/LogNormal MLE fits could return NaN confidence bounds (bounds='fb') on small or heavily-suspended samples, or occasionally fail to converge to a sane estimate at all. The solver is now bounded and numerically robust across the cases that used to fail
+ - The PDF comparison figure in PlotAll.compare() (plot_pdf=True) now uses the same font sizes as any other standalone predictr plot, instead of inheriting the much smaller scale meant for the probability-plot grid's packed panels
+ - An invalid bounds_type could silently be treated as '1sl' instead of raising an error
+ - A malformed log-scale axis label in contour_plot()
+
+
 ## [0.1.33] - 2025-08-13
 ### Improved
  - Say hello to the brand-new 'predictr' style, now replacing 'ggplot' as the default across all classes! Update to the latest version and see for yourself, or check out the docs for a sneak peek
