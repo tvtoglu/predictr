@@ -19,14 +19,12 @@ All notable changes to this project will be documented in this file.
    | Ranked by AIC | PDF comparison |
    |:---:|:---:|
    | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal.png" alt="PlotAll().compare() ranked by AIC for a random normal sample of 7" width="260"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal_pdf.png" alt="PlotAll().compare() PDF comparison figure" width="260"> |
-
- - bounds='lrb' (likelihood-ratio bounds) for dist='normal' and dist='lognormal', profiling the (mu, sigma) log-likelihood the same way lrb() already does for Weibull's (beta, eta)
  - contour_plot() now supports dist='normal'/'lognormal' objects fitted with bounds='lrb', with axis labels matching each distribution's own parameters ($\widehat\mu$/$\widehat\sigma$ for Normal, $\widehat\mu_{\ln(t)}$/$\widehat\sigma_{\ln(t)}$ for LogNormal). Objects with different dist can no longer be plotted together on one contour_plot() (they'd share axes that don't mean the same thing), and a clear error is raised if an object's LRB bounds weren't computed yet
-### Fixed
- - Censored Normal/LogNormal MLE fits could return NaN confidence bounds (bounds='fb') on small or heavily-suspended samples, or occasionally fail to converge to a sane estimate at all. The solver is now bounded and numerically robust across the cases that used to fail
- - The PDF comparison figure in PlotAll.compare() (plot_pdf=True) now uses the same font sizes as any other standalone predictr plot, instead of inheriting the much smaller scale meant for the probability-plot grid's packed panels
- - An invalid bounds_type could silently be treated as '1sl' instead of raising an error
- - A malformed log-scale axis label in contour_plot()
+
+### Improved
+There are many more smart quirks in predictr now, like for instance (not gonna name them all her, check the documentary! :D):
+- contour_plot()'s scale_mode ('auto', 'linear', 'log') - previously Weibull-only - now works for Normal and LogNormal fits too, automatically switching to a log scale whenever a dataset's confidence region is spread very widely, so it stays clearly readable instead of being squashed flat.
+- y-axis lower limit: new standard is 0.01 (1 %). This lower value is more practical in everyday use than 0.001. However, the limits are still customizable
 
 
 ## [0.1.33] - 2025-08-13
