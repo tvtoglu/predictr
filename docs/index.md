@@ -36,12 +36,25 @@ This fits a two-parameter Weibull distribution via Maximum Likelihood Estimation
 
 <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" alt="Weibull probability plot with Fisher confidence bounds" width="380">
 
+## See it in action
+
+A few of predictr's capabilities, from bias-corrected estimates to comparing entire distributions.
+
+| Bias-corrected estimates | Confidence region, multiple levels |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored_c4.png" alt="Bias-corrected Weibull fit (C4 method)" width="260"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_cl_set.png" alt="Contour plot with multiple confidence levels" width="260"> |
+
+| Ranked by AIC | Distributions compared |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal.png" alt="PlotAll().compare() ranked by AIC" width="260"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal_pdf.png" alt="PlotAll().compare() PDF comparison figure" width="260"> |
+
 ## Main features
 
 **Parameter estimation**
 - Uncensored and type I / type II right-censored two-parameter Weibull distribution
 - Maximum Likelihood Estimation (MLE) and Median Rank Regression (MRR)
 - Bx-life calculator
+- Normal, LogNormal and Exponential distributions, alongside Weibull
 
 **Bias-correction**
 - C4 method (reduced bias adjustment)
@@ -50,19 +63,17 @@ This fits a two-parameter Weibull distribution via Maximum Likelihood Estimation
 
 **Confidence bounds**
 - Fisher bounds
-- Likelihood Ratio bounds
+- Likelihood Ratio bounds (Weibull, Normal, LogNormal)
 - Beta-Binomial bounds
 - Monte Carlo Pivotal bounds
 - Parametric and non-parametric bootstrap bounds
+- Exact chi-square bounds (Exponential)
 
 **Plots**
-- Weibull probability plots with all relevant statistics in the legend
-- Multiple Weibull fits overlaid in one figure, for design comparisons
-- Contour plots for the joint confidence region of shape and scale
-
-| Comparing multiple fits | Confidence region contour |
-|:---:|:---:|
-| <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_2s.png" alt="Multiple Weibull fits in one plot" width="260"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_LRB.png" alt="Contour plot of shape and scale confidence region" width="260"> |
+- Probability plots with all relevant statistics in the legend
+- Multiple fits overlaid in one figure, for design comparisons
+- Contour plots for the joint confidence region of shape and scale, with support for multiple confidence levels per dataset
+- Distribution comparison: fit every supported distribution to one dataset, ranked by AIC or Anderson-Darling, plus a combined PDF plot
 
 See the [class documentation](https://tvtoglu.github.io/predictr/classes/) for the full method and parameter reference, including censored-data and bias-correction examples.
 
