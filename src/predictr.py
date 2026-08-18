@@ -20,7 +20,7 @@ except ImportError:
 import pandas as pd
 from scipy import optimize
 from scipy.special import gamma
-from scipy.stats import norm, chi2, beta, linregress, trim_mean
+from scipy.stats import norm, chi2, beta, linregress, trim_mean, expon
 from scipy.stats.distributions import weibull_min
 from scipy.spatial import ConvexHull
 
@@ -468,6 +468,7 @@ class Analysis:
         self.beta, self.eta = None, None
         self.mu, self.sigma = None, None
         self.theta = None
+        self.loglik, self.aic = None, None
         self.beta_hrbu, self.eta_hrbu = None, None
         self.f, self.f_inv= None, None
         self.k_a_bound, self.se_beta,self.se_eta = None, None, None
@@ -756,6 +757,17 @@ class Analysis:
                 self.eta = ((1 / len(self.df))
                             * np.sum(np.fromiter(iter_eta, float))) ** (1 / self.beta)
 
+            # Log-likelihood at the MLE and AIC (k=2 parameters: beta, eta).
+            # weibull_min.logpdf/logsf evaluate the same density/survival
+            # functions used to derive beta/eta above, just via scipy's
+            # (well-tested, numerically robust) implementation rather than
+            # a hand-written log/exp formula - this is evaluation of an
+            # already-fitted density, not the estimation itself.
+            self.loglik = float(np.sum(weibull_min.logpdf(self.df, self.beta, scale=self.eta)))
+            if self.ds is not None:
+                self.loglik += float(np.sum(weibull_min.logsf(self.ds, self.beta, scale=self.eta)))
+            self.aic = 2 * 2 - 2 * self.loglik
+
         elif self.dist in ('normal', 'lognormal'):
             # LogNormal is fit as Normal on ln(data): if T is LogNormal(mu,
             # sigma) then ln(T) is Normal(mu, sigma) by definition, so mu/
@@ -837,6 +849,24 @@ class Analysis:
                     raise ValueError('Sigma estimation is not valid. '
                                      'Check the input data.')
 
+            # Log-likelihood at the MLE and AIC (k=2: mu, sigma). For
+            # LogNormal this is the log-likelihood of the *original* data T,
+            # not of ln(T): since f_T(t) = f_lnT(ln t) / t (density of a
+            # monotonic transform picks up a 1/|dt_lnT/dt| Jacobian term),
+            # ln f_T(t_i) = norm.logpdf(ln t_i, mu, sigma) - ln(t_i) for
+            # every failure. Without this term LogNormal's likelihood would
+            # be evaluated in the wrong units and not be comparable via AIC
+            # to Weibull/Normal/Exponential, which are evaluated in T
+            # directly. The survival terms (suspensions) don't need the
+            # Jacobian: P(T > s) = P(ln T > ln s) exactly, no density
+            # involved.
+            self.loglik = float(np.sum(norm.logpdf(fit_df, self.mu, self.sigma)))
+            if self.dist == 'lognormal':
+                self.loglik -= float(np.sum(np.log(self.df)))
+            if fit_ds is not None:
+                self.loglik += float(np.sum(norm.logsf(fit_ds, self.mu, self.sigma)))
+            self.aic = 2 * 2 - 2 * self.loglik
+
         elif self.dist == 'exponential':
             # Closed-form MLE, valid for both complete and right-censored
             # (Type I/II) data (see e.g. Meeker & Escobar, "Statistical
@@ -851,6 +881,12 @@ class Analysis:
             self.theta = total_time / r
             if self.ds is not None:
                 self.censoring = 'right-censored'
+
+            # Log-likelihood at the MLE and AIC (k=1: theta).
+            self.loglik = float(np.sum(expon.logpdf(self.df, scale=self.theta)))
+            if self.ds is not None:
+                self.loglik += float(np.sum(expon.logsf(self.ds, scale=self.theta)))
+            self.aic = 2 * 1 - 2 * self.loglik
 
         # Bias corrections
         if self.bcm is not None:
@@ -3303,13 +3339,11 @@ class Analysis:
         quantile function with beta=1, eta=theta: Weibull's
         ln(t_p) = ln(eta) + (1/beta)*ln(-ln(1-p)) becomes, at beta=1,
         ln(t_p) = ln(theta) + ln(-ln(1-p)) - a straight (unit-slope) line
-        on Weibull's own paper too. Reliability tools (Minitab,
-        Weibull++) plot Exponential this way rather than on the simpler
-        paper, since it's treated as the beta=1 special case of Weibull
-        within the same "life data" plotting framework - and it avoids
-        the low-percentile compression the simpler paper has (its
-        stretch factor 1/(1-F) is ~1 near F=0 but diverges towards F=1,
-        whereas this double-log transform stretches both tails).
+        on Weibull's own paper too. Plotting it this way, treated as the
+        beta=1 special case of Weibull, avoids the low-percentile
+        compression the simpler paper has (its stretch factor 1/(1-F) is
+        ~1 near F=0 but diverges towards F=1, whereas this double-log
+        transform stretches both tails).
         """
         def weibull_prob_paper(x):
             x = np.asarray(x, dtype=float)
@@ -4089,6 +4123,189 @@ class PlotAll:
 
         plt.show()
 
+    def compare(self, x_label='Time to Failure', y_label='Unreliability',
+                fig_size=(11, 10), y_min=0.01, y_max=0.99, save=False, **kwargs):
+        """
+        Compares Analysis objects fit to the *same data* with different
+        dist= choices: one probability-plot panel per object, each on its
+        own native paper (unlike mult_weibull(), which requires every
+        object to share the same dist since it overlays them on one
+        shared paper), arranged in a grid and ranked by AIC (best fit
+        first). Unlike mult_weibull()/contour_plot(), this is meant for
+        comparing *different* distributions fit to one dataset, not the
+        same distribution fit to different datasets.
+
+        Parameters
+        ----------
+        x_label : string, optional
+            Label for each panel's x-axis. The default is 'Time to Failure'.
+        y_label : string, optional
+            Label for each panel's y-axis. The default is 'Unreliability'.
+        fig_size : tuple of floats, optional
+            Sets width and height in inches: (width, height). The default
+            is (11, 10), tuned for the common 4-distribution case.
+        y_min : float, optional
+            Lower y-axis limit (unreliability, as a fraction) shown on
+            every panel. Must satisfy 0 < y_min < y_max < 1. The default
+            is 0.01.
+        y_max : float, optional
+            Upper y-axis limit shown on every panel. The default is 0.99.
+        save : boolean, optional
+            If True, the plot is saved according to the path. The default
+            is False.
+        **kwargs :
+            path: string
+                Path defines the directory and format of the figure E.g.
+                r'var/user/.../test.pdf'
+        """
+        if not (0 < y_min < y_max < 1):
+            raise ValueError('y_min and y_max must satisfy 0 < y_min < '
+                              'y_max < 1.')
+
+        missing_aic = [key for key, val in self.objects.items()
+                       if getattr(val, 'aic', None) is None]
+        if missing_aic:
+            raise ValueError(f'compare() requires mle() to have been run '
+                              f'on every object (missing AIC for {missing_aic}).')
+        reference = next(iter(self.objects.values()))
+        mismatched = [key for key, val in self.objects.items()
+                      if val.df != reference.df or val.ds != reference.ds]
+        if mismatched:
+            raise ValueError(f'compare() requires every object to be fit '
+                              f'on the same data (df/ds), but {mismatched} '
+                              f'differ from the rest.')
+
+        def weibull_paper(x):
+            x = np.asarray(x, dtype=float)
+            x = np.where(x > .9999, np.nan, x)
+            return np.log(-np.log(1 - x))
+
+        def weibull_ticks(y_i, _):
+            return '{:.0f}'.format(100 * (1 - np.exp(-np.exp(y_i))))
+
+        def normal_ticks(y_i, _):
+            return '{:.0f}'.format(100 * norm.cdf(y_i))
+
+        y_ticks_frac = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= y_min)
+                                               & (PROBABILITY_PLOT_TICKS <= y_max)]
+
+        ranked = sorted(self.objects.items(), key=lambda kv: kv[1].aic)
+        best_aic = ranked[0][1].aic
+        n = len(ranked)
+        ncols = 2 if n > 1 else 1
+        nrows = int(np.ceil(n / ncols))
+
+        _apply_plot_style(self.plot_style)
+        fig, axes = plt.subplots(nrows, ncols, figsize=fig_size)
+        axes = np.atleast_1d(axes).flatten()
+        for extra_ax in axes[n:]:
+            extra_ax.set_visible(False)
+
+        for panel_i, (key, obj) in enumerate(ranked):
+            ax = axes[panel_i]
+            rank = panel_i + 1
+            dAIC = obj.aic - best_aic
+            dist = obj.dist
+
+            ranks = np.array(obj.median_rank() if obj.ds is None
+                              else obj.median_rank_cens())
+            x_data = np.array(obj.df, dtype=float)
+
+            if dist in ('weibull', 'exponential'):
+                ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(weibull_ticks))
+                y_ticks = weibull_paper(y_ticks_frac)
+                ax.set_yticks(y_ticks)
+                ax.set_yticks([weibull_paper(0.632)], minor=True)
+                y_data = weibull_paper(ranks)
+                ax.set_xscale('log')
+                p_line = np.array([0.001, 0.999])
+                if dist == 'weibull':
+                    x_line = obj.eta * (-np.log(1 - p_line)) ** (1 / obj.beta)
+                else:
+                    x_line = obj.theta * (-np.log(1 - p_line))
+                y_line = weibull_paper(p_line)
+            else:
+                ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(normal_ticks))
+                y_ticks = norm.ppf(y_ticks_frac)
+                ax.set_yticks(y_ticks)
+                ax.set_yticks([0.0], minor=True)
+                y_data = norm.ppf(ranks)
+                z_line = norm.ppf(np.array([0.001, 0.999]))
+                if dist == 'lognormal':
+                    ax.set_xscale('log')
+                    x_line = np.exp(obj.mu + obj.sigma * z_line)
+                else:
+                    x_line = obj.mu + obj.sigma * z_line
+                y_line = z_line
+
+            ax.grid(True, which='minor', axis='y', linestyle='--')
+
+            # Fisher bounds, same royalblue + light fill convention as the
+            # single-distribution plots. All labeled '_nolegend_' so they
+            # don't get auto-picked-up as legend handles below - only the
+            # (unlabeled) MLE line becomes the legend's icon.
+            if obj.bounds_lower is not None or obj.bounds_upper is not None:
+                z_p = (weibull_paper(obj.unrel) if dist in ('weibull', 'exponential')
+                       else norm.ppf(obj.unrel))
+                if obj.bounds_lower is not None:
+                    ax.plot(obj.bounds_lower, z_p, color='royalblue',
+                            linewidth=1, label='_nolegend_')
+                if obj.bounds_upper is not None:
+                    ax.plot(obj.bounds_upper, z_p, color='royalblue',
+                            linewidth=1, label='_nolegend_')
+                if obj.bounds_lower is not None and obj.bounds_upper is not None:
+                    ax.fill_betweenx(z_p, obj.bounds_lower, obj.bounds_upper,
+                                      alpha=0.1, color='royalblue', label='_nolegend_')
+
+            ax.plot(x_data, y_data, marker='o', markerfacecolor='mediumblue',
+                    markeredgecolor='mediumblue', markersize=5, alpha=.6,
+                    linestyle='None', zorder=3, label='_nolegend_')
+            ax.plot(x_line, y_line, color='mediumblue', linewidth=1.5, zorder=2)
+
+            ax.set_ylim(y_ticks[0], y_ticks[-1])
+            # Deliberate deviation from the single-plot title convention
+            # (plain, non-bold): a comparison grid needs a stronger title
+            # hierarchy (suptitle > panel title > axis labels) than one
+            # standalone plot does.
+            ax.set_title(f'{rank}.  {dist.capitalize()}', color='black',
+                         fontsize=15, fontweight='bold')
+            # One rung down from xy_fontsize's default (12) on predictr's
+            # existing size ladder (14 title / 12 labels / 10 ticks /
+            # 9 legend) - lands on 10.
+            ax.set_xlabel(x_label, color='black', fontsize=10)
+            ax.set_ylabel(y_label + ' in %', color='black', fontsize=10)
+
+            stat_text = (f'log-likelihood = {obj.loglik:.2f}\n'
+                         f'AIC = {obj.aic:.2f}'
+                         + ('  (best)' if rank == 1 else f'   ΔAIC = +{dAIC:.2f}'))
+            ax.legend((stat_text,), loc='lower right', fontsize=9,
+                      title='Goodness of fit')
+
+            ax.grid(True, which='major')
+            ax.tick_params(labelsize=10)
+
+        susp_num = len(reference.ds) if reference.ds is not None else 0
+        fig.suptitle('Distribution comparison', color='black', fontsize=18,
+                     fontweight='bold', y=0.953)
+        fig.text(0.5, 0.908, 'ranked by AIC  (n = {} (f: {} | s: {}))'.format(
+                     len(reference.df) + susp_num, len(reference.df), susp_num),
+                 ha='center', color='black', fontsize=12, fontweight='normal')
+        # tight_layout's own computed top margin is tighter than any rect
+        # ceiling passed to it once enough vertical room is available, so
+        # rect no longer controls the subtitle-to-panel-title gap past
+        # that point - only the two fig.text/suptitle y positions above do
+        # (verified empirically via the Figure's rendered text bounding
+        # boxes, not just visually).
+        plt.tight_layout(rect=[0, 0, 1, 0.93])
+
+        if save:
+            try:
+                plt.savefig(kwargs['path'])
+            except:
+                raise ValueError('Path is faulty.')
+
+        plt.show()
+
     def contour_plot(self, show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=r'$\widehat\beta$',
                      y_label=None, plot_title='Contour Plot', xy_fontsize=12,
                      plot_title_fontsize=14, legend_fontsize=9, fig_size=(6.4, 4.8), save=False,
@@ -4566,10 +4783,10 @@ if __name__ == '__main__':
     #x = Analysis(df=df, bounds='fb', dist='normal', show=True)
     #x.mle()
 
-    #y = Analysis(df=failures_a, bounds='lrb', show=True, dist='weibull')
-    #y.mle()
+    y = Analysis(df=failures_a, bounds='lrb', show=True, dist='weibull')
+    y.mle()
 
-    w = Analysis(df=failures_a, bounds='fb', show=True, dist='exponential', y_min=0.2)
+    w = Analysis(df=failures_a, bounds='fb', show=True, dist='exponential')
     w.mle()
 
     #z = Analysis(df=failures_a, bounds='fb', show=True, dist='lognormal')
