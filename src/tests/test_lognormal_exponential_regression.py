@@ -258,11 +258,22 @@ def test_exponential_plot_xlim_matches_bounds_extent_when_bounds_widen_it():
 
 # --- Shared config guards -------------------------------------------------
 
-@pytest.mark.parametrize('dist', ['lognormal', 'exponential'])
-def test_unsupported_bounds_method_raises(dist):
-    data = LOGNORMAL_DATA if dist == 'lognormal' else EXP_DATA
+def test_unsupported_bounds_method_raises_exponential():
+    # Exponential has an exact chi-square pivot (bounds='chi2') for its
+    # single free parameter, so likelihood-ratio bounds - only an
+    # asymptotic approximation - aren't offered for it (see
+    # _exact_bounds_exponential()'s docstring).
     with pytest.raises(ValueError):
-        Analysis(df=data, dist=dist, bounds='lrb', show=False).mle()
+        Analysis(df=EXP_DATA, dist='exponential', bounds='lrb', show=False).mle()
+
+
+def test_lognormal_lrb_bounds_supported():
+    fit = Analysis(df=LOGNORMAL_DATA, dist='lognormal', bounds='lrb',
+                    bounds_type='2s', cl=0.9, show=False)
+    fit.mle()
+    assert fit.bounds_lower is not None
+    assert fit.bounds_upper is not None
+    assert np.all(fit.bounds_lower <= fit.bounds_upper)
 
 
 @pytest.mark.parametrize('dist', ['lognormal', 'exponential'])
