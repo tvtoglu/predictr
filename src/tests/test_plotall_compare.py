@@ -80,25 +80,25 @@ def test_compare_aic_values_match_published_reference():
     assert w.aic == pytest.approx(154.27, abs=1e-2)
 
 
-def test_anderson_darling_matches_reliability_package_uncensored():
-    """Cross-checked against the Python `reliability` package's
-    Fit_Weibull_2P (which implements the same Minitab-adjusted method) on
-    this exact uncensored dataset: reliability's AD=1.8115 using its
-    default Benard's-approximation plotting positions; recomputed here
-    with predictr's own exact median_rank() instead, giving a slightly
-    different but equally legitimate 1.8015 (verified by hand that
-    swapping in Benard's approximation reproduces reliability's 1.8115 to
-    10 decimal places, confirming the formula itself, not just the
-    plotting-position convention, is correct)."""
+def test_anderson_darling_matches_independent_reference_uncensored():
+    """Cross-checked against an independent reference implementation of
+    the same generalized-plotting-position Anderson-Darling approach on
+    this exact uncensored dataset: that implementation gives AD=1.8115
+    using its default Benard's-approximation plotting positions; recomputed
+    here with predictr's own exact median_rank() instead, giving a
+    slightly different but equally legitimate 1.8015 (verified by hand
+    that swapping in Benard's approximation reproduces the reference's
+    1.8115 to 10 decimal places, confirming the formula itself, not just
+    the plotting-position convention, is correct)."""
     a = Analysis(df=FAILURES, dist='weibull', show=False)
     a.mle()
     assert _anderson_darling(a) == pytest.approx(1.8015, abs=1e-3)
 
 
-def test_anderson_darling_matches_reliability_package_censored():
+def test_anderson_darling_matches_independent_reference_censored():
     """Same cross-check as the uncensored test above, but on this file's
-    right-censored dataset (10 failures + 10 suspensions at t=500):
-    reliability's Fit_Weibull_2P gives AD=70.747 there; predictr's own
+    right-censored dataset (10 failures + 10 suspensions at t=500): the
+    reference implementation gives AD=70.747 there; predictr's own
     median_rank_cens() plotting positions give 70.767, matching to within
     the same plotting-position-convention gap as the uncensored case."""
     a = Analysis(df=FAILURES, ds=SUSPENSIONS, dist='weibull', show=False)

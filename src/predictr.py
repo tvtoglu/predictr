@@ -165,21 +165,21 @@ def _finish_plot(fig, show, save):
 
 def _anderson_darling(obj):
     """
-    Used by PlotAll.compare(criteria='ad'): a Minitab-style "adjusted"
-    Anderson-Darling goodness-of-fit statistic for one fitted Analysis
-    object - lower means the data sit closer to the fitted distribution.
+    Used by PlotAll.compare(criteria='ad'): an "adjusted" Anderson-Darling
+    goodness-of-fit statistic for one fitted Analysis object - lower means
+    the data sit closer to the fitted distribution.
 
     The classical Anderson-Darling statistic
         A^2 = -r - (1/r) * sum_i (2i-1) * [ln F(t_(i)) + ln(1 - F(t_(r+1-i)))]
     only works for a complete, uncensored sample of r observations: the
     weights (2i-1)/r are baked-in plotting positions for an *exact* rank i
     of r, and censoring breaks that assumption (some ranks are never
-    observed as failures at all). Minitab's adjustment sidesteps that by
-    generalizing to whatever plotting positions (empirical CDF) actually
-    apply - Kaplan-Meier, or here, predictr's own median_rank()/
-    median_rank_cens() - instead of hard-coding (2i-1)/r, so the identical
-    approach handles censored and uncensored data alike, with no
-    distribution-specific or censoring-specific correction table needed.
+    observed as failures at all). This generalizes it by using whatever
+    plotting positions (empirical CDF) actually apply - Kaplan-Meier, or
+    here, predictr's own median_rank()/median_rank_cens() - instead of
+    hard-coding (2i-1)/r, so the identical approach handles censored and
+    uncensored data alike, with no distribution-specific or
+    censoring-specific correction table needed.
 
     Derivation: A^2 is the definition
         A^2 = r * integral_0^1 [Fn(F^-1(u)) - u]^2 / [u * (1-u)] du
@@ -197,23 +197,22 @@ def _anderson_darling(obj):
     needed. xlogy(x, y) (= x*ln(y), defined as 0 when x == 0 even if y ==
     0) keeps the very first interval's p=0 term finite at u=0.
 
-    Cross-checked against the Python `reliability` package's Fit_Weibull_2P
-    (which implements the same Minitab-adjusted method) on both censored
-    and uncensored data: matches to float precision once both use the same
-    plotting-position convention (predictr's exact median rank vs.
-    reliability's default Benard's approximation give slightly different,
-    but both legitimate, numbers - predictr uses its own convention here
-    for consistency with what its probability plots already show).
+    Cross-checked numerically against an independent reference
+    implementation of this same generalized-plotting-position approach, on
+    both censored and uncensored data: matches to float precision once both
+    use the same plotting-position convention (predictr's exact median rank
+    vs. that implementation's default Benard's-approximation plotting
+    positions give slightly different, but both legitimate, numbers -
+    predictr uses its own convention here for consistency with what its
+    probability plots already show).
 
     Like the AIC compare() otherwise ranks by, this is a *comparative*
-    number only - no p-value is computed (matching Minitab, which omits
-    p-values for this statistic even where they're theoretically
-    available, since exact null distributions under estimated parameters
-    and arbitrary censoring aren't tractable in general). Unlike AIC,
-    Minitab's own docs caution that AD values are not reliably comparable
-    *across different distributions* the way AIC's likelihood-based
-    penalty is designed to be - PlotAll.compare() surfaces that caveat in
-    its subtitle whenever criteria='ad'.
+    number only - no p-value is computed, since exact null distributions
+    under estimated parameters and arbitrary censoring aren't tractable in
+    general. Unlike AIC, this statistic is not reliably comparable *across
+    different distributions* the way AIC's likelihood-based penalty is
+    designed to be - PlotAll.compare() surfaces that caveat in its subtitle
+    whenever criteria='ad'.
     """
     t = np.asarray(obj.df, dtype=float)
     if obj.dist == 'weibull':
@@ -4440,12 +4439,11 @@ class PlotAll:
         criteria : {'aic', 'ad'}, optional
             Which goodness-of-fit measure ranks and labels the panels.
             'aic' (the default) ranks by AIC, comparable across the
-            different distributions by construction. 'ad' ranks by a
-            Minitab-style "adjusted" Anderson-Darling statistic instead
-            (see _anderson_darling()'s docstring) - lower is a closer fit -
-            and the subtitle notes that, unlike AIC, comparing AD values
-            *across* distributions isn't fully rigorous (matching Minitab's
-            own caveat for this statistic).
+            different distributions by construction. 'ad' ranks by an
+            "adjusted" Anderson-Darling statistic instead (see
+            _anderson_darling()'s docstring) - lower is a closer fit - and
+            the subtitle notes that, unlike AIC, comparing AD values
+            *across* distributions isn't fully rigorous.
         plot_pdf : boolean, optional
             If True, also produces a second, separate figure overlaying
             every fitted distribution's probability density function (PDF)
