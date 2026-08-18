@@ -584,6 +584,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#distributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distributions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -751,6 +762,34 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#normal-lognormal-and-exponential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normal, LogNormal and Exponential
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Normal, LogNormal and Exponential">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#exponential-exact-chi-square-bounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exponential: exact chi-square bounds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -868,6 +907,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#multiple-confidence-levels-for-one-object-cl_set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple confidence levels for one object (cl_set)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#normal-and-lognormal-fits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normal and LogNormal fits
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -889,6 +950,17 @@
     <span class="md-ellipsis">
       
         simple_weibull()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compare()
       
     </span>
   </a>
@@ -1036,7 +1108,7 @@
 <h1 id="available-classes">Available classes</h1>
 <p>Currently, there are two classes (Analysis and PlotAll) available in the predictr package. I will continue to add new classes in near future.</p>
 <h2 id="analysis">Analysis</h2>
-<p>Analysis contains all necessary methods for the Weibull analysis.  </p>
+<p>Analysis contains all necessary methods for the Weibull analysis. Since version 0.1.34, it also supports dist='normal', dist='lognormal' and dist='exponential' - see <a href="#distributions">Distributions</a> below.</p>
 <h3 id="default-arguments-and-values">Default arguments and values</h3>
 <p>This table provides information on alle arguments that are passed to the Analysis class.</p>
 <table>
@@ -1060,6 +1132,12 @@
 <td>None</td>
 <td>list of floats</td>
 <td>List of suspensions (right-censored only)</td>
+</tr>
+<tr>
+<td>dist</td>
+<td>'weibull'</td>
+<td>str</td>
+<td>Distribution to fit: 'weibull', 'normal', 'lognormal' or 'exponential'</td>
 </tr>
 <tr>
 <td>bounds</td>
@@ -1255,7 +1333,7 @@ The following table provides possible configurations. Bias-corrections for mrr()
 </tbody>
 </table>
 <h3 id="confidence-bounds-methods">Confidence bounds methods</h3>
-<p>Analysis supports nearly all state of the art confidence bounds methods.</p>
+<p>Analysis supports nearly all state of the art confidence bounds methods. The table below applies to dist='weibull' (the default). For the other distributions, see <a href="#distributions">Distributions</a>.</p>
 <table>
 <thead>
 <tr>
@@ -1330,6 +1408,40 @@ The following table provides possible configurations. Bias-corrections for mrr()
 <li>mle() and mrr() support only specific confidence bounds methods. For instance, you can't use Beta-Binomial Bounds with mle(). This will also raise an error. Use the table above to check, whether a combination of parameter estimation and confidence bounds method is supported.</li>
 <li>'2s': two-sided confidence bounds, '1su': upper confidence bounds, '1sl': lower confidence bounds. If Beta-Binomial Bounds are used, the lower bound represents the lower percentile bound at a specific time ((pctl) is added in the plot legend). If Fisher Bounds are used, the lower bound represents the lower time bound at a specific percentile.</li>
 </ul>
+<h3 id="distributions">Distributions</h3>
+<p>Since version 0.1.34, dist='normal', dist='lognormal' and dist='exponential' are supported alongside the default dist='weibull'. bcm is not supported for these three (bias-correction stays Weibull-only). Confidence bounds are more limited too:</p>
+<table>
+<thead>
+<tr>
+<th>dist</th>
+<th>mle() bounds</th>
+<th style="text-align: center;">mrr() bounds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>'weibull'</td>
+<td>'fb', 'lrb'</td>
+<td style="text-align: center;">see table above</td>
+</tr>
+<tr>
+<td>'normal'</td>
+<td>'fb', 'lrb'</td>
+<td style="text-align: center;">not supported</td>
+</tr>
+<tr>
+<td>'lognormal'</td>
+<td>'fb', 'lrb'</td>
+<td style="text-align: center;">not supported</td>
+</tr>
+<tr>
+<td>'exponential'</td>
+<td>'fb', 'chi2'</td>
+<td style="text-align: center;">not supported</td>
+</tr>
+</tbody>
+</table>
+<p>'chi2' is an exact chi-square pivotal confidence interval, only available for dist='exponential' (its single-parameter model has a closed-form pivot, so likelihood-ratio bounds aren't needed there). 'lrb' is available for 'normal'/'lognormal' but not 'exponential' for the same reason, the other way round.</p>
 <h3 id="examples">Examples</h3>
 <h4 id="maximum-likelihood-estimation-mle">Maximum Likelihood Estimation (MLE)</h4>
 <h5 id="uncensored-sample">Uncensored sample</h5>
@@ -1401,6 +1513,25 @@ prototype_a = Analysis(df=failures, bounds='fb',show=True, show_legend=True, leg
 prototype_a.mle()
 </code></pre>
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Analysis_Plot_Modification2.png" width="500" /></p>
+<h4 id="normal-lognormal-and-exponential">Normal, LogNormal and Exponential</h4>
+<p>Set dist='normal', dist='lognormal' or dist='exponential' to fit that distribution instead of Weibull. bcm is not supported for these three; see the <a href="#distributions">Distributions</a> table above for which bounds each one accepts.</p>
+<pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+
+normal_fit = Analysis(df=failures, dist='normal', bounds='lrb', show=True)
+normal_fit.mle()
+
+lognormal_fit = Analysis(df=failures, dist='lognormal', bounds='fb', show=True)
+lognormal_fit.mle()
+
+exp_fit = Analysis(df=failures, dist='exponential', bounds='fb', show=True)
+exp_fit.mle()
+</code></pre>
+<h5 id="exponential-exact-chi-square-bounds">Exponential: exact chi-square bounds</h5>
+<p>dist='exponential' additionally supports bounds='chi2', an exact chi-square pivotal confidence interval (as opposed to the asymptotic Fisher bounds bounds='fb' also available for it).</p>
+<pre><code class="language-python">failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
+exp_fit = Analysis(df=failures, dist='exponential', bounds='chi2', bounds_type='2s', show=True)
+exp_fit.mle()
+</code></pre>
 <h2 id="plotall">PlotAll</h2>
 <p>PlotAll plots class objects from Analysis in one figure. Currently, only data from mle() is supported.
 Theoretically, you can plot as many objects as you like -&gt; provide a list of colors (and, for mult_weibull(), optionally a matching list of linestyles) as a kwarg in PlotAll(objects, **kwargs).mult_weibull() / .contour_plot(). <b>
@@ -1430,6 +1561,10 @@ By default, predictr uses its own 6-color categorical palette. If you plot more 
 <td>simple_weibull()</td>
 <td>Plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspensions are given, the median ranks are plotted as well.</td>
 </tr>
+<tr>
+<td>compare()</td>
+<td>Fits every distribution predictr supports to one dataset and plots a probability-plot grid ranked by AIC (or Anderson-Darling), optionally with a separate PDF comparison figure.</td>
+</tr>
 </tbody>
 </table>
 <h3 id="default-arguments-of-each-method">Default Arguments of each method</h3>
@@ -1457,6 +1592,10 @@ By default, predictr uses its own 6-color categorical palette. If you plot more 
 <tr>
 <td>simple_weibull()</td>
 <td>beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10, plot_title_fontsize=14, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs</td>
+</tr>
+<tr>
+<td>compare()</td>
+<td>df, ds=None, bounds=None, bounds_type='2s', cl=0.9, x_label='Time to Failure', y_label='Unreliability', fig_size=(7.7, 7), y_min=0.01, y_max=0.99, plot_ranks=False, criteria='aic', plot_pdf=True, pdf_xy_fontsize=12, pdf_tick_fontsize=10, pdf_legend_fontsize=9, pdf_plot_title_fontsize=14, show=True, save=False, plot_style='predictr', **kwargs</td>
 </tr>
 </tbody>
 </table>
@@ -1639,6 +1778,24 @@ By default, predictr uses its own 6-color categorical palette. If you plot more 
 <td>Weibull parameter pair which will be plotted</td>
 </tr>
 <tr>
+<td>criteria</td>
+<td>'aic'</td>
+<td>string</td>
+<td>compare() only. Ranks/labels the panels by 'aic' or 'ad' (Anderson-Darling)</td>
+</tr>
+<tr>
+<td>plot_pdf</td>
+<td>True</td>
+<td>boolean</td>
+<td>compare() only. If True, also produces a separate figure overlaying every fitted distribution's PDF</td>
+</tr>
+<tr>
+<td>pdf_xy_fontsize, pdf_tick_fontsize, pdf_legend_fontsize, pdf_plot_title_fontsize</td>
+<td>12, 10, 9, 14</td>
+<td>float</td>
+<td>compare() only. Font sizes for the separate PDF figure (only used when plot_pdf=True)</td>
+</tr>
+<tr>
 <td>kwarg: path</td>
 <td></td>
 <td>string</td>
@@ -1761,6 +1918,34 @@ objects = {'initial design': prototype_a, 'final design': prototype_c}
 PlotAll(objects).contour_plot()
 </code></pre>
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_LRB_multiple.png" width="500" /></p>
+<h4 id="multiple-confidence-levels-for-one-object-cl_set">Multiple confidence levels for one object (cl_set)</h4>
+<p>Instead of plotting each object's own cl once, pass cl_set to draw several confidence-level curves per dataset, e.g. to compare 80%, 90% and 95% confidence regions at a glance.</p>
+<pre><code class="language-python">failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+              0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+              1.3201853093496474, 1.492172669340363]
+prototype_a = Analysis(df=failures_a, bounds='lrb', bounds_type='2s')
+prototype_a.mle()
+
+objects = {'initial design': prototype_a}
+PlotAll(objects).contour_plot(cl_set=[0.8, 0.9, 0.95])
+</code></pre>
+<p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_cl_set.png" width="500" /></p>
+<h4 id="normal-and-lognormal-fits">Normal and LogNormal fits</h4>
+<p>contour_plot() also works for dist='normal'/'lognormal' objects fitted with bounds='lrb', with axis labels matching each distribution's own parameters. Objects with different dist can't be mixed on one contour_plot() call - they don't share the same axes meaning.</p>
+<pre><code class="language-python">from predictr import Analysis, PlotAll
+
+failures = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+            0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+            1.3201853093496474, 1.492172669340363]
+
+normal_a = Analysis(df=failures, dist='normal', bounds='lrb', bounds_type='2s')
+normal_a.mle()
+
+objects = {'sample': normal_a}
+PlotAll(objects).contour_plot()
+</code></pre>
+<p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_normal.png" width="500" /></p>
+<p>Note: contour_plot() is not available for dist='exponential', since it has only one parameter (no likelihood-ratio contour to draw) and uses bounds='chi2'/'fb' instead - see <a href="#distributions">Distributions</a>.</p>
 <h3 id="weibull_pdf">weibull_pdf()</h3>
 <p>This method plots one or more Weibull probability density functions. Axes are completely customizable.</p>
 <p>Arguments:
@@ -1804,6 +1989,27 @@ PlotAll().simple_weibull(beta =2.0, eta=1, show_legend=True, x_label='Cycles unt
 
 </code></pre>
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Simple_Weibull.png" width="500" /></p>
+<h3 id="compare">compare()</h3>
+<p>This method fits every distribution predictr supports (Weibull, Normal, LogNormal, Exponential) to one dataset and plots a probability-plot grid, ranked by AIC (or Anderson-Darling via criteria='ad'), each on its own native paper. With plot_pdf=True (the default), it also produces a separate figure overlaying every fitted PDF on shared, linear axes.</p>
+<pre><code class="language-python">from predictr import PlotAll
+
+failures = [93.34, 100.87, 96.41, 99.02, 108.9, 95.64, 102.31]
+PlotAll().compare(df=failures, criteria='aic', plot_pdf=True)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Ranked by AIC</th>
+<th style="text-align: center;">PDF comparison</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal.png" alt="PlotAll().compare() ranked by AIC" width="260"></td>
+<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal_pdf.png" alt="PlotAll().compare() PDF comparison figure" width="260"></td>
+</tr>
+</tbody>
+</table>
 
 
 

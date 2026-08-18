@@ -494,6 +494,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#see-it-in-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See it in action
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#main-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -760,39 +771,58 @@ print(weibull.beta, weibull.eta)  # shape and scale estimates
 </code></pre>
 <p>This fits a two-parameter Weibull distribution via Maximum Likelihood Estimation, adds Fisher confidence bounds, and renders the probability plot below.</p>
 <p><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored.png" alt="Weibull probability plot with Fisher confidence bounds" width="380"></p>
+<h2 id="see-it-in-action">See it in action</h2>
+<p>A few of predictr's capabilities, from bias-corrected estimates to comparing entire distributions.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Bias-corrected estimates</th>
+<th style="text-align: center;">Confidence region, multiple levels</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/MLE_Fisher_uncensored_c4.png" alt="Bias-corrected Weibull fit (C4 method)" width="260"></td>
+<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_cl_set.png" alt="Contour plot with multiple confidence levels" width="260"></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Ranked by AIC</th>
+<th style="text-align: center;">Distributions compared</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal.png" alt="PlotAll().compare() ranked by AIC" width="260"></td>
+<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal_pdf.png" alt="PlotAll().compare() PDF comparison figure" width="260"></td>
+</tr>
+</tbody>
+</table>
 <h2 id="main-features">Main features</h2>
 <p><strong>Parameter estimation</strong>
 - Uncensored and type I / type II right-censored two-parameter Weibull distribution
 - Maximum Likelihood Estimation (MLE) and Median Rank Regression (MRR)
-- Bx-life calculator</p>
+- Bx-life calculator
+- Normal, LogNormal and Exponential distributions, alongside Weibull</p>
 <p><strong>Bias-correction</strong>
 - C4 method (reduced bias adjustment)
 - Hirose and Ross method
 - Parametric and non-parametric bootstrap correction (mean, median, trimmed mean)</p>
 <p><strong>Confidence bounds</strong>
 - Fisher bounds
-- Likelihood Ratio bounds
+- Likelihood Ratio bounds (Weibull, Normal, LogNormal)
 - Beta-Binomial bounds
 - Monte Carlo Pivotal bounds
-- Parametric and non-parametric bootstrap bounds</p>
+- Parametric and non-parametric bootstrap bounds
+- Exact chi-square bounds (Exponential)</p>
 <p><strong>Plots</strong>
-- Weibull probability plots with all relevant statistics in the legend
-- Multiple Weibull fits overlaid in one figure, for design comparisons
-- Contour plots for the joint confidence region of shape and scale</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: center;">Comparing multiple fits</th>
-<th style="text-align: center;">Confidence region contour</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_2s.png" alt="Multiple Weibull fits in one plot" width="260"></td>
-<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Contour_plot_LRB.png" alt="Contour plot of shape and scale confidence region" width="260"></td>
-</tr>
-</tbody>
-</table>
+- Probability plots with all relevant statistics in the legend
+- Multiple fits overlaid in one figure, for design comparisons
+- Contour plots for the joint confidence region of shape and scale, with support for multiple confidence levels per dataset
+- Distribution comparison: fit every supported distribution to one dataset, ranked by AIC or Anderson-Darling, plus a combined PDF plot</p>
 <p>See the <a href="https://tvtoglu.github.io/predictr/classes/">class documentation</a> for the full method and parameter reference, including censored-data and bias-correction examples.</p>
 <h2 id="documentation-and-links">Documentation and links</h2>
 <ul>
@@ -805,7 +835,7 @@ print(weibull.beta, weibull.eta)  # shape and scale estimates
 <h2 id="citing-predictr">Citing predictr</h2>
 <p>If you use predictr in academic work, please cite it via its <a href="https://doi.org/10.5281/zenodo.4433164">Zenodo DOI</a>. See <a href="https://tvtoglu.github.io/predictr/citation/">docs/citation.md</a> for details.</p>
 <h2 id="license">License</h2>
-<p>MIT — see <a href="LICENSE.txt">LICENSE.txt</a>.</p>
+<p>MIT — see <a href="https://github.com/tvtoglu/predictr/blob/main/LICENSE.txt">LICENSE.txt</a>.</p>
 <h2 id="contacte-me">Contacte me</h2>
 <p>If you have any questions and / or suggestions, don't hesitate to contact me.</p>
 
