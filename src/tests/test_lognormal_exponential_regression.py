@@ -148,6 +148,46 @@ def test_exponential_fisher_bounds_matches_closed_form_variance():
     assert a.se_theta == pytest.approx(expected_se)
 
 
+def test_exponential_chi2_bounds_match_nelson_1982_worked_example():
+    """Cross-check bounds='chi2' against Nelson, "Applied Life Data
+    Analysis" (1982), p.255: theta=6097.3, t=60, 90% one-sided lower
+    confidence interval, r=10 failures, no censoring -> published lower
+    confidence limit for R(60) is 0.98612 (see also NCSS PASS Chapter 408,
+    Example 2, which reproduces the same figure via the exact chi-square
+    pivot 2*r*theta_hat/theta ~ chi2(df=2r)). bounds='fb' (asymptotic) is
+    NOT expected to reproduce this exactly - only bounds='chi2' is the
+    exact method Nelson's example validates."""
+    theta_hat = 6097.3
+    r = 10
+    synthetic_df = [theta_hat] * r  # sum(df)/r == theta_hat exactly
+    a = Analysis(df=synthetic_df, dist='exponential', bounds='chi2',
+                 bounds_type='1sl', cl=0.9, show=False)
+    a.mle()
+    implied_theta_lower = a.bounds_lower[0] / (-np.log(1 - a.unrel[0]))
+    r_60_lower = np.exp(-60 / implied_theta_lower)
+    assert r_60_lower == pytest.approx(0.98612, abs=1e-5)
+
+
+def test_exponential_bounds_fb_and_chi2_differ():
+    """bounds='fb' (asymptotic Fisher-information/delta-method) and
+    bounds='chi2' (exact chi-square pivot) are genuinely different methods
+    for dist='exponential' - see fisher_bounds()'s docstring - so they
+    must NOT produce the same bounds, even though both are valid ways to
+    get a confidence interval around the same theta_hat."""
+    a_fb = Analysis(df=EXP_DATA, dist='exponential', bounds='fb', show=False)
+    a_fb.mle()
+    a_chi2 = Analysis(df=EXP_DATA, dist='exponential', bounds='chi2', show=False)
+    a_chi2.mle()
+    assert not np.allclose(a_fb.bounds_lower, a_chi2.bounds_lower)
+    assert not np.allclose(a_fb.bounds_upper, a_chi2.bounds_upper)
+
+
+@pytest.mark.parametrize('dist', ['weibull', 'normal', 'lognormal'])
+def test_bounds_chi2_rejected_for_non_exponential_dists(dist):
+    with pytest.raises(ValueError, match='chi2'):
+        Analysis(df=EXP_DATA, dist=dist, bounds='chi2', show=False).mle()
+
+
 @pytest.mark.parametrize('bounds_type', ['2s', '1su', '1sl'])
 def test_exponential_fisher_bounds_direction_and_positivity(bounds_type):
     a = Analysis(df=EXP_DATA, dist='exponential', bounds='fb',

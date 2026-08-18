@@ -19,7 +19,7 @@ except ImportError:
     get_cmap = None
 import pandas as pd
 from scipy import optimize
-from scipy.special import gamma
+from scipy.special import gamma, xlogy
 from scipy.stats import norm, chi2, beta, linregress, trim_mean, expon
 from scipy.stats.distributions import weibull_min
 from scipy.spatial import ConvexHull
@@ -124,6 +124,124 @@ PREDICTR_STYLE = {
 }
 
 
+# Every plotting method passes this to plt.figure(num=...)/plt.subplots(
+# num=...) instead of leaving figure numbering to matplotlib's own default
+# (lowest unused integer): since every plot closes its figure right after
+# showing it (see _finish_plot() below), the default would hand out the
+# same freed-up low number - usually 1 - to every subsequent plot in a
+# script, so consecutive figures in one run would all be titled "Figure 1"
+# in their window instead of counting up. This counter is process-wide
+# (module-level) and monotonically increasing for the life of the process,
+# so each new figure gets a number none of its predecessors ever had, even
+# after they've been closed.
+_figure_counter = itertools.count(1)
+
+
+def _finish_plot(fig, show, save):
+    """
+    Shared show/close/return tail for every plotting method: shows fig if
+    requested, then closes it whenever it was shown or saved (never
+    unconditionally - PlotAll.simple_weibull() depends on Analysis.plot()
+    leaving a show=False, save=False figure open so it can savefig() onto
+    it afterwards) and returns it either way.
+
+    The plt.pause(0.001) after close() matters on interactive GUI backends
+    (e.g. MacOSX, Qt): plt.show() there only schedules a window to be
+    drawn/raised and plt.close() only schedules it to be torn down: without
+    pumping the event loop in between, a figure closed here can still be
+    sitting in the backend's queue and visibly reappear - briefly, behind
+    the next figure's window - once the *next* plot's plt.show() call
+    finally pumps the event loop. It's a no-op on the non-interactive Agg
+    backend used in tests.
+    """
+    if show:
+        plt.show()
+    if show or save:
+        plt.close(fig)
+        if show:
+            plt.pause(0.001)
+    return fig
+
+
+def _anderson_darling(obj):
+    """
+    Used by PlotAll.compare(criteria='ad'): a Minitab-style "adjusted"
+    Anderson-Darling goodness-of-fit statistic for one fitted Analysis
+    object - lower means the data sit closer to the fitted distribution.
+
+    The classical Anderson-Darling statistic
+        A^2 = -r - (1/r) * sum_i (2i-1) * [ln F(t_(i)) + ln(1 - F(t_(r+1-i)))]
+    only works for a complete, uncensored sample of r observations: the
+    weights (2i-1)/r are baked-in plotting positions for an *exact* rank i
+    of r, and censoring breaks that assumption (some ranks are never
+    observed as failures at all). Minitab's adjustment sidesteps that by
+    generalizing to whatever plotting positions (empirical CDF) actually
+    apply - Kaplan-Meier, or here, predictr's own median_rank()/
+    median_rank_cens() - instead of hard-coding (2i-1)/r, so the identical
+    approach handles censored and uncensored data alike, with no
+    distribution-specific or censoring-specific correction table needed.
+
+    Derivation: A^2 is the definition
+        A^2 = r * integral_0^1 [Fn(F^-1(u)) - u]^2 / [u * (1-u)] du
+    (u = F(t), so Fn(F^-1(u)) is the empirical CDF re-expressed as a
+    function of the fitted-CDF value instead of t). Fn is a step function
+    that jumps at each failure's fitted-CDF value z_i = F(t_i); sorting
+    those gives z_1 <= ... <= z_r, and between z_(i-1) and z_i (z_0 = 0),
+    Fn is constant at q_(i-1) - the plotting position of the (i-1)-th
+    failure (q_0 = 0, nothing observed yet). Expanding the integrand via
+    partial fractions, (p-u)^2/[u(1-u)] = p^2/u + (1-p)^2/(1-u) - 1, which
+    integrates in closed form to p^2*ln(u) - (1-p)^2*ln(1-u) - u. Summing
+    that antiderivative's change across all r+1 intervals (the last one
+    running up to a numerical stand-in for 1, since ln(1-u) diverges there)
+    and multiplying by r gives A^2 directly - no numerical integration
+    needed. xlogy(x, y) (= x*ln(y), defined as 0 when x == 0 even if y ==
+    0) keeps the very first interval's p=0 term finite at u=0.
+
+    Cross-checked against the Python `reliability` package's Fit_Weibull_2P
+    (which implements the same Minitab-adjusted method) on both censored
+    and uncensored data: matches to float precision once both use the same
+    plotting-position convention (predictr's exact median rank vs.
+    reliability's default Benard's approximation give slightly different,
+    but both legitimate, numbers - predictr uses its own convention here
+    for consistency with what its probability plots already show).
+
+    Like the AIC compare() otherwise ranks by, this is a *comparative*
+    number only - no p-value is computed (matching Minitab, which omits
+    p-values for this statistic even where they're theoretically
+    available, since exact null distributions under estimated parameters
+    and arbitrary censoring aren't tractable in general). Unlike AIC,
+    Minitab's own docs caution that AD values are not reliably comparable
+    *across different distributions* the way AIC's likelihood-based
+    penalty is designed to be - PlotAll.compare() surfaces that caveat in
+    its subtitle whenever criteria='ad'.
+    """
+    t = np.asarray(obj.df, dtype=float)
+    if obj.dist == 'weibull':
+        fitted_cdf = weibull_min.cdf(t, obj.beta, scale=obj.eta)
+    elif obj.dist == 'exponential':
+        fitted_cdf = expon.cdf(t, scale=obj.theta)
+    elif obj.dist == 'normal':
+        fitted_cdf = norm.cdf(t, obj.mu, obj.sigma)
+    elif obj.dist == 'lognormal':
+        fitted_cdf = norm.cdf(np.log(t), obj.mu, obj.sigma)
+
+    plotting_positions = np.array(obj.median_rank() if obj.ds is None
+                                    else obj.median_rank_cens())
+
+    z = np.sort(np.clip(fitted_cdf, 1e-12, 1 - 1e-12))
+    q = np.sort(plotting_positions)
+    r = len(z)
+
+    b_lo = np.insert(z, 0, 0.0)
+    b_hi = np.append(z, 1 - 1e-12)
+    p = np.insert(q, 0, 0.0)
+
+    def antiderivative(u, p):
+        return xlogy(p ** 2, u) - xlogy((1 - p) ** 2, 1 - u) - u
+
+    return r * np.sum(antiderivative(b_hi, p) - antiderivative(b_lo, p))
+
+
 def _apply_plot_style(style):
     """
     Applies a matplotlib plot style. 'predictr' is handled directly via
@@ -135,6 +253,31 @@ def _apply_plot_style(style):
         plt.rcParams.update(PREDICTR_STYLE)
     else:
         plt.style.use(style)
+
+
+def _set_log_minor_ticks(ax):
+    """
+    Used by PlotAll.compare(), whose panels run smaller/lower-fontsize than
+    a standalone plot(). Major ticks keep matplotlib's default log-axis
+    "10^N" mathtext formatting (LogFormatterSciNotation - a coefficient of
+    1 is dropped, so "1x10^2" reads as "10^2", but "2x10^2" keeps its "2").
+    Minor ticks default to hidden (NullFormatter): LogFormatterSciNotation
+    renders its "Nx10^M" minor-tick form visibly larger than a plain
+    "10^N" major tick even at an identical fontsize (a matplotlib mathtext
+    quirk, reproducible in a bare script with no predictr involved), which
+    looks glaringly inconsistent once the panel is shrunk. But whenever the
+    current view has at most one major (decade) tick in range - e.g. data
+    clustered within one decade - there's no competing "10^N" label for the
+    minor ones to look inconsistent next to, and hiding them there would
+    leave the panel with no labeled tick at all if zoomed/panned
+    interactively; minor labels are switched back on for that case only.
+    """
+    xlim = ax.get_xlim()
+    n_major = floor(np.log10(xlim[1])) - ceil(np.log10(xlim[0])) + 1
+    if n_major <= 1:
+        ax.xaxis.set_minor_formatter(mpl.ticker.LogFormatterSciNotation())
+    else:
+        ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
 
 
 class Analysis:
@@ -175,8 +318,22 @@ class Analysis:
         h'(z) = h(z) * (h(z) - z), used by fisher_bounds()/mle() to build
         the observed Fisher information without a separate closed-form
         second derivative.
+
+        Uses norm.sf(z) (scipy's own numerically stable tail probability,
+        via erfc rather than a naive 1 - cdf(z) subtraction) instead of
+        `1 - norm.cdf(z)` directly: the naive form catastrophically cancels
+        to exactly 0.0 once z is only ~9 or so (norm.cdf(z) already rounds
+        to 1.0 there), while norm.sf(z) stays accurate out to z ~ 37 before
+        the true tail probability itself underflows float64's range - i.e.
+        a suspension several sigma out from the fit no longer silently
+        breaks the censored MLE/Fisher bounds into NaN. Even norm.sf(z)
+        genuinely reaches 0 for a large enough z (there's no way to
+        represent 1e-300+ in a float64 double no matter how it's computed),
+        so an extreme enough suspension - relative to the fitted mu/sigma -
+        can still legitimately produce h(z) = inf (division by a true
+        zero); that's a real floating-point limit, not a bug this fixes.
         """
-        return norm.pdf(z) / (1 - norm.cdf(z))
+        return norm.pdf(z) / norm.sf(z)
 
     @staticmethod
     def _point_estimate(val):
@@ -337,9 +494,15 @@ class Analysis:
         dist : string, optional
             Sets the distribution to fit: 'weibull', 'normal', 'lognormal',
             or 'exponential'. More distributions will be added over time.
-            The default is 'weibull'. For all but 'weibull', only
-            bounds='fb' (Fisher bounds) and bcm=None are currently
-            supported.
+            The default is 'weibull'. bcm=None is required for all but
+            'weibull'. Bounds are limited too: 'normal'/'lognormal' only
+            support bounds='fb' (Fisher-information-based). 'exponential'
+            supports both bounds='fb' (the same asymptotic Fisher-
+            information approach) and bounds='chi2' (an exact chi-square
+            pivot - see _exact_bounds_exponential()'s docstring); the two
+            give genuinely different bounds, not the same result under two
+            names. bounds='chi2' is only accepted for dist='exponential',
+            not the other three.
         show : bool, optional
             If True, plot will be shown. The default is False.
         plot_style : string, optional
@@ -438,6 +601,18 @@ class Analysis:
         else:
             self.ds = ds
 
+        # Raise error if df/ds contain negative values for a distribution
+        # that isn't defined there: Weibull's power terms, LogNormal's log,
+        # and Exponential's rate model are all undefined for negative t.
+        # Normal is the only one defined on the whole real line.
+        if dist != 'normal':
+            negative_data = [x for x in (self.df or []) + (self.ds or []) if x < 0]
+            if negative_data:
+                raise ValueError(
+                    f'dist="{dist}" requires non-negative failure/suspension '
+                    f'times, but negative values were found: {negative_data}. '
+                    f'Only dist="normal" supports negative values.')
+
         # Plot related attributes
         self.show = show
         self.plot_style = plot_style
@@ -503,12 +678,25 @@ class Analysis:
             and self.bounds != 'fb'
             and self.bounds != 'lrb'
             and self.bounds != 'pbb'
-            and self.bounds != 'npbb'):
+            and self.bounds != 'npbb'
+            and self.bounds != 'chi2'):
             raise ValueError(f'"{self.bounds}" is not supported by mle')
-        if self.dist != 'weibull' and self.bounds not in (None, 'fb'):
+        if self.dist == 'exponential':
+            if self.bounds not in (None, 'fb', 'chi2'):
+                raise ValueError(f'"{self.bounds}" is not yet supported for '
+                                  f'dist="exponential". Only bounds="fb" '
+                                  f'(asymptotic Fisher-information bounds) '
+                                  f'or bounds="chi2" (exact chi-square '
+                                  f'bounds - see '
+                                  f'_exact_bounds_exponential()\'s '
+                                  f'docstring) are currently implemented.')
+        elif self.dist != 'weibull' and self.bounds not in (None, 'fb'):
             raise ValueError(f'"{self.bounds}" is not yet supported for '
                               f'dist="{self.dist}". Only bounds="fb" is '
                               f'currently implemented.')
+        elif self.dist == 'weibull' and self.bounds == 'chi2':
+            raise ValueError('bounds="chi2" is only supported for '
+                              'dist="exponential".')
         if self.dist != 'weibull' and self.bcm is not None:
             raise ValueError(f'Bias-correction methods (bcm) are not yet '
                               f'supported for dist="{self.dist}".')
@@ -932,7 +1120,7 @@ class Analysis:
             else:
                 raise ValueError(f'"{self.bcm}" is not supported by mle')
         # Compute confidence bounds
-        if self.bounds == 'fb':
+        if self.bounds in ('fb', 'chi2'):
             self.fisher_bounds()
         elif self.bounds == 'lrb':
             self.lrb()
@@ -1343,7 +1531,7 @@ class Analysis:
 
         # Generate Weibull Plot Figure
         _apply_plot_style(self.plot_style)
-        fig = plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size, num=next(_figure_counter))
 
         # Y-Axis
         ax = plt.gca()
@@ -1703,15 +1891,22 @@ class Analysis:
             except:
                 raise ValueError('Path is faulty.')
 
-        if self.show:
-            plt.show()
-        if self.show or self.save:
-            plt.close(fig)
-        return fig
+        return _finish_plot(fig, self.show, self.save)
 
     def fisher_bounds(self):
         """
-        Computes Fisher bounds for the fitted distribution (self.dist).
+        Computes confidence bounds for the fitted distribution (self.dist).
+        Called by mle() for bounds='fb' (and, for dist='exponential' only,
+        also for bounds='chi2'). Weibull/Normal/LogNormal only have one
+        bounds='fb' method: the shared Fisher-information/delta-method
+        approach. Exponential has two genuinely different methods since it
+        has a closed-form exact alternative that the other three don't:
+        bounds='fb' is the same asymptotic Fisher-information/delta-method
+        approach as the other three (see _fisher_bounds_exponential()'s
+        docstring), while bounds='chi2' is an exact chi-square pivot (see
+        _exact_bounds_exponential()'s docstring) - the two do NOT produce
+        the same bounds, unlike an earlier version of this code where 'fb'
+        was repointed at the chi-square method entirely.
         """
         if self.dist == 'normal':
             self._fisher_bounds_normal()
@@ -1720,7 +1915,10 @@ class Analysis:
             self._fisher_bounds_lognormal()
             return
         elif self.dist == 'exponential':
-            self._fisher_bounds_exponential()
+            if self.bounds == 'chi2':
+                self._exact_bounds_exponential()
+            else:
+                self._fisher_bounds_exponential()
             return
 
         # Check if parameters are bias-corrected
@@ -1928,14 +2126,22 @@ class Analysis:
 
     def _fisher_bounds_exponential(self):
         """
-        Fisher bounds for the Exponential distribution. Single parameter
-        theta, so the observed Fisher information is a scalar:
-        I(theta) = r/theta^2 (see mle()'s docstring for the log-
-        likelihood), giving Var(theta_hat) = theta_hat^2/r and, by the
-        delta method, Var(ln(theta_hat)) = 1/r exactly (no p-dependence,
-        since ln(t_p) = ln(theta) + ln(-ln(1-p)) is additively shifted by
-        a constant that doesn't depend on theta). Bounds are built in log
-        space, like Weibull/LogNormal, to keep theta positive.
+        Confidence bounds for the Exponential distribution's theta, used
+        for bounds='fb'. Single parameter theta, so the observed Fisher
+        information is a scalar: I(theta) = r/theta^2 (see mle()'s
+        docstring for the log-likelihood), giving Var(theta_hat) =
+        theta_hat^2/r and, by the delta method, Var(ln(theta_hat)) = 1/r
+        exactly (no p-dependence, since ln(t_p) = ln(theta) +
+        ln(-ln(1-p)) is additively shifted by a constant that doesn't
+        depend on theta). Bounds are built in log space, like
+        Weibull/LogNormal, to keep theta positive.
+
+        This is only asymptotically correct (exact coverage as r ->
+        infinity, like Weibull/Normal/LogNormal's own Fisher bounds) - see
+        _exact_bounds_exponential() (bounds='chi2') for an exact
+        alternative available for this one distribution specifically. The
+        two are genuinely different methods and do not produce the same
+        bounds.
         """
         r = len(self.df)
         self.se_theta = self.theta / np.sqrt(r)
@@ -1958,6 +2164,59 @@ class Analysis:
             self.bounds_upper = np.exp(ln_t_p + k_a_p_bound * se_ln_theta)
         elif self.bounds_type == '1sl':
             self.bounds_lower = np.exp(ln_t_p + k_a_p_bound * se_ln_theta)
+
+    def _exact_bounds_exponential(self):
+        """
+        Confidence bounds for the Exponential distribution's theta, used
+        for bounds='chi2', via the exact chi-square pivot (Nelson, "Applied
+        Life Data Analysis", 1982, p.255; Mathews, "Sample Size
+        Calculations", 2010): for Type-II censored (or complete)
+        exponential data,
+            2 * r * theta_hat / theta ~ chi2(df=2r)
+        exactly (r = number of failures) - not just asymptotically, unlike
+        _fisher_bounds_exponential()'s Fisher-information/delta-method
+        normal approximation (bounds='fb'), which only has the right
+        coverage as r -> infinity. Rearranging the pivot for a two-sided
+        100*cl% interval:
+            theta_lower = 2*r*theta_hat / chi2.ppf(1 - alpha/2, df=2r)
+            theta_upper = 2*r*theta_hat / chi2.ppf(alpha/2, df=2r)
+        (alpha = 1 - cl; one-sided bounds replace alpha/2 by alpha, same as
+        Nelson's convention). theta_lower/upper are still just a single CI
+        on the one scalar parameter theta, so - same as bounds='fb' above -
+        the resulting bounds on t_p = theta*(-ln(1-p)) are a constant
+        multiple of the MLE line (parallel to it on Weibull's probability
+        paper), not p-dependent the way Weibull's own beta/eta bounds are;
+        that behavior is inherent to Exponential having only one free
+        parameter, not a property of which CI method is used.
+
+        self.se_theta (Var(theta_hat) = theta_hat^2/r, from the observed
+        Fisher information I(theta) = r/theta^2) is set here too, purely as
+        a standard-error summary - it plays no part in building these
+        bounds.
+        """
+        r = len(self.df)
+        self.se_theta = self.theta / np.sqrt(r)
+        df_chi2 = 2 * r
+        total_time = r * self.theta
+
+        if self.bounds_type == '2s':
+            alpha = 1.0 - self.cl
+            theta_lower = 2 * total_time / chi2.ppf(1 - alpha / 2, df_chi2)
+            theta_upper = 2 * total_time / chi2.ppf(alpha / 2, df_chi2)
+        elif self.bounds_type == '1su':
+            theta_upper = 2 * total_time / chi2.ppf(1 - self.cl, df_chi2)
+        elif self.bounds_type == '1sl':
+            theta_lower = 2 * total_time / chi2.ppf(self.cl, df_chi2)
+
+        t_p_per_unit_theta = -np.log(1 - np.array(self.unrel))
+
+        if self.bounds_type == '2s':
+            self.bounds_lower = theta_lower * t_p_per_unit_theta
+            self.bounds_upper = theta_upper * t_p_per_unit_theta
+        elif self.bounds_type == '1su':
+            self.bounds_upper = theta_upper * t_p_per_unit_theta
+        elif self.bounds_type == '1sl':
+            self.bounds_lower = theta_lower * t_p_per_unit_theta
 
     def lrb(self):
         """
@@ -2413,7 +2672,7 @@ class Analysis:
 
         # Generate Weibull Plot Figure
         _apply_plot_style(self.plot_style)
-        fig = plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size, num=next(_figure_counter))
 
         # Y-Axis
         ax = plt.gca()
@@ -3056,11 +3315,7 @@ class Analysis:
             except:
                 raise ValueError('Path is faulty.')
 
-        if self.show:
-            plt.show()
-        if self.show or self.save:
-            plt.close(fig)
-        return fig
+        return _finish_plot(fig, self.show, self.save)
 
     def _plot_normal(self):
         """
@@ -3082,7 +3337,7 @@ class Analysis:
             return '{:.1f}'.format(100 * norm.cdf(y_i))
 
         _apply_plot_style(self.plot_style)
-        fig = plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size, num=next(_figure_counter))
 
         # Y-axis: probit scale, same tick percentages as the Weibull plot
         ax = plt.gca()
@@ -3196,11 +3451,7 @@ class Analysis:
                 plt.savefig(self.save_path)
             except:
                 raise ValueError('Path is faulty.')
-        if self.show:
-            plt.show()
-        if self.show or self.save:
-            plt.close(fig)
-        return fig
+        return _finish_plot(fig, self.show, self.save)
 
     def _plot_lognormal(self):
         """
@@ -3217,7 +3468,7 @@ class Analysis:
             return '{:.1f}'.format(100 * norm.cdf(y_i))
 
         _apply_plot_style(self.plot_style)
-        fig = plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size, num=next(_figure_counter))
 
         ax = plt.gca()
         ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(normal_ticks))
@@ -3328,11 +3579,7 @@ class Analysis:
                 plt.savefig(self.save_path)
             except:
                 raise ValueError('Path is faulty.')
-        if self.show:
-            plt.show()
-        if self.show or self.save:
-            plt.close(fig)
-        return fig
+        return _finish_plot(fig, self.show, self.save)
 
     def _plot_exponential(self):
         """
@@ -3359,7 +3606,7 @@ class Analysis:
             return '{:.1f}'.format(100 * (1 - np.exp(-np.exp(y_i))))
 
         _apply_plot_style(self.plot_style)
-        fig = plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size, num=next(_figure_counter))
 
         ax = plt.gca()
         ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(weibull_ticks))
@@ -3388,7 +3635,7 @@ class Analysis:
                     + r'$\widehat\theta={:.3f}$'.format(self.theta))
         legend_labels = (leg_text,)
 
-        if self.bounds == 'fb' and (self.bounds_lower is not None
+        if self.bounds in ('fb', 'chi2') and (self.bounds_lower is not None
                                      or self.bounds_upper is not None):
             y_p = weibull_prob_paper(self.unrel)
             if self.bounds_type == '2s':
@@ -3407,8 +3654,14 @@ class Analysis:
                 plt.semilogx(self.bounds_lower, y_p, color='royalblue',
                              linestyle='-', linewidth=1)
                 bt_legend = '1sl'
-            legend_labels = (leg_text, '\nFisher bounds:\n{} @{}%'.format(
-                bt_legend, self.cl * 100))
+            # Exponential is the only dist with two distinct bounds
+            # methods (see fisher_bounds()'s docstring), so the legend
+            # names whichever one was actually used instead of always
+            # saying "Fisher bounds" like the other three plots' legends.
+            bounds_method_legend = ('Exact bounds (χ²)' if self.bounds == 'chi2'
+                                     else 'Fisher bounds')
+            legend_labels = (leg_text, '\n{}:\n{} @{}%'.format(
+                bounds_method_legend, bt_legend, self.cl * 100))
 
         plt.xlabel(f'{self.x_label}{" in " + self.unit if self.unit != "-" else ""}',
                    color='black', fontsize=self.xy_fontsize)
@@ -3434,7 +3687,7 @@ class Analysis:
         # Weibull's plot()): otherwise autoscale would size it to the MLE
         # line's own evaluation points (p=[0.0001, ...]), which on a log
         # axis can extend towards 0 far past anything meaningful.
-        if self.bounds == 'fb' and (self.bounds_lower is not None
+        if self.bounds in ('fb', 'chi2') and (self.bounds_lower is not None
                                      or self.bounds_upper is not None):
             if self.bounds_type == '2s':
                 tmin_plot, tmax_plot = min(self.bounds_lower), max(self.bounds_upper)
@@ -3471,11 +3724,7 @@ class Analysis:
                 plt.savefig(self.save_path)
             except:
                 raise ValueError('Path is faulty.')
-        if self.show:
-            plt.show()
-        if self.show or self.save:
-            plt.close(fig)
-        return fig
+        return _finish_plot(fig, self.show, self.save)
 
     @classmethod
     def get_bx_percentile(cls, time, beta_, eta_):
@@ -3788,7 +4037,7 @@ class PlotAll:
 
         # Generate Weibull Plot Figure
         _apply_plot_style(self.plot_style)
-        fig = plt.figure(figsize=fig_size)
+        fig = plt.figure(figsize=fig_size, num=next(_figure_counter))
 
         # Y-Axis
         ax = plt.gca()
@@ -4128,42 +4377,94 @@ class PlotAll:
             except:
                 raise ValueError('Path is faulty.')
 
-        if show:
-            plt.show()
-        if show or save:
-            plt.close(fig)
-        return fig
+        return _finish_plot(fig, show, save)
 
-    def compare(self, x_label='Time to Failure', y_label='Unreliability',
-                fig_size=(11, 10), y_min=0.01, y_max=0.99, save=False, **kwargs):
+    def compare(self, df, ds=None, bounds=None, bounds_type='2s', cl=0.9,
+                x_label='Time to Failure', y_label='Unreliability',
+                fig_size=(7.7, 7), y_min=0.01, y_max=0.99, plot_ranks=False,
+                criteria='aic', plot_pdf=True, show=True, save=False,
+                plot_style='predictr', **kwargs):
         """
-        Compares Analysis objects fit to the *same data* with different
-        dist= choices: one probability-plot panel per object, each on its
-        own native paper (unlike mult_weibull(), which requires every
-        object to share the same dist since it overlays them on one
-        shared paper), arranged in a grid and ranked by AIC (best fit
-        first). Unlike mult_weibull()/contour_plot(), this is meant for
-        comparing *different* distributions fit to one dataset, not the
+        Fits every distribution predictr supports (see
+        Analysis.SUPPORTED_DISTRIBUTIONS) to the given data and plots one
+        probability-plot panel per distribution, each on its own native
+        paper (unlike mult_weibull(), which overlays several fits of the
+        *same* dist on one shared paper), arranged in a grid and ranked by
+        AIC (best fit first). Unlike mult_weibull()/contour_plot(), this is
+        for comparing *different* distributions fit to one dataset, not the
         same distribution fit to different datasets.
 
         Parameters
         ----------
+        df : list of floats
+            Failure data every distribution is fit to.
+        ds : list of floats, optional
+            Suspensions (right-censored data), if any. The default is None.
+        bounds : {None, 'fb'}, optional
+            Confidence bound method used for every fit. Only bounds='fb' is
+            implemented for dist='normal'/'lognormal'/'exponential' -
+            asymptotic Fisher-information bounds for all three there,
+            including 'exponential' (see _fisher_bounds_exponential()'s
+            docstring) - so that's the only bound type compare() can show
+            consistently across all panels. bounds='chi2' is *not* accepted
+            here even though Analysis(dist='exponential') supports it too
+            (an exact chi-square alternative - see
+            _exact_bounds_exponential()'s docstring): it only applies to
+            that one distribution, and compare() needs a single bounds=
+            value that works across every panel. The default is None (no
+            bounds).
+        bounds_type : {'2s', '1sl', '1su'}, optional
+            Passed through to every fit. The default is '2s'.
+        cl : float, optional
+            Confidence level for the bounds. The default is 0.9.
         x_label : string, optional
             Label for each panel's x-axis. The default is 'Time to Failure'.
         y_label : string, optional
             Label for each panel's y-axis. The default is 'Unreliability'.
         fig_size : tuple of floats, optional
             Sets width and height in inches: (width, height). The default
-            is (11, 10), tuned for the common 4-distribution case.
+            is (7.7, 7), tuned for the common 4-distribution case.
         y_min : float, optional
             Lower y-axis limit (unreliability, as a fraction) shown on
             every panel. Must satisfy 0 < y_min < y_max < 1. The default
             is 0.01.
         y_max : float, optional
             Upper y-axis limit shown on every panel. The default is 0.99.
+        plot_ranks : boolean, optional
+            If True, each panel also plots the data's median-rank points.
+            Median ranks are a plotting-position convenience (where to draw
+            each failure on the probability paper) and play no part in the
+            MLE fit or the ranking compare() is actually about, so - unlike
+            Analysis(plot_ranks=), which defaults to True - this defaults to
+            False here. The default is False.
+        criteria : {'aic', 'ad'}, optional
+            Which goodness-of-fit measure ranks and labels the panels.
+            'aic' (the default) ranks by AIC, comparable across the
+            different distributions by construction. 'ad' ranks by a
+            Minitab-style "adjusted" Anderson-Darling statistic instead
+            (see _anderson_darling()'s docstring) - lower is a closer fit -
+            and the subtitle notes that, unlike AIC, comparing AD values
+            *across* distributions isn't fully rigorous (matching Minitab's
+            own caveat for this statistic).
+        plot_pdf : boolean, optional
+            If True, also produces a second, separate figure overlaying
+            every fitted distribution's probability density function (PDF)
+            in one linear-scale plot - unlike the probability-plot grid
+            above, which puts each distribution on its own native paper and
+            can't show them on shared axes. Every curve uses the same
+            predictr palette color/order as the ranked panels; the raw data
+            is marked along the x-axis ('x' for failures, 'o' for
+            suspensions, both black). This second figure follows show/save
+            the same way the main one does, saved to a '_pdf' suffixed
+            filename when save=True. The default is True.
+        show : boolean, optional
+            If True, the figure is displayed via plt.show(). The default
+            is True.
         save : boolean, optional
             If True, the plot is saved according to the path. The default
             is False.
+        plot_style : string, optional
+            Passed through to every fit. The default is 'predictr'.
         **kwargs :
             path: string
                 Path defines the directory and format of the figure E.g.
@@ -4172,19 +4473,42 @@ class PlotAll:
         if not (0 < y_min < y_max < 1):
             raise ValueError('y_min and y_max must satisfy 0 < y_min < '
                               'y_max < 1.')
+        if bounds == 'chi2':
+            raise ValueError("compare() fits every distribution to the same "
+                              "data, so it needs one bounds= value that "
+                              "works for all of them - bounds='chi2' (the "
+                              "exact chi-square bounds; see "
+                              "_exact_bounds_exponential()'s docstring) only "
+                              "applies to dist='exponential'. Use "
+                              "bounds='fb' instead: it's valid for every "
+                              "distribution, including 'exponential' (there "
+                              "via the asymptotic Fisher-information bounds "
+                              "in _fisher_bounds_exponential(), not the "
+                              "exact chi-square ones).")
+        if bounds not in (None, 'fb'):
+            raise ValueError("compare() only supports bounds=None or "
+                              "bounds='fb': that's the only bound type "
+                              "implemented for dist='normal'/'lognormal'/"
+                              "'exponential', so it's the only one every "
+                              "panel can show consistently.")
+        if criteria not in ('aic', 'ad'):
+            raise ValueError(f'"{criteria}" is not a supported criteria. '
+                              f'Supported: \'aic\', \'ad\'.')
 
-        missing_aic = [key for key, val in self.objects.items()
-                       if getattr(val, 'aic', None) is None]
-        if missing_aic:
-            raise ValueError(f'compare() requires mle() to have been run '
-                              f'on every object (missing AIC for {missing_aic}).')
-        reference = next(iter(self.objects.values()))
-        mismatched = [key for key, val in self.objects.items()
-                      if val.df != reference.df or val.ds != reference.ds]
-        if mismatched:
-            raise ValueError(f'compare() requires every object to be fit '
-                              f'on the same data (df/ds), but {mismatched} '
-                              f'differ from the rest.')
+        # Weibull/LogNormal/Exponential all raise on negative df/ds (see
+        # Analysis.__init__) - only Normal is defined on the whole real
+        # line - so compare() fits Normal alone in that case instead of
+        # letting the other three raise, and notes why in the subtitle.
+        has_negative = any(x < 0 for x in list(df) + list(ds or []))
+        dists_to_fit = ['normal'] if has_negative else sorted(Analysis.SUPPORTED_DISTRIBUTIONS)
+
+        objects = {}
+        for dist in dists_to_fit:
+            fit = Analysis(df=df, ds=ds, dist=dist, bounds=bounds,
+                           bounds_type=bounds_type, cl=cl, show=False,
+                           plot_style=plot_style)
+            fit.mle()
+            objects[dist] = fit
 
         def weibull_paper(x):
             x = np.asarray(x, dtype=float)
@@ -4200,14 +4524,28 @@ class PlotAll:
         y_ticks_frac = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= y_min)
                                                & (PROBABILITY_PLOT_TICKS <= y_max)]
 
-        ranked = sorted(self.objects.items(), key=lambda kv: kv[1].aic)
-        best_aic = ranked[0][1].aic
+        if criteria == 'ad':
+            criteria_values = {key: _anderson_darling(obj) for key, obj in objects.items()}
+        else:
+            criteria_values = {key: obj.aic for key, obj in objects.items()}
+
+        ranked = sorted(objects.items(), key=lambda kv: criteria_values[kv[0]])
+        best_value = criteria_values[ranked[0][0]]
         n = len(ranked)
         ncols = 2 if n > 1 else 1
         nrows = int(np.ceil(n / ncols))
 
-        _apply_plot_style(self.plot_style)
-        fig, axes = plt.subplots(nrows, ncols, figsize=fig_size)
+        # Every fontsize below is scaled relative to the (11, 10) size this
+        # layout was originally tuned at, so the title/subtitle/panel-title/
+        # label/legend/tick text - and the fixed-fraction y-positions near
+        # the end of this method - all shrink or grow together with
+        # fig_size instead of the text staying a fixed point size while the
+        # panels around it shrink, which is what caused labels to overlap
+        # when fig_size was first made configurable.
+        scale = fig_size[1] / 10.0
+
+        _apply_plot_style(plot_style)
+        fig, axes = plt.subplots(nrows, ncols, figsize=fig_size, num=next(_figure_counter))
         axes = np.atleast_1d(axes).flatten()
         for extra_ax in axes[n:]:
             extra_ax.set_visible(False)
@@ -4215,19 +4553,14 @@ class PlotAll:
         for panel_i, (key, obj) in enumerate(ranked):
             ax = axes[panel_i]
             rank = panel_i + 1
-            dAIC = obj.aic - best_aic
+            delta = criteria_values[key] - best_value
             dist = obj.dist
-
-            ranks = np.array(obj.median_rank() if obj.ds is None
-                              else obj.median_rank_cens())
-            x_data = np.array(obj.df, dtype=float)
 
             if dist in ('weibull', 'exponential'):
                 ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(weibull_ticks))
                 y_ticks = weibull_paper(y_ticks_frac)
                 ax.set_yticks(y_ticks)
                 ax.set_yticks([weibull_paper(0.632)], minor=True)
-                y_data = weibull_paper(ranks)
                 ax.set_xscale('log')
                 p_line = np.array([0.001, 0.999])
                 if dist == 'weibull':
@@ -4240,7 +4573,6 @@ class PlotAll:
                 y_ticks = norm.ppf(y_ticks_frac)
                 ax.set_yticks(y_ticks)
                 ax.set_yticks([0.0], minor=True)
-                y_data = norm.ppf(ranks)
                 z_line = norm.ppf(np.array([0.001, 0.999]))
                 if dist == 'lognormal':
                     ax.set_xscale('log')
@@ -4251,10 +4583,16 @@ class PlotAll:
 
             ax.grid(True, which='minor', axis='y', linestyle='--')
 
-            # Fisher bounds, same royalblue + light fill convention as the
-            # single-distribution plots. All labeled '_nolegend_' so they
-            # don't get auto-picked-up as legend handles below - only the
-            # (unlabeled) MLE line becomes the legend's icon.
+            # bounds='fb' confidence bounds: asymptotic Fisher-information
+            # bounds for every distribution shown here, including
+            # Exponential (see _fisher_bounds_exponential()'s docstring -
+            # compare() never uses Exponential's exact chi-square
+            # alternative, bounds='chi2', since it can't be applied to the
+            # other three panels too). Same royalblue + light fill
+            # convention as the single-distribution plots. All
+            # labeled '_nolegend_' so they don't get auto-picked-up as
+            # legend handles below - only the (unlabeled) MLE line becomes
+            # the legend's icon.
             if obj.bounds_lower is not None or obj.bounds_upper is not None:
                 z_p = (weibull_paper(obj.unrel) if dist in ('weibull', 'exponential')
                        else norm.ppf(obj.unrel))
@@ -4268,10 +4606,19 @@ class PlotAll:
                     ax.fill_betweenx(z_p, obj.bounds_lower, obj.bounds_upper,
                                       alpha=0.1, color='royalblue', label='_nolegend_')
 
-            ax.plot(x_data, y_data, marker='o', markerfacecolor='mediumblue',
-                    markeredgecolor='mediumblue', markersize=5, alpha=.6,
-                    linestyle='None', zorder=3, label='_nolegend_')
+            if plot_ranks:
+                ranks = np.array(obj.median_rank() if obj.ds is None
+                                  else obj.median_rank_cens())
+                x_data = np.array(obj.df, dtype=float)
+                y_data = (weibull_paper(ranks) if dist in ('weibull', 'exponential')
+                          else norm.ppf(ranks))
+                ax.plot(x_data, y_data, marker='o', markerfacecolor='mediumblue',
+                        markeredgecolor='mediumblue', markersize=5, alpha=.6,
+                        linestyle='None', zorder=3, label='_nolegend_')
             ax.plot(x_line, y_line, color='mediumblue', linewidth=1.5, zorder=2)
+
+            if ax.get_xscale() == 'log':
+                _set_log_minor_ticks(ax)
 
             ax.set_ylim(y_ticks[0], y_ticks[-1])
             # Deliberate deviation from the single-plot title convention
@@ -4279,43 +4626,157 @@ class PlotAll:
             # hierarchy (suptitle > panel title > axis labels) than one
             # standalone plot does.
             ax.set_title(f'{rank}.  {dist.capitalize()}', color='black',
-                         fontsize=15, fontweight='bold')
+                         fontsize=15 * scale, fontweight='bold')
             # One rung down from xy_fontsize's default (12) on predictr's
             # existing size ladder (14 title / 12 labels / 10 ticks /
             # 9 legend) - lands on 10.
-            ax.set_xlabel(x_label, color='black', fontsize=10)
-            ax.set_ylabel(y_label + ' in %', color='black', fontsize=10)
+            ax.set_xlabel(x_label, color='black', fontsize=10 * scale)
+            ax.set_ylabel(y_label + ' in %', color='black', fontsize=10 * scale)
 
-            stat_text = (f'log-likelihood = {obj.loglik:.2f}\n'
-                         f'AIC = {obj.aic:.2f}'
-                         + ('  (best)' if rank == 1 else f'   ΔAIC = +{dAIC:.2f}'))
-            ax.legend((stat_text,), loc='lower right', fontsize=9,
-                      title='Goodness of fit')
+            if criteria == 'ad':
+                stat_text = (f'log-likelihood = {obj.loglik:.2f}\n'
+                             f'AD = {criteria_values[key]:.3f}'
+                             + ('  (best)' if rank == 1 else f'   ΔAD = +{delta:.3f}'))
+            else:
+                stat_text = (f'log-likelihood = {obj.loglik:.2f}\n'
+                             f'AIC = {criteria_values[key]:.2f}'
+                             + ('  (best)' if rank == 1 else f'   ΔAIC = +{delta:.2f}'))
+            ax.legend((stat_text,), loc='lower right', fontsize=9 * scale,
+                      title='Goodness of fit', title_fontsize=9 * scale)
 
             ax.grid(True, which='major')
-            ax.tick_params(labelsize=10)
+            ax.tick_params(which='both', labelsize=10 * scale)
+            # Large/small axis values (e.g. df in the hundred-thousands, as
+            # with dist='normal' on data that isn't log-scaled) make
+            # matplotlib draw a "1eN" offset-text next to the tick labels.
+            # That Text object isn't covered by tick_params(labelsize=...)
+            # above, so without this it stays at its unscaled default size
+            # and looks oversized/misplaced once the panel has been shrunk
+            # by `scale`.
+            ax.xaxis.get_offset_text().set_fontsize(10 * scale)
+            ax.yaxis.get_offset_text().set_fontsize(10 * scale)
 
-        susp_num = len(reference.ds) if reference.ds is not None else 0
-        fig.suptitle('Distribution comparison', color='black', fontsize=18,
+        susp_num = len(ds) if ds is not None else 0
+        fig.suptitle('Distribution comparison', color='black', fontsize=18 * scale,
                      fontweight='bold', y=0.953)
-        fig.text(0.5, 0.908, 'ranked by AIC  (n = {} (f: {} | s: {}))'.format(
-                     len(reference.df) + susp_num, len(reference.df), susp_num),
-                 ha='center', color='black', fontsize=12, fontweight='normal')
+        if has_negative:
+            subtitle = ('Only Normal shown - Weibull/LogNormal/Exponential '
+                         'require non-negative data  (n = {} (f: {} | s: {}))').format(
+                             len(df) + susp_num, len(df), susp_num)
+        elif criteria == 'ad':
+            subtitle = ('ranked by Anderson-Darling (adjusted) - comparisons '
+                         'across distributions are limited  '
+                         '(n = {} (f: {} | s: {}))').format(
+                             len(df) + susp_num, len(df), susp_num)
+        else:
+            subtitle = 'ranked by AIC  (n = {} (f: {} | s: {}))'.format(
+                len(df) + susp_num, len(df), susp_num)
+        fig.text(0.5, 0.908, subtitle,
+                 ha='center', color='black', fontsize=12 * scale, fontweight='normal')
         # tight_layout's own computed top margin is tighter than any rect
         # ceiling passed to it once enough vertical room is available, so
         # rect no longer controls the subtitle-to-panel-title gap past
         # that point - only the two fig.text/suptitle y positions above do
         # (verified empirically via the Figure's rendered text bounding
-        # boxes, not just visually).
+        # boxes, not just visually). The y=0.953/0.908/rect=0.93 fractions
+        # are tied to fig_size via `scale` above (all fontsizes scale with
+        # it too), so they hold regardless of fig_size instead of only
+        # being valid at the one size they were originally tuned at.
         plt.tight_layout(rect=[0, 0, 1, 0.93])
 
         if save:
             try:
-                plt.savefig(kwargs['path'])
+                fig.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
+        result = _finish_plot(fig, show, save)
 
-        plt.show()
+        if plot_pdf:
+            # Second, separate figure: every fitted PDF overlaid on one
+            # shared linear-scale axis (the probability-plot grid above
+            # can't do this - each distribution needs its own native paper
+            # there). Colors follow objects' own insertion order (fixed,
+            # alphabetical - see dists_to_fit above), not `ranked`'s
+            # criteria-dependent order, so a given distribution keeps the
+            # same color across different compare() calls/criteria.
+            _apply_plot_style(plot_style)
+            fig_pdf = plt.figure(figsize=fig_size, num=next(_figure_counter))
+            ax_pdf = fig_pdf.gca()
+
+            def _quantile(o, p):
+                if o.dist == 'weibull':
+                    return o.eta * (-np.log(1 - p)) ** (1 / o.beta)
+                elif o.dist == 'exponential':
+                    return o.theta * (-np.log(1 - p))
+                elif o.dist == 'normal':
+                    return o.mu + o.sigma * norm.ppf(p)
+                else:
+                    return np.exp(o.mu + o.sigma * norm.ppf(p))
+
+            def _pdf(o, x):
+                if o.dist == 'weibull':
+                    return weibull_min.pdf(x, o.beta, scale=o.eta)
+                elif o.dist == 'exponential':
+                    return expon.pdf(x, scale=o.theta)
+                elif o.dist == 'normal':
+                    return norm.pdf(x, o.mu, o.sigma)
+                else:
+                    y = np.zeros_like(x)
+                    positive = x > 0
+                    y[positive] = norm.pdf(np.log(x[positive]), o.mu, o.sigma) / x[positive]
+                    return y
+
+            # x-range covers every fitted PDF's own 1%-99% quantile range
+            # (tighter than the 0.1%-99.9% tmin_plot/tmax_plot convention
+            # used elsewhere in this file, deliberately: on a linear axis, a
+            # heavy-tailed candidate's far-out 99.9th percentile compresses
+            # every curve's actual peak - the visually interesting part for
+            # a shape-vs-shape comparison - into a sliver of the plot) plus
+            # the raw data itself, so no rug-plot marker on an outlier gets
+            # clipped even if it sits beyond every fitted curve's own 99%.
+            x_bounds = ([_quantile(o, p) for o in objects.values() for p in (0.01, 0.99)]
+                        + list(df) + list(ds or []))
+            x_pdf = np.linspace(min(x_bounds), max(x_bounds), 500)
+
+            colors, _ = _categorical_style(len(objects))
+            for (dist_key, obj), color in zip(objects.items(), colors):
+                ax_pdf.plot(x_pdf, _pdf(obj, x_pdf), color=color, linewidth=1.5,
+                            label=obj.dist.capitalize())
+
+            # Raw data as a rug plot along the x-axis - black regardless of
+            # which curve's color it's nearest, since it's the same
+            # observed data for every distribution, not tied to one of them.
+            ax_pdf.plot(df, [0] * len(df), marker='x', color='black',
+                        linestyle='None', markersize=7, label='Failures')
+            if ds:
+                ax_pdf.plot(ds, [0] * len(ds), marker='o', markerfacecolor='none',
+                            markeredgecolor='black', linestyle='None',
+                            markersize=7, label='Suspensions')
+
+            ax_pdf.set_xlabel(x_label, color='black', fontsize=10 * scale)
+            ax_pdf.set_ylabel('Probability Density Function', color='black',
+                               fontsize=10 * scale)
+            ax_pdf.set_title('Probability Density Function Comparison', color='black',
+                              fontsize=15 * scale, fontweight='bold')
+            ax_pdf.tick_params(labelsize=10 * scale)
+            ax_pdf.grid(True)
+            ax_pdf.legend(fontsize=9 * scale)
+            fig_pdf.tight_layout()
+
+            if save:
+                try:
+                    path = kwargs['path']
+                    if '.' in path:
+                        base, ext = path.rsplit('.', 1)
+                        pdf_path = f'{base}_pdf.{ext}'
+                    else:
+                        pdf_path = f'{path}_pdf'
+                    fig_pdf.savefig(pdf_path)
+                except:
+                    raise ValueError('Path is faulty.')
+            _finish_plot(fig_pdf, show, save)
+
+        return result
 
     def contour_plot(self, show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=r'$\widehat\beta$',
                      y_label=None, plot_title='Contour Plot', xy_fontsize=12,
@@ -4371,7 +4832,7 @@ class PlotAll:
 
         # Configure plot
         _apply_plot_style(self.plot_style)
-        fig, ax = plt.subplots(figsize=fig_size)
+        fig, ax = plt.subplots(figsize=fig_size, num=next(_figure_counter))
         ax.set_title(plot_title, fontsize=plot_title_fontsize)
 
 
@@ -4564,11 +5025,7 @@ class PlotAll:
             if show or save:
                 plt.close(fig)
             return fig
-        if show:
-            plt.show()
-        if show or save:
-            plt.close(fig)
-        return fig
+        return _finish_plot(fig, show, save)
 
     def weibull_pdf(self, beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels = None,
                     x_label = None, y_label=None, xy_fontsize=12, tick_fontsize=10,
@@ -4657,7 +5114,7 @@ class PlotAll:
         # PDF plot.
         if fig_size is None:
             fig_size = (6.4, 4.8)
-        fig = plt.figure(figsize=fig_size)
+        fig = plt.figure(figsize=fig_size, num=next(_figure_counter))
 
         # Set title
         plt.title(plot_title, fontsize=plot_title_fontsize)
@@ -4696,11 +5153,7 @@ class PlotAll:
             except:
                 raise ValueError('Path is faulty.')
 
-        if show:
-            plt.show()
-        if show or save:
-            plt.close(fig)
-        return fig
+        return _finish_plot(fig, show, save)
 
     def simple_weibull(self, beta, eta, unit='-', x_label = 'Time to Failure',
                        y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10,
@@ -4779,43 +5232,5 @@ class PlotAll:
         return fig
 
 if __name__ == '__main__':
-    failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
-              0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
-              1.3201853093496474, 1.492172669340363]
-
-    #
-    #PlotAll(objects).contour_plot()
-    
-    contour_decision = False
-    objects = {}
-    if contour_decision == True:
-        for cl in [0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]:
-            key = f"variable_{str(cl).replace('.', '_')}"
-            objects[key] = Analysis(df=failures_a, bounds='lrb', bounds_type='2s', show=False, cl=cl)
-            objects[key].mle()
-        PlotAll(objects).contour_plot()
-
-
-    df = [0.670659, 0.976145, 1.41494, 0.859942, 0.468364, 1.17272, 0.648734, 0.972926, 0.851652, 1.08389]
-    df_caf = [1400699, 45477, 49358, 53379, 70695, 74721, 116451]
-    ds_caf = [3_000_000] * 3
-
-    #x = Analysis(df=df, bounds='fb', dist='normal', show=True)
-    #x.mle()
-
-    y = Analysis(df=failures_a, bounds='lrb', show=True, dist='weibull')
-    y.mle()
-
-    w = Analysis(df=failures_a, bounds='fb', show=True, dist='exponential')
-    w.mle()
-
-    #z = Analysis(df=failures_a, bounds='fb', show=True, dist='lognormal')
-    #z.mle()
-    """
-    obj = {'x': x, 'y':y }
-    PlotAll(obj).contour_plot(curve_fill= True, scale_mode='auto', cl_set=[.7, 0.8, 0.9])
-
-    failures = [0.4508831,  0.68564703, 0.76826143, 0.88231395, 1.48287253, 1.62876357]
-    prototype_a = Analysis(df=failures, bounds='bbb', show=True)
-    prototype_a.mrr()
-    """
+    s = np.random.normal(loc=100, scale=5, size=5)
+    PlotAll().compare(df=s, ds=[300, 300, 300], plot_ranks=True, criteria='aic', bounds='fb', plot_pdf=True)
