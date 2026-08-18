@@ -1343,7 +1343,7 @@ class Analysis:
 
         # Generate Weibull Plot Figure
         _apply_plot_style(self.plot_style)
-        plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size)
 
         # Y-Axis
         ax = plt.gca()
@@ -1683,7 +1683,6 @@ class Analysis:
         # of being re-absorbed.
         legend = plt.gca().get_legend()
         if legend is not None:
-            fig = plt.gcf()
             from matplotlib.backends.backend_agg import FigureCanvasAgg
             original_canvas = fig.canvas
             FigureCanvasAgg(fig)
@@ -1706,6 +1705,9 @@ class Analysis:
 
         if self.show:
             plt.show()
+        if self.show or self.save:
+            plt.close(fig)
+        return fig
 
     def fisher_bounds(self):
         """
@@ -2355,14 +2357,11 @@ class Analysis:
         the constructor.
         """
         if self.dist == 'normal':
-            self._plot_normal()
-            return
+            return self._plot_normal()
         elif self.dist == 'lognormal':
-            self._plot_lognormal()
-            return
+            return self._plot_lognormal()
         elif self.dist == 'exponential':
-            self._plot_exponential()
-            return
+            return self._plot_exponential()
 
         # Some needed functions:
         def weibull_prob_paper(x):
@@ -2414,7 +2413,7 @@ class Analysis:
 
         # Generate Weibull Plot Figure
         _apply_plot_style(self.plot_style)
-        plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size)
 
         # Y-Axis
         ax = plt.gca()
@@ -3037,7 +3036,6 @@ class Analysis:
         # of being re-absorbed.
         legend = plt.gca().get_legend()
         if legend is not None:
-            fig = plt.gcf()
             from matplotlib.backends.backend_agg import FigureCanvasAgg
             original_canvas = fig.canvas
             FigureCanvasAgg(fig)
@@ -3060,6 +3058,9 @@ class Analysis:
 
         if self.show:
             plt.show()
+        if self.show or self.save:
+            plt.close(fig)
+        return fig
 
     def _plot_normal(self):
         """
@@ -3081,7 +3082,7 @@ class Analysis:
             return '{:.1f}'.format(100 * norm.cdf(y_i))
 
         _apply_plot_style(self.plot_style)
-        plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size)
 
         # Y-axis: probit scale, same tick percentages as the Weibull plot
         ax = plt.gca()
@@ -3178,7 +3179,6 @@ class Analysis:
         # (plot()) for why it must run after tight_layout().
         legend = plt.gca().get_legend()
         if legend is not None:
-            fig = plt.gcf()
             from matplotlib.backends.backend_agg import FigureCanvasAgg
             original_canvas = fig.canvas
             FigureCanvasAgg(fig)
@@ -3198,6 +3198,9 @@ class Analysis:
                 raise ValueError('Path is faulty.')
         if self.show:
             plt.show()
+        if self.show or self.save:
+            plt.close(fig)
+        return fig
 
     def _plot_lognormal(self):
         """
@@ -3214,7 +3217,7 @@ class Analysis:
             return '{:.1f}'.format(100 * norm.cdf(y_i))
 
         _apply_plot_style(self.plot_style)
-        plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size)
 
         ax = plt.gca()
         ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(normal_ticks))
@@ -3308,7 +3311,6 @@ class Analysis:
 
         legend = plt.gca().get_legend()
         if legend is not None:
-            fig = plt.gcf()
             from matplotlib.backends.backend_agg import FigureCanvasAgg
             original_canvas = fig.canvas
             FigureCanvasAgg(fig)
@@ -3328,6 +3330,9 @@ class Analysis:
                 raise ValueError('Path is faulty.')
         if self.show:
             plt.show()
+        if self.show or self.save:
+            plt.close(fig)
+        return fig
 
     def _plot_exponential(self):
         """
@@ -3354,7 +3359,7 @@ class Analysis:
             return '{:.1f}'.format(100 * (1 - np.exp(-np.exp(y_i))))
 
         _apply_plot_style(self.plot_style)
-        plt.figure(figsize=self.fig_size)
+        fig = plt.figure(figsize=self.fig_size)
 
         ax = plt.gca()
         ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(weibull_ticks))
@@ -3449,7 +3454,6 @@ class Analysis:
 
         legend = plt.gca().get_legend()
         if legend is not None:
-            fig = plt.gcf()
             from matplotlib.backends.backend_agg import FigureCanvasAgg
             original_canvas = fig.canvas
             FigureCanvasAgg(fig)
@@ -3469,6 +3473,9 @@ class Analysis:
                 raise ValueError('Path is faulty.')
         if self.show:
             plt.show()
+        if self.show or self.save:
+            plt.close(fig)
+        return fig
 
     @classmethod
     def get_bx_percentile(cls, time, beta_, eta_):
@@ -3591,7 +3598,7 @@ class PlotAll:
                      plot_title='Weibull Probability Plot', xy_fontsize=12,
                      plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7),
                      x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None,
-                     y_min=0.01, y_max=0.99,
+                     y_min=0.01, y_max=0.99, show=True,
                      **kwargs):
         """
         Plots multiple Analysis class objects in one figure
@@ -3781,7 +3788,7 @@ class PlotAll:
 
         # Generate Weibull Plot Figure
         _apply_plot_style(self.plot_style)
-        plt.figure(figsize=fig_size)
+        fig = plt.figure(figsize=fig_size)
 
         # Y-Axis
         ax = plt.gca()
@@ -4121,7 +4128,11 @@ class PlotAll:
             except:
                 raise ValueError('Path is faulty.')
 
-        plt.show()
+        if show:
+            plt.show()
+        if show or save:
+            plt.close(fig)
+        return fig
 
     def compare(self, x_label='Time to Failure', y_label='Unreliability',
                 fig_size=(11, 10), y_min=0.01, y_max=0.99, save=False, **kwargs):
@@ -4550,16 +4561,20 @@ class PlotAll:
             except:
                 raise ValueError('Path is faulty.')
         if show_weibull==True:
+            if show or save:
+                plt.close(fig)
             return fig
         if show:
             plt.show()
-
+        if show or save:
+            plt.close(fig)
+        return fig
 
     def weibull_pdf(self, beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels = None,
                     x_label = None, y_label=None, xy_fontsize=12, tick_fontsize=10,
                     legend_fontsize=9,
                     plot_title='Weibull PDF', plot_title_fontsize=14, x_bounds=None,
-                    fig_size=None, color=None, save=False, plot_style='predictr', **kwargs):
+                    fig_size=None, color=None, save=False, show=True, plot_style='predictr', **kwargs):
         """
         Parameters
         ----------
@@ -4642,7 +4657,7 @@ class PlotAll:
         # PDF plot.
         if fig_size is None:
             fig_size = (6.4, 4.8)
-        plt.figure(figsize=fig_size)
+        fig = plt.figure(figsize=fig_size)
 
         # Set title
         plt.title(plot_title, fontsize=plot_title_fontsize)
@@ -4681,7 +4696,11 @@ class PlotAll:
             except:
                 raise ValueError('Path is faulty.')
 
-        plt.show()
+        if show:
+            plt.show()
+        if show or save:
+            plt.close(fig)
+        return fig
 
     def simple_weibull(self, beta, eta, unit='-', x_label = 'Time to Failure',
                        y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10,
@@ -4748,14 +4767,16 @@ class PlotAll:
         setattr(x, 'unit', unit)
 
         # Plot object
-        x.plot()
+        fig = x.plot()
 
         # Save plot
         if save:
             try:
-                plt.savefig(kwargs['path'])
+                fig.savefig(kwargs['path'])
             except:
                 raise ValueError('Path is faulty.')
+
+        return fig
 
 if __name__ == '__main__':
     failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
@@ -4778,7 +4799,6 @@ if __name__ == '__main__':
     df = [0.670659, 0.976145, 1.41494, 0.859942, 0.468364, 1.17272, 0.648734, 0.972926, 0.851652, 1.08389]
     df_caf = [1400699, 45477, 49358, 53379, 70695, 74721, 116451]
     ds_caf = [3_000_000] * 3
-
 
     #x = Analysis(df=df, bounds='fb', dist='normal', show=True)
     #x.mle()

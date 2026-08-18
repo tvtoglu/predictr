@@ -120,13 +120,13 @@ def test_plotall_mult_weibull_default_and_custom_range():
     b = Analysis(df=FAILURES_B, bounds='pbb', bounds_type='2s')
     b.mle()
 
-    PlotAll({'a': a, 'b': b}).mult_weibull()
-    ylim_default = plt.gca().get_ylim()
+    fig_default = PlotAll({'a': a, 'b': b}).mult_weibull(show=False)
+    ylim_default = fig_default.axes[0].get_ylim()
     expected_default = (_weibull_prob_paper(0.01), _weibull_prob_paper(0.99))
     np.testing.assert_allclose(ylim_default, expected_default)
 
-    PlotAll({'a': a, 'b': b}).mult_weibull(y_min=0.05, y_max=0.95)
-    ylim_custom = plt.gca().get_ylim()
+    fig_custom = PlotAll({'a': a, 'b': b}).mult_weibull(y_min=0.05, y_max=0.95, show=False)
+    ylim_custom = fig_custom.axes[0].get_ylim()
     expected_custom = (_weibull_prob_paper(0.05), _weibull_prob_paper(0.95))
     np.testing.assert_allclose(ylim_custom, expected_custom)
 
