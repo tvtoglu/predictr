@@ -874,6 +874,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#mult_normal-mult_lognormal-mult_exponential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mult_normal() / mult_lognormal() / mult_exponential()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#contour_plot" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1534,7 +1545,7 @@ exp_fit.mle()
 </code></pre>
 <h2 id="plotall">PlotAll</h2>
 <p>PlotAll plots class objects from Analysis in one figure. Currently, only data from mle() is supported.
-Theoretically, you can plot as many objects as you like -&gt; provide a list of colors (and, for mult_weibull(), optionally a matching list of linestyles) as a kwarg in PlotAll(objects, **kwargs).mult_weibull() / .contour_plot(). <b>
+Theoretically, you can plot as many objects as you like -&gt; provide a list of colors (and, for mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential(), optionally a matching list of linestyles) as a kwarg in PlotAll(objects, **kwargs).mult_weibull() / .contour_plot(). <b>
 By default, predictr uses its own 6-color categorical palette. If you plot more than 6 datasets without passing your own <code>color</code>, the palette repeats, but the linestyle automatically advances (solid -&gt; dashed -&gt; dotted -&gt; dash-dot) with every full pass through the palette, so up to 24 datasets stay visually distinguishable by color+shape before anything repeats outright.</p>
 <p><strong>Available methods</strong>:</p>
 <table>
@@ -1547,7 +1558,19 @@ By default, predictr uses its own 6-color categorical palette. If you plot more 
 <tbody>
 <tr>
 <td>mult_weibull()</td>
-<td>Plots multiple Analysis class instances in one Weibull plot</td>
+<td>Plots multiple Analysis class instances (dist='weibull') in one Weibull plot</td>
+</tr>
+<tr>
+<td>mult_normal()</td>
+<td>Plots multiple Analysis class instances (dist='normal') in one Normal probability plot</td>
+</tr>
+<tr>
+<td>mult_lognormal()</td>
+<td>Plots multiple Analysis class instances (dist='lognormal') in one LogNormal probability plot</td>
+</tr>
+<tr>
+<td>mult_exponential()</td>
+<td>Plots multiple Analysis class instances (dist='exponential') in one Exponential probability plot (drawn on Weibull paper, since Exponential is Weibull's beta=1 special case)</td>
 </tr>
 <tr>
 <td>contour_plot()</td>
@@ -1567,6 +1590,7 @@ By default, predictr uses its own 6-color categorical palette. If you plot more 
 </tr>
 </tbody>
 </table>
+<p>Note: mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential() each only accept Analysis objects that share their own dist - a ValueError is raised if you mix, e.g., a dist='weibull' object into mult_normal(). To compare fits across distributions, use compare() instead.</p>
 <h3 id="default-arguments-of-each-method">Default Arguments of each method</h3>
 <p>Most of the arguments are either self explanatory or already defined in <a href="https://tvtoglu.github.io/predictr/classes/#default-arguments-and-values">default arguments and values</a></p>
 <table>
@@ -1579,7 +1603,19 @@ By default, predictr uses its own 6-color categorical palette. If you plot more 
 <tbody>
 <tr>
 <td>mult_weibull()</td>
-<td>x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, **kwargs</td>
+<td>x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, y_min=0.01, y_max=0.99, show=True, **kwargs</td>
+</tr>
+<tr>
+<td>mult_normal()</td>
+<td>x_label='Time To Failure', y_label='Unreliability', plot_title='Normal Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, y_min=0.01, y_max=0.99, show=True, **kwargs</td>
+</tr>
+<tr>
+<td>mult_lognormal()</td>
+<td>x_label='Time To Failure', y_label='Unreliability', plot_title='LogNormal Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, y_min=0.01, y_max=0.99, show=True, **kwargs</td>
+</tr>
+<tr>
+<td>mult_exponential()</td>
+<td>x_label='Time To Failure', y_label='Unreliability', plot_title='Exponential Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, y_min=0.01, y_max=0.99, show=True, **kwargs</td>
 </tr>
 <tr>
 <td>contour_plot()</td>
@@ -1625,7 +1661,7 @@ By default, predictr uses its own 6-color categorical palette. If you plot more 
 <td>plot_style</td>
 <td>'predictr'</td>
 <td>str</td>
-<td>Choose a style according to your needs. 'predictr' is predictr's own built-in style (no setup required); see matplotlib style references for other available styles. Only weibull_pdf() exposes this as its own argument - mult_weibull()/contour_plot()/simple_weibull() inherit it from the Analysis object(s) passed in.</td>
+<td>Choose a style according to your needs. 'predictr' is predictr's own built-in style (no setup required); see matplotlib style references for other available styles. Only weibull_pdf() exposes this as its own argument - mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential()/contour_plot()/simple_weibull() inherit it from the Analysis object(s) passed in.</td>
 </tr>
 <tr>
 <td>unit</td>
@@ -1757,13 +1793,19 @@ By default, predictr uses its own 6-color categorical palette. If you plot more 
 <td>linestyle</td>
 <td>['-', '--', ':', '-.']</td>
 <td>list of strings</td>
-<td>weibull_pdf(): required, must match the length of beta/eta. mult_weibull(): optional, must match the number of objects if given.</td>
+<td>weibull_pdf(): required, must match the length of beta/eta. mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential(): optional, must match the number of objects if given.</td>
 </tr>
 <tr>
 <td>color</td>
 <td>None</td>
 <td>list of strings</td>
-<td>List containing the colors for the plotted lines/datasets. If not given, predictr's built-in 6-color palette is used (see note above the "Available methods" table for what happens with more than 6 datasets). If given, length must match the beta/eta length (weibull_pdf()) or the number of Analysis objects (mult_weibull(), contour_plot()).</td>
+<td>List containing the colors for the plotted lines/datasets. If not given, predictr's built-in 6-color palette is used (see note above the "Available methods" table for what happens with more than 6 datasets). If given, length must match the beta/eta length (weibull_pdf()) or the number of Analysis objects (mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential(), contour_plot()).</td>
+</tr>
+<tr>
+<td>y_min, y_max</td>
+<td>0.01, 0.99</td>
+<td>float</td>
+<td>mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential() only. Y-axis limits (unreliability, as a fraction). Must satisfy 0 &lt; y_min &lt; y_max &lt; 1.</td>
 </tr>
 <tr>
 <td>x_bounds</td>
@@ -1882,6 +1924,30 @@ colors = ['green', 'red', 'blue']
 PlotAll(objects).mult_weibull(plot_ranks=False, color=colors)
 </code></pre>
 <p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_2s_custom_colors.png" width="500" /></p>
+<h3 id="mult_normal-mult_lognormal-mult_exponential">mult_normal() / mult_lognormal() / mult_exponential()</h3>
+<p>Just like mult_weibull(), but for dist='normal'/'lognormal'/'exponential' objects respectively - each draws all given Analysis instances on that distribution's own probability paper. All objects passed to one call must share the same dist; mixing distributions raises a ValueError (use compare() if you want to compare across distributions instead).</p>
+<pre><code class="language-python">from predictr import Analysis, PlotAll
+
+failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+              0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+              1.3201853093496474, 1.492172669340363]
+prototype_a = Analysis(df=failures_a, dist='normal', bounds='fb', bounds_type='2s')
+prototype_a.mle()
+
+failures_b = [1.8506941739639076, 2.2685555679846954, 2.380993183650987, 2.642404955035375,
+              2.777082863078587, 2.89527127055147, 2.9099992138728927, 3.1425481097241,
+              3.3758727398694406, 3.8274990886889997]
+prototype_b = Analysis(df=failures_b, dist='normal', bounds='fb', bounds_type='2s')
+prototype_b.mle()
+
+objects = {'proto_a': prototype_a, 'proto_b': prototype_b}
+PlotAll(objects).mult_normal()
+</code></pre>
+<p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_Normal_2s.png" width="500" /></p>
+<p>The same objects fitted with dist='lognormal' instead, plotted with mult_lognormal():</p>
+<p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_LogNormal_2s.png" width="500" /></p>
+<p>...and with dist='exponential', plotted with mult_exponential() (drawn on Weibull paper - see <a href="#distributions">Distributions</a> for why):</p>
+<p><img alt="!Backup Text" src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_Exponential_2s.png" width="500" /></p>
 <h3 id="contour_plot">contour_plot()</h3>
 <p>contour_plot() only works for likelihood ratio bounds. Hence, you have to use bounds='lrb' in the Analysis class. This method supports all bounds types and all confidence levels. You can pass as many objects as you want to.</p>
 <p>Each dataset's confidence region is drawn as a filled hull by default (curve_fill=True), with its confidence level labeled directly on the curve and its point estimate marked as a dot - see the "Default Arguments of each method" and parameter table above for style, cl_set, curve_fill, scale_mode and log_ratio_threshold.</p>
