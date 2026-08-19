@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.36] - 2026-08-20
+### Fixed
+ - Analysis().plot() for dist='normal'/'lognormal' only drew confidence bounds for bounds='fb', silently skipping them for bounds='lrb' even though lrb() fills the same bounds_lower/bounds_upper attributes. Both plots now draw LRB bounds too, labeled correctly in the legend.
+
 ## [0.1.35] - 2026-08-20
 ### Added
  - New PlotAll methods: mult_normal(), mult_lognormal() and mult_exponential() - the dist='normal'/'lognormal'/'exponential' counterparts to mult_weibull(). As with mult_weibull(), each method only accepts Analysis objects that share its own dist; mixing distributions raises a ValueError - use compare() to compare the same dataset across distributions instead.

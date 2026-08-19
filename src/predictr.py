@@ -3770,8 +3770,9 @@ class Analysis:
                     + r'$\widehat\sigma={:.3f}$'.format(self.sigma))
         legend_labels = (leg_text,)
 
-        if self.bounds == 'fb' and (self.bounds_lower is not None
-                                     or self.bounds_upper is not None):
+        if self.bounds in ('fb', 'lrb') and (self.bounds_lower is not None
+                                              or self.bounds_upper is not None):
+            bounds_legend = 'Fisher bounds' if self.bounds == 'fb' else 'LRB'
             z_p = norm.ppf(self.unrel)
             if self.bounds_type == '2s':
                 plt.plot(self.bounds_lower, z_p, color='royalblue',
@@ -3789,8 +3790,8 @@ class Analysis:
                 plt.plot(self.bounds_lower, z_p, color='royalblue',
                          linestyle='-', linewidth=1)
                 bt_legend = '1sl'
-            legend_labels = (leg_text, '\nFisher bounds:\n{} @{}%'.format(
-                bt_legend, self.cl * 100))
+            legend_labels = (leg_text, '\n{}:\n{} @{}%'.format(
+                bounds_legend, bt_legend, self.cl * 100))
 
         plt.xlabel(f'{self.x_label}{" in " + self.unit if self.unit != "-" else ""}',
                    color='black', fontsize=self.xy_fontsize)
@@ -3890,8 +3891,9 @@ class Analysis:
                     + r'$\widehat\sigma={:.3f}$'.format(self.sigma))
         legend_labels = (leg_text,)
 
-        if self.bounds == 'fb' and (self.bounds_lower is not None
-                                     or self.bounds_upper is not None):
+        if self.bounds in ('fb', 'lrb') and (self.bounds_lower is not None
+                                              or self.bounds_upper is not None):
+            bounds_legend = 'Fisher bounds' if self.bounds == 'fb' else 'LRB'
             z_p = norm.ppf(self.unrel)
             if self.bounds_type == '2s':
                 plt.semilogx(self.bounds_lower, z_p, color='royalblue',
@@ -3909,8 +3911,8 @@ class Analysis:
                 plt.semilogx(self.bounds_lower, z_p, color='royalblue',
                              linestyle='-', linewidth=1)
                 bt_legend = '1sl'
-            legend_labels = (leg_text, '\nFisher bounds:\n{} @{}%'.format(
-                bt_legend, self.cl * 100))
+            legend_labels = (leg_text, '\n{}:\n{} @{}%'.format(
+                bounds_legend, bt_legend, self.cl * 100))
 
         plt.xlabel(f'{self.x_label}{" in " + self.unit if self.unit != "-" else ""}',
                    color='black', fontsize=self.xy_fontsize)
@@ -3936,8 +3938,8 @@ class Analysis:
         # Weibull's plot()): otherwise autoscale would size it to the MLE
         # line's own evaluation points (z=[norm.ppf(0.0001), ...]), which on
         # a log axis can extend towards 0 far past anything meaningful.
-        if self.bounds == 'fb' and (self.bounds_lower is not None
-                                     or self.bounds_upper is not None):
+        if self.bounds in ('fb', 'lrb') and (self.bounds_lower is not None
+                                              or self.bounds_upper is not None):
             if self.bounds_type == '2s':
                 tmin_plot, tmax_plot = min(self.bounds_lower), max(self.bounds_upper)
             elif self.bounds_type == '1su':
@@ -6151,6 +6153,6 @@ class PlotAll:
 if __name__ == '__main__':
     data1 = np.random.normal(loc=10.0, scale=2.0, size=15)  
     data2 = np.random.normal(loc=6.0, scale=1.0, size=12)
-    n1 = Analysis(df=data1, dist='lognormal', bounds='fb'); n1.mle()
-    n2 = Analysis(df=data2, dist='lognormal', bounds='fb'); n2.mle()
+    n1 = Analysis(df=data1, dist='lognormal', bounds='lrb'); n1.mle()
+    n2 = Analysis(df=data2, dist='lognormal', bounds='lrb'); n2.mle()
     PlotAll(objects={'Los 1': n1, 'Los 2': n2}).mult_lognormal(plot_ranks=False)
