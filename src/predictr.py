@@ -4773,6 +4773,453 @@ class PlotAll:
 
         return _finish_plot(fig, show, save)
 
+    @staticmethod
+    def _mult_median_rank(df, cl=0.5):
+        """
+        Median ranks for uncensored data, as a standalone helper (mirrors
+        Analysis.median_rank()) so mult_normal/mult_lognormal/
+        mult_exponential don't depend on self.df/self.ds.
+        """
+        n = len(df)
+        return [beta.ppf(cl, i, n - i + 1) for i in range(1, n + 1)]
+
+    @staticmethod
+    def _mult_median_rank_cens(df, ds, cl=0.5):
+        """
+        Adjusted median ranks for censored data, as a standalone helper
+        (mirrors Analysis.median_rank_cens()).
+        """
+        def bernard(adj_r, n, cl):
+            return [beta.ppf(cl, i, n - i + 1) for i in adj_r]
+
+        n = len(df + ds)
+        all_ = df + ds
+        rev_rank = []
+        prev = 0
+        for j in df:
+            if df.count(j) > 1:
+                if prev == j:
+                    pass
+                else:
+                    count_element = df.count(j)
+                    for i in range(count_element):
+                        count = sum(map(lambda x: x < j, all_)) + i
+                        rev_rank.append(len(all_) - count)
+                prev = j
+            else:
+                count = sum(map(lambda x: x < j, all_))
+                rev_rank.append(len(all_) - count)
+
+        adj_ranks = []
+        prev_rank = 0
+        for i in range(1, len(df) + 1):
+            adj_ranks.append((rev_rank[i - 1] * prev_rank + n + 1) / (rev_rank[i - 1] + 1))
+            prev_rank = adj_ranks[-1]
+        return bernard(adj_ranks, n, cl)
+
+    def _mult_style(self, color, linestyle):
+        """
+        Shared color/linestyle iterator setup used by mult_weibull() and
+        its normal/lognormal/exponential counterparts below.
+        """
+        num_objects = len(self.objects)
+        if color is None and linestyle is None:
+            default_colors, default_linestyles = _categorical_style(num_objects)
+            color_it = iter(default_colors)
+            l_style = iter(default_linestyles)
+        else:
+            if color is not None:
+                color_it = iter(color)
+            else:
+                default_colors, _ = _categorical_style(num_objects)
+                color_it = iter(default_colors)
+
+            if linestyle is not None:
+                if num_objects != len(linestyle):
+                    raise ValueError(f'Number of linestyles ({len(linestyle)}) is'
+                                      ' not in accordance with the number of'
+                                      f' objects ({num_objects}).')
+                l_style = iter(linestyle)
+            else:
+                l_style = iter(num_objects * ['-'])
+        return color_it, l_style
+
+    def mult_normal(self, x_label='Time To Failure', y_label='Unreliability',
+                     plot_title='Normal Probability Plot', xy_fontsize=12,
+                     plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7),
+                     x_bounds=None, plot_ranks=True, save=False, color=None,
+                     linestyle=None, y_min=0.01, y_max=0.99, show=True,
+                     **kwargs):
+        """
+        Plots multiple Analysis class objects with dist='normal' in one
+        figure, analogous to mult_weibull(). The x-axis stays linear (the
+        Normal quantile function is already linear in z), unlike
+        mult_weibull()/mult_lognormal()/mult_exponential() which use a
+        log x-axis - see Analysis._plot_normal()'s docstring.
+
+        Parameters
+        ----------
+        y_min, y_max : float, optional
+            Y-axis limits (unreliability, as a fraction). Must satisfy
+            0 < y_min < y_max < 1. Defaults match Analysis's defaults.
+        """
+        if not (0 < y_min < y_max < 1):
+            raise ValueError('y_min and y_max must satisfy 0 < y_min < '
+                              'y_max < 1.')
+        non_normal = [key for key, val in self.objects.items()
+                      if getattr(val, 'dist', 'weibull') != 'normal']
+        if non_normal:
+            raise ValueError(f'mult_normal() only supports Analysis objects '
+                              f'with dist="normal", but {non_normal} do not.')
+
+        def normal_ticks(y_i, _):
+            return '{:.1f}'.format(100 * norm.cdf(y_i))
+
+        color, l_style = self._mult_style(color, linestyle)
+
+        _apply_plot_style(self.plot_style)
+        fig = plt.figure(figsize=fig_size, num=next(_figure_counter))
+
+        ax = plt.gca()
+        ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(normal_ticks))
+        y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= y_min)
+                                          & (PROBABILITY_PLOT_TICKS <= y_max)]
+        z_ticks = norm.ppf(y_ticks)
+        plt.yticks(z_ticks, color='black')
+        ax.set_yticks([0.0], minor=True)
+        plt.grid(True, which='minor', axis='y', linestyle='--')
+        plt.tick_params(axis='x', colors='black')
+
+        plt.title(plot_title, color='black', fontsize=plot_title_fontsize)
+        plt.xlabel(f'{x_label}{" in "+self.unit if self.unit!="-" else ""}',
+                   color='black', fontsize=xy_fontsize)
+        plt.ylabel(f'{y_label} in %', color='black', fontsize=xy_fontsize)
+
+        for key, val in self.objects.items():
+            col = next(color)
+            ls = next(l_style)
+            z_line = norm.ppf(np.array([0.0001, 0.9999]))
+            x_line = getattr(val, 'mu') + getattr(val, 'sigma') * z_line
+            plt.plot(x_line, z_line, color=col, linestyle=ls, linewidth=1.5,
+                     label=f'{key}')
+
+            bounds_type = getattr(val, 'bounds_type')
+            if bounds_type == '2s' and getattr(val, 'bounds_lower') is not None:
+                z_p = norm.ppf(self.unrel)
+                plt.plot(getattr(val, 'bounds_lower'), z_p, color=col,
+                         linestyle=ls, linewidth=1, label='_nolegend_')
+                plt.plot(getattr(val, 'bounds_upper'), z_p, color=col,
+                         linestyle=ls, linewidth=1, label='_nolegend_')
+                plt.fill_betweenx(y=z_p, x1=getattr(val, 'bounds_lower'),
+                                   x2=getattr(val, 'bounds_upper'),
+                                   alpha=0.1, color=col, label='_nolegend_')
+            elif bounds_type == '1su' and getattr(val, 'bounds_upper') is not None:
+                z_p = norm.ppf(self.unrel)
+                plt.plot(getattr(val, 'bounds_upper'), z_p, color=col,
+                         linestyle=ls, linewidth=1, label='_nolegend_')
+            elif bounds_type == '1sl' and getattr(val, 'bounds_lower') is not None:
+                z_p = norm.ppf(self.unrel)
+                plt.plot(getattr(val, 'bounds_lower'), z_p, color=col,
+                         linestyle=ls, linewidth=1, label='_nolegend_')
+
+            if plot_ranks:
+                if getattr(val, 'ds') is None:
+                    ranks = self._mult_median_rank(getattr(val, 'df'))
+                else:
+                    ranks = self._mult_median_rank_cens(getattr(val, 'df'),
+                                                         getattr(val, 'ds'))
+                plt.plot(getattr(val, 'df'), norm.ppf(ranks), marker='o',
+                         markerfacecolor=col, markeredgecolor='black',
+                         markersize=4, alpha=.5, linestyle='None', zorder=3)
+
+        if x_bounds is not None:
+            if type(x_bounds) != list:
+                raise TypeError(f'x_bounds need to be of type list and not {type(x_bounds)}.')
+            plt.xlim(x_bounds[0], x_bounds[1])
+
+        ax.set_ylim(bottom=norm.ppf(y_min), top=norm.ppf(y_max))
+
+        plt.tight_layout()
+        plt.grid(True, which='both')
+        plt.legend(fontsize=legend_fontsize)
+
+        if save:
+            try:
+                plt.savefig(kwargs['path'])
+            except:
+                raise ValueError('Path is faulty.')
+
+        return _finish_plot(fig, show, save)
+
+    def mult_lognormal(self, x_label='Time To Failure', y_label='Unreliability',
+                        plot_title='LogNormal Probability Plot', xy_fontsize=12,
+                        plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7),
+                        x_bounds=None, plot_ranks=True, save=False, color=None,
+                        linestyle=None, y_min=0.01, y_max=0.99, show=True,
+                        **kwargs):
+        """
+        Plots multiple Analysis class objects with dist='lognormal' in one
+        figure, analogous to mult_weibull(). Like mult_weibull(), the
+        x-axis is log-scaled - see Analysis._plot_lognormal()'s docstring
+        for why LogNormal needs this combination of a probit y-axis and a
+        log x-axis.
+
+        Parameters
+        ----------
+        y_min, y_max : float, optional
+            Y-axis limits (unreliability, as a fraction). Must satisfy
+            0 < y_min < y_max < 1. Defaults match Analysis's defaults.
+        """
+        if not (0 < y_min < y_max < 1):
+            raise ValueError('y_min and y_max must satisfy 0 < y_min < '
+                              'y_max < 1.')
+        non_lognormal = [key for key, val in self.objects.items()
+                         if getattr(val, 'dist', 'weibull') != 'lognormal']
+        if non_lognormal:
+            raise ValueError(f'mult_lognormal() only supports Analysis objects '
+                              f'with dist="lognormal", but {non_lognormal} do not.')
+
+        def normal_ticks(y_i, _):
+            return '{:.1f}'.format(100 * norm.cdf(y_i))
+
+        color, l_style = self._mult_style(color, linestyle)
+
+        # Get x-axis bounds to plot
+        temp_list = []
+        for key, val in self.objects.items():
+            bounds_type = getattr(val, 'bounds_type')
+            mu, sigma = getattr(val, 'mu'), getattr(val, 'sigma')
+            if bounds_type == '2s' and getattr(val, 'bounds_lower') is not None:
+                temp_list.append(min(getattr(val, 'bounds_lower')))
+                temp_list.append(max(getattr(val, 'bounds_upper')))
+            elif bounds_type == '1su' and getattr(val, 'bounds_upper') is not None:
+                temp_list.append(np.exp(mu + sigma * norm.ppf(0.001)))
+                temp_list.append(max(getattr(val, 'bounds_upper')))
+            elif bounds_type == '1sl' and getattr(val, 'bounds_lower') is not None:
+                temp_list.append(min(getattr(val, 'bounds_lower')))
+                temp_list.append(np.exp(mu + sigma * norm.ppf(0.999)))
+            else:
+                temp_list.append(np.exp(mu + sigma * norm.ppf(0.001)))
+                temp_list.append(np.exp(mu + sigma * norm.ppf(0.999)))
+
+        if x_bounds is None:
+            x_axis_min = min(temp_list)
+            x_axis_max = max(temp_list)
+        else:
+            if type(x_bounds) != list:
+                raise TypeError(f'x_bounds need to be of type list and not {type(x_bounds)}.')
+            x_axis_min, x_axis_max = x_bounds
+
+        _apply_plot_style(self.plot_style)
+        fig = plt.figure(figsize=fig_size, num=next(_figure_counter))
+
+        ax = plt.gca()
+        ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(normal_ticks))
+        y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= y_min)
+                                          & (PROBABILITY_PLOT_TICKS <= y_max)]
+        z_ticks = norm.ppf(y_ticks)
+        plt.yticks(z_ticks, color='black')
+        ax.set_yticks([0.0], minor=True)
+        plt.grid(True, which='minor', axis='y', linestyle='--')
+
+        left = 10 ** (np.ceil(np.log10(x_axis_min)) - 1)
+        right = 10 ** (np.ceil(np.log10(x_axis_max)))
+        plt.xlim(left, right)
+        plt.tick_params(axis='x', colors='black')
+
+        plt.title(plot_title, color='black', fontsize=plot_title_fontsize)
+        plt.xlabel(f'{x_label}{" in "+self.unit if self.unit!="-" else ""}',
+                   color='black', fontsize=xy_fontsize)
+        plt.ylabel(f'{y_label} in %', color='black', fontsize=xy_fontsize)
+
+        for key, val in self.objects.items():
+            col = next(color)
+            ls = next(l_style)
+            z_line = norm.ppf(np.array([0.0001, 0.9999]))
+            x_line = np.exp(getattr(val, 'mu') + getattr(val, 'sigma') * z_line)
+            plt.semilogx(x_line, z_line, color=col, linestyle=ls, linewidth=1.5,
+                         label=f'{key}')
+
+            bounds_type = getattr(val, 'bounds_type')
+            if bounds_type == '2s' and getattr(val, 'bounds_lower') is not None:
+                z_p = norm.ppf(self.unrel)
+                plt.semilogx(getattr(val, 'bounds_lower'), z_p, color=col,
+                             linestyle=ls, linewidth=1, label='_nolegend_')
+                plt.semilogx(getattr(val, 'bounds_upper'), z_p, color=col,
+                             linestyle=ls, linewidth=1, label='_nolegend_')
+                plt.fill_betweenx(y=z_p, x1=getattr(val, 'bounds_lower'),
+                                   x2=getattr(val, 'bounds_upper'),
+                                   alpha=0.1, color=col, label='_nolegend_')
+            elif bounds_type == '1su' and getattr(val, 'bounds_upper') is not None:
+                z_p = norm.ppf(self.unrel)
+                plt.semilogx(getattr(val, 'bounds_upper'), z_p, color=col,
+                             linestyle=ls, linewidth=1, label='_nolegend_')
+            elif bounds_type == '1sl' and getattr(val, 'bounds_lower') is not None:
+                z_p = norm.ppf(self.unrel)
+                plt.semilogx(getattr(val, 'bounds_lower'), z_p, color=col,
+                             linestyle=ls, linewidth=1, label='_nolegend_')
+
+            if plot_ranks:
+                if getattr(val, 'ds') is None:
+                    ranks = self._mult_median_rank(getattr(val, 'df'))
+                else:
+                    ranks = self._mult_median_rank_cens(getattr(val, 'df'),
+                                                         getattr(val, 'ds'))
+                plt.semilogx(getattr(val, 'df'), norm.ppf(ranks), marker='o',
+                             markerfacecolor=col, markeredgecolor='black',
+                             markersize=4, alpha=.5, linestyle='None', zorder=3)
+
+        ax.set_ylim(bottom=norm.ppf(y_min), top=norm.ppf(y_max))
+
+        plt.tight_layout()
+        plt.grid(True, which='both')
+        plt.legend(fontsize=legend_fontsize)
+
+        if save:
+            try:
+                plt.savefig(kwargs['path'])
+            except:
+                raise ValueError('Path is faulty.')
+
+        return _finish_plot(fig, show, save)
+
+    def mult_exponential(self, x_label='Time To Failure', y_label='Unreliability',
+                          plot_title='Exponential Probability Plot', xy_fontsize=12,
+                          plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7),
+                          x_bounds=None, plot_ranks=True, save=False, color=None,
+                          linestyle=None, y_min=0.01, y_max=0.99, show=True,
+                          **kwargs):
+        """
+        Plots multiple Analysis class objects with dist='exponential' in
+        one figure, analogous to mult_weibull(). Uses the same Weibull
+        probability paper as mult_weibull() (log x-axis, double-log
+        y-axis) - see Analysis._plot_exponential()'s docstring for why
+        Exponential is plotted as Weibull's beta=1 special case.
+
+        Parameters
+        ----------
+        y_min, y_max : float, optional
+            Y-axis limits (unreliability, as a fraction). Must satisfy
+            0 < y_min < y_max < 1. Defaults match Analysis's defaults.
+        """
+        if not (0 < y_min < y_max < 1):
+            raise ValueError('y_min and y_max must satisfy 0 < y_min < '
+                              'y_max < 1.')
+        non_exponential = [key for key, val in self.objects.items()
+                           if getattr(val, 'dist', 'weibull') != 'exponential']
+        if non_exponential:
+            raise ValueError(f'mult_exponential() only supports Analysis objects '
+                              f'with dist="exponential", but {non_exponential} do not.')
+
+        def weibull_prob_paper(x):
+            x = np.asarray(x, dtype=float)
+            x = np.where(x > .9999, np.nan, x)
+            return np.log(-np.log(1 - x))
+
+        def weibull_ticks(y_i, _):
+            return '{:.1f}'.format(100 * (1 - np.exp(-np.exp(y_i))))
+
+        color, l_style = self._mult_style(color, linestyle)
+
+        # Get x-axis bounds to plot
+        temp_list = []
+        for key, val in self.objects.items():
+            bounds_type = getattr(val, 'bounds_type')
+            theta = getattr(val, 'theta')
+            if bounds_type == '2s' and getattr(val, 'bounds_lower') is not None:
+                temp_list.append(min(getattr(val, 'bounds_lower')))
+                temp_list.append(max(getattr(val, 'bounds_upper')))
+            elif bounds_type == '1su' and getattr(val, 'bounds_upper') is not None:
+                temp_list.append(theta * (-np.log(1 - 0.001)))
+                temp_list.append(max(getattr(val, 'bounds_upper')))
+            elif bounds_type == '1sl' and getattr(val, 'bounds_lower') is not None:
+                temp_list.append(min(getattr(val, 'bounds_lower')))
+                temp_list.append(theta * (-np.log(1 - 0.999)))
+            else:
+                temp_list.append(theta * (-np.log(1 - 0.001)))
+                temp_list.append(theta * (-np.log(1 - 0.999)))
+
+        if x_bounds is None:
+            x_axis_min = min(temp_list)
+            x_axis_max = max(temp_list)
+        else:
+            if type(x_bounds) != list:
+                raise TypeError(f'x_bounds need to be of type list and not {type(x_bounds)}.')
+            x_axis_min, x_axis_max = x_bounds
+
+        _apply_plot_style(self.plot_style)
+        fig = plt.figure(figsize=fig_size, num=next(_figure_counter))
+
+        ax = plt.gca()
+        ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(weibull_ticks))
+        y_ticks = PROBABILITY_PLOT_TICKS[(PROBABILITY_PLOT_TICKS >= y_min)
+                                          & (PROBABILITY_PLOT_TICKS <= y_max)]
+        lny_ticks = weibull_prob_paper(y_ticks)
+        plt.yticks(lny_ticks, color='black')
+        ax.set_yticks([weibull_prob_paper(0.632)], minor=True)
+        plt.grid(True, which='minor', axis='y', linestyle='--')
+
+        left = 10 ** (np.ceil(np.log10(x_axis_min)) - 1)
+        right = 10 ** (np.ceil(np.log10(x_axis_max)))
+        plt.xlim(left, right)
+        plt.tick_params(axis='x', colors='black')
+
+        plt.title(plot_title, color='black', fontsize=plot_title_fontsize)
+        plt.xlabel(f'{x_label}{" in "+self.unit if self.unit!="-" else ""}',
+                   color='black', fontsize=xy_fontsize)
+        plt.ylabel(f'{y_label} in %', color='black', fontsize=xy_fontsize)
+
+        for key, val in self.objects.items():
+            col = next(color)
+            ls = next(l_style)
+            p_line = np.array([0.0001, 0.9999])
+            x_line = getattr(val, 'theta') * (-np.log(1 - p_line))
+            plt.semilogx(x_line, weibull_prob_paper(p_line), color=col,
+                         linestyle=ls, linewidth=1.5, label=f'{key}')
+
+            bounds_type = getattr(val, 'bounds_type')
+            if bounds_type == '2s' and getattr(val, 'bounds_lower') is not None:
+                y_p = weibull_prob_paper(self.unrel)
+                plt.semilogx(getattr(val, 'bounds_lower'), y_p, color=col,
+                             linestyle=ls, linewidth=1, label='_nolegend_')
+                plt.semilogx(getattr(val, 'bounds_upper'), y_p, color=col,
+                             linestyle=ls, linewidth=1, label='_nolegend_')
+                plt.fill_betweenx(y=y_p, x1=getattr(val, 'bounds_lower'),
+                                   x2=getattr(val, 'bounds_upper'),
+                                   alpha=0.1, color=col, label='_nolegend_')
+            elif bounds_type == '1su' and getattr(val, 'bounds_upper') is not None:
+                y_p = weibull_prob_paper(self.unrel)
+                plt.semilogx(getattr(val, 'bounds_upper'), y_p, color=col,
+                             linestyle=ls, linewidth=1, label='_nolegend_')
+            elif bounds_type == '1sl' and getattr(val, 'bounds_lower') is not None:
+                y_p = weibull_prob_paper(self.unrel)
+                plt.semilogx(getattr(val, 'bounds_lower'), y_p, color=col,
+                             linestyle=ls, linewidth=1, label='_nolegend_')
+
+            if plot_ranks:
+                if getattr(val, 'ds') is None:
+                    ranks = self._mult_median_rank(getattr(val, 'df'))
+                else:
+                    ranks = self._mult_median_rank_cens(getattr(val, 'df'),
+                                                         getattr(val, 'ds'))
+                plt.semilogx(getattr(val, 'df'), weibull_prob_paper(np.array(ranks)),
+                             marker='o', markerfacecolor=col, markeredgecolor='black',
+                             markersize=4, alpha=.5, linestyle='None', zorder=3)
+
+        ax.set_ylim(bottom=weibull_prob_paper(y_min), top=weibull_prob_paper(y_max))
+
+        plt.tight_layout()
+        plt.grid(True, which='both')
+        plt.legend(fontsize=legend_fontsize)
+
+        if save:
+            try:
+                plt.savefig(kwargs['path'])
+            except:
+                raise ValueError('Path is faulty.')
+
+        return _finish_plot(fig, show, save)
+
     def compare(self, df, ds=None, bounds=None, bounds_type='2s', cl=0.9,
                 x_label='Time to Failure', y_label='Unreliability',
                 fig_size=(7.7, 7), y_min=0.01, y_max=0.99, plot_ranks=False,
@@ -5702,4 +6149,8 @@ class PlotAll:
         return fig
 
 if __name__ == '__main__':
-    pass
+    data1 = np.random.normal(loc=10.0, scale=2.0, size=15)  
+    data2 = np.random.normal(loc=6.0, scale=1.0, size=12)
+    n1 = Analysis(df=data1, dist='lognormal', bounds='fb'); n1.mle()
+    n2 = Analysis(df=data2, dist='lognormal', bounds='fb'); n2.mle()
+    PlotAll(objects={'Los 1': n1, 'Los 2': n2}).mult_lognormal(plot_ranks=False)

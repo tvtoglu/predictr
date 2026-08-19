@@ -210,25 +210,33 @@ exp_fit.mle()
 
 ## PlotAll
 PlotAll plots class objects from Analysis in one figure. Currently, only data from mle() is supported.
-Theoretically, you can plot as many objects as you like -> provide a list of colors (and, for mult_weibull(), optionally a matching list of linestyles) as a kwarg in PlotAll(objects, **kwargs).mult_weibull() / .contour_plot(). <b>
+Theoretically, you can plot as many objects as you like -> provide a list of colors (and, for mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential(), optionally a matching list of linestyles) as a kwarg in PlotAll(objects, **kwargs).mult_weibull() / .contour_plot(). <b>
 By default, predictr uses its own 6-color categorical palette. If you plot more than 6 datasets without passing your own `color`, the palette repeats, but the linestyle automatically advances (solid -> dashed -> dotted -> dash-dot) with every full pass through the palette, so up to 24 datasets stay visually distinguishable by color+shape before anything repeats outright.
 
 **Available methods**:
 
 | Methods        	| Description                                                           	|
 |----------------	|-----------------------------------------------------------------------	|
-| mult_weibull() 	| Plots multiple Analysis class instances in one Weibull plot           	|
+| mult_weibull() 	| Plots multiple Analysis class instances (dist='weibull') in one Weibull plot           	|
+| mult_normal() 	| Plots multiple Analysis class instances (dist='normal') in one Normal probability plot           	|
+| mult_lognormal() 	| Plots multiple Analysis class instances (dist='lognormal') in one LogNormal probability plot           	|
+| mult_exponential() 	| Plots multiple Analysis class instances (dist='exponential') in one Exponential probability plot (drawn on Weibull paper, since Exponential is Weibull's beta=1 special case)           	|
 | contour_plot() 	| Plots contour plots when likelihood ratio bounds are used in Analysis 	|
 | weibull_pdf()   | Plots one or more Weibull probability density functions. Axes are completely customizable.|
 | simple_weibull()| Plots the Weibull probability plot for a given pair of beta and eta. If failures and/or suspensions are given, the median ranks are plotted as well.|
 | compare()       | Fits every distribution predictr supports to one dataset and plots a probability-plot grid ranked by AIC (or Anderson-Darling), optionally with a separate PDF comparison figure.|
+
+Note: mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential() each only accept Analysis objects that share their own dist - a ValueError is raised if you mix, e.g., a dist='weibull' object into mult_normal(). To compare fits across distributions, use compare() instead.
 
 ### Default Arguments of each method
 Most of the arguments are either self explanatory or already defined in [default arguments and values](https://tvtoglu.github.io/predictr/classes/#default-arguments-and-values)
 
 | Methods          | Default arguments                                                                                                                                                                                                                                         |
 |------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| mult_weibull()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, **kwargs    |
+| mult_weibull()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Weibull Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, y_min=0.01, y_max=0.99, show=True, **kwargs    |
+| mult_normal()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Normal Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, y_min=0.01, y_max=0.99, show=True, **kwargs    |
+| mult_lognormal()   | x_label='Time To Failure', y_label='Unreliability', plot_title='LogNormal Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, y_min=0.01, y_max=0.99, show=True, **kwargs    |
+| mult_exponential()   | x_label='Time To Failure', y_label='Unreliability', plot_title='Exponential Probability Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6, 7), x_bounds=None, plot_ranks=True, save=False, color=None, linestyle=None, y_min=0.01, y_max=0.99, show=True, **kwargs    |
 | contour_plot()   | show=True, style='hull', show_weibull=False, show_legend=True, color=None, x_label=r'$\widehat\beta$', y_label=None, plot_title='Contour Plot', xy_fontsize=12, plot_title_fontsize=14, legend_fontsize=9, fig_size=(6.4, 4.8), save=False, scale_mode='auto', log_ratio_threshold=10, cl_set=None, curve_fill=True, fill_alpha=0.25, **kwargs |
 | weibull_pdf()    | beta=None, eta=None, linestyle=['-', '--', ':', '-.'], labels=None, x_label=None, y_label=None, xy_fontsize=12, tick_fontsize=10, legend_fontsize=9, plot_title='Weibull PDF', plot_title_fontsize=14, x_bounds=None, fig_size=None, color=None, save=False, plot_style='predictr', **kwargs |
 | simple_weibull() | beta, eta, unit='-', x_label = 'Time to Failure', y_label = 'Unreliability', xy_fontsize=12, tick_fontsize=10, plot_title_fontsize=14, plot_title='Weibull Probability Plot', fig_size=(6, 7), show_legend=True, legend_fontsize=9, save=False, df=None, ds=None, **kwargs |
@@ -239,7 +247,7 @@ Most of the arguments are either self explanatory or already defined in [default
 |---------------------|----------------------------|-----------------|----------------------------------------------------------------------------------------------------|
 | df                  | None                       | list of floats  | List of failures                                                                                   |
 | ds                  | None                       | list of floats  | List of suspensions (right-censored only)                                                          |
-| plot_style          | 'predictr'                 | str             | Choose a style according to your needs. 'predictr' is predictr's own built-in style (no setup required); see matplotlib style references for other available styles. Only weibull_pdf() exposes this as its own argument - mult_weibull()/contour_plot()/simple_weibull() inherit it from the Analysis object(s) passed in. |
+| plot_style          | 'predictr'                 | str             | Choose a style according to your needs. 'predictr' is predictr's own built-in style (no setup required); see matplotlib style references for other available styles. Only weibull_pdf() exposes this as its own argument - mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential()/contour_plot()/simple_weibull() inherit it from the Analysis object(s) passed in. |
 | unit                | '-'                        | str             | Unit of failures and suspensions, e.g. 's', 'ms', 'no. of cycle' etc.                              |
 | x_label             | depends on method          | string          | Label for the x-axis                                                                               |
 | y_label             | depends on method          | string          | Label for the y-axis                                                                               |
@@ -261,8 +269,9 @@ Most of the arguments are either self explanatory or already defined in [default
 | plot_ranks          | True                       | boolean         | If True, median ranks will be plotted.                                                             |
 | show_legend         | True                       | boolean         | If True, the legend will be plotted                                                                |
 | weibull_pdf: beta, eta| None, None               | list of floats or None | Attributes from Analysis object. Pairs of beta and eta values to be plotted. Each parameter pair must have the same index value.|
-| linestyle         |    ['-', '--', ':', '-.']   | list of strings      | weibull_pdf(): required, must match the length of beta/eta. mult_weibull(): optional, must match the number of objects if given.                 |
-|color        |             None               | list of strings         | List containing the colors for the plotted lines/datasets. If not given, predictr's built-in 6-color palette is used (see note above the "Available methods" table for what happens with more than 6 datasets). If given, length must match the beta/eta length (weibull_pdf()) or the number of Analysis objects (mult_weibull(), contour_plot()).  |
+| linestyle         |    ['-', '--', ':', '-.']   | list of strings      | weibull_pdf(): required, must match the length of beta/eta. mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential(): optional, must match the number of objects if given.                 |
+|color        |             None               | list of strings         | List containing the colors for the plotted lines/datasets. If not given, predictr's built-in 6-color palette is used (see note above the "Available methods" table for what happens with more than 6 datasets). If given, length must match the beta/eta length (weibull_pdf()) or the number of Analysis objects (mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential(), contour_plot()).  |
+| y_min, y_max        |             0.01, 0.99               | float         | mult_weibull()/mult_normal()/mult_lognormal()/mult_exponential() only. Y-axis limits (unreliability, as a fraction). Must satisfy 0 < y_min < y_max < 1.  |
 | x_bounds    |                            | list of floats          | Sets x-axis boundaries: [start, stop] or [start, end, steps inbetween], respectively.|
 | simple_weibull:beta, eta    |                            | float          | Weibull parameter pair which will be plotted|
 | criteria            | 'aic'                      | string          | compare() only. Ranks/labels the panels by 'aic' or 'ad' (Anderson-Darling)                        |
@@ -354,6 +363,37 @@ colors = ['green', 'red', 'blue']
 PlotAll(objects).mult_weibull(plot_ranks=False, color=colors)
 ```
 ![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_MLE_2s_custom_colors.png){: width="500" }
+
+### mult_normal() / mult_lognormal() / mult_exponential()
+Just like mult_weibull(), but for dist='normal'/'lognormal'/'exponential' objects respectively - each draws all given Analysis instances on that distribution's own probability paper. All objects passed to one call must share the same dist; mixing distributions raises a ValueError (use compare() if you want to compare across distributions instead).
+
+```python
+from predictr import Analysis, PlotAll
+
+failures_a = [0.30481336314657737, 0.5793918872111126, 0.633217732127894, 0.7576700925659532,
+              0.8394342818048925, 0.9118100898948334, 1.0110147142055477, 1.0180126386295232,
+              1.3201853093496474, 1.492172669340363]
+prototype_a = Analysis(df=failures_a, dist='normal', bounds='fb', bounds_type='2s')
+prototype_a.mle()
+
+failures_b = [1.8506941739639076, 2.2685555679846954, 2.380993183650987, 2.642404955035375,
+              2.777082863078587, 2.89527127055147, 2.9099992138728927, 3.1425481097241,
+              3.3758727398694406, 3.8274990886889997]
+prototype_b = Analysis(df=failures_b, dist='normal', bounds='fb', bounds_type='2s')
+prototype_b.mle()
+
+objects = {'proto_a': prototype_a, 'proto_b': prototype_b}
+PlotAll(objects).mult_normal()
+```
+![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_Normal_2s.png){: width="500" }
+
+The same objects fitted with dist='lognormal' instead, plotted with mult_lognormal():
+
+![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_LogNormal_2s.png){: width="500" }
+
+...and with dist='exponential', plotted with mult_exponential() (drawn on Weibull paper - see [Distributions](#distributions) for why):
+
+![!Backup Text](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_Exponential_2s.png){: width="500" }
 
 ### contour_plot()
 contour_plot() only works for likelihood ratio bounds. Hence, you have to use bounds='lrb' in the Analysis class. This method supports all bounds types and all confidence levels. You can pass as many objects as you want to.

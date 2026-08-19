@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
  - .summary() method
  - Weibull AFT
 
+## [0.1.35] - 2026-08-20
+### Added
+ - New PlotAll methods: mult_normal(), mult_lognormal() and mult_exponential() - the dist='normal'/'lognormal'/'exponential' counterparts to mult_weibull(). As with mult_weibull(), each method only accepts Analysis objects that share its own dist; mixing distributions raises a ValueError - use compare() to compare the same dataset across distributions instead.
+
+   | mult_normal() | mult_lognormal() | mult_exponential() |
+   |:---:|:---:|:---:|
+   | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_Normal_2s.png" alt="PlotAll().mult_normal() with two-sided bounds" width="220"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_LogNormal_2s.png" alt="PlotAll().mult_lognormal() with two-sided bounds" width="220"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/PlotAll_Exponential_2s.png" alt="PlotAll().mult_exponential() with two-sided bounds" width="220"> |
+
 ## [0.1.34] - 2026-08-18
 ### Added
  - Added support for following distributions: **normal**, **lognormal**, and **exponential**
