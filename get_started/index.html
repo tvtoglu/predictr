@@ -633,9 +633,9 @@
 <li>Open Spyder and create a new file</li>
 <li>Import predictr in Spyder using:</li>
 </ul>
-<pre><code class="language-python">from predictr import Analysis, PlotAll
+<pre><code class="language-python">from predictr import Analysis, PlotAll, Regression
 </code></pre>
-<p>Now you're able to use the Analysis and PlotAll classes from predictr. For now, these are the only classes you can import. However, I will add new classes to predictr in the future.</p>
+<p>Now you're able to use the <code>Analysis</code>, <code>PlotAll</code> and <code>Regression</code> classes from predictr. <code>Analysis</code> fits a single distribution (Weibull/Normal/LogNormal/Exponential) to one dataset; <code>PlotAll</code> overlays several <code>Analysis</code> fits in one figure; <code>Regression</code> fits lifetime regression models (Weibull AFT, Cox PH) with covariates.</p>
 
 
 

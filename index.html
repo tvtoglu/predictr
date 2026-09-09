@@ -662,7 +662,7 @@
 
 
 
-<h1 id="predictr">predictr.</h1>
+<h1 id="predictr">predictr</h1>
 <p>predict + reliability, in other words: A tool to predict the reliability.  </p>
 <p><strong>predictr</strong> is a Python package for Weibull-based life data analysis (reliability engineering). It covers parameter estimation, bias-correction, confidence bounds, and publication-ready Weibull plots in a single, consistent API.</p>
 <p><img alt="" src="https://img.shields.io/pypi/v/predictr?color=blue&amp;style=flat&amp;label=pypi" />
@@ -717,12 +717,35 @@ print(weibull.beta, weibull.eta)  # shape and scale estimates
 </tr>
 </tbody>
 </table>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Regression: survival per covariate profile</th>
+<th style="text-align: center;">Goodness of fit with verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Regression_survival_band.png" alt="Weibull AFT survival curves with confidence band, B10 marker and Kaplan-Meier overlay" width="300"></td>
+<td style="text-align: center;"><img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Regression_goodness_of_fit.png" alt="Cox-Snell and martingale residual panels with an overall GOOD/MARGINAL/POOR verdict" width="300"></td>
+</tr>
+</tbody>
+</table>
 <h2 id="main-features">Main features</h2>
 <p><strong>Parameter estimation</strong>
 - Uncensored and type I / type II right-censored two-parameter Weibull distribution
 - Maximum Likelihood Estimation (MLE) and Median Rank Regression (MRR)
 - Bx-life calculator
-- Normal, LogNormal and Exponential distributions, alongside Weibull</p>
+- Normal, LogNormal and Exponential distributions, alongside Weibull
+- Non-parametric Kaplan–Meier <code>kaplan_meier()</code> and Nelson–Aalen <code>nelson_aalen()</code> from the failure / suspension lists (no DataFrame), with pointwise bands and step plots</p>
+<p><strong>Lifetime regression</strong> (covariates)
+- Weibull accelerated failure time (AFT) and Cox proportional hazards (Cox PH) models
+- Uncensored and right-censored data, Efron/Breslow tie handling, Wald / profile-likelihood / bootstrap (parametric and non-parametric) bounds
+- <code>summary()</code>, coefficient forest plot, survival-curve prediction per covariate profile (with pointwise and simultaneous confidence bands)
+- Goodness of fit: <code>goodness_of_fit()</code> with a good / marginal / poor verdict (concordance, Cox–Snell slope, proportional-hazards test), Cox–Snell / martingale / deviance residuals, <code>plot_gof()</code>, <code>check_ph()</code>
+- Stratified Kaplan–Meier / Nelson–Aalen (<code>plot_km(by=...)</code> / <code>plot_na(by=...)</code>) as a model-free reference
+- Accelerated life testing: named aging laws (<code>stress_model=</code> — Arrhenius, inverse power, Eyring, Coffin–Manson), physical parameters (<code>Ea</code>, <code>n</code>) with CIs, <code>acceleration_factor()</code>, raw-unit predictions, <code>plot_stress_life()</code>, <code>check_shape()</code>
+- Monte-Carlo <code>power_analysis()</code> and <code>sample_size()</code></p>
 <p><strong>Bias-correction</strong>
 - C4 method (reduced bias adjustment)
 - Hirose and Ross method
