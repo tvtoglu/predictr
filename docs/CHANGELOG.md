@@ -4,8 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## Planned updates
 ### Added
- - .summary() method
- - Weibull AFT
+ - Left-truncation and stratification for `Regression` (`entry_col`, `strata`)
+ - Time-varying stress / step-stress models for accelerated life testing
+
+## [0.1.37] - 2026-09-09
+### Added
+ - **New class `Regression` — lifetime (survival) regression with covariates**, for uncensored and right-censored data. Promised several years ago, finally implemented in a smart way. Everything is derived and implemented from scratch (log-likelihood, analytic score and observed information, Newton-Raphson with an L-BFGS-B fallback); no new dependencies.
+   - `model='weibull_aft'` — parametric Weibull accelerated failure time model (log-location-scale form). `exp(coef)` is the time ratio; the Weibull shape is `1 / sigma`.
+   - `model='cox_ph'` — semiparametric proportional hazards model, partial likelihood, Efron (default) or Breslow ties, Breslow cumulative baseline hazard. `exp(coef)` is the hazard ratio.
+   - Data either predictr-style (`df`/`ds` + `x_df`/`x_ds`) or as one `data=` DataFrame (`duration_col`, `event_col`, `covariate_cols`); string/category covariates are one-hot encoded.
+   - `fit()` → `summary()` (printed report **and** a coefficient `DataFrame`: `coef`, `exp(coef)`, `se`, `z`, `p`, and `cl`-level bounds on both scales).
+   - Confidence bounds via `bounds=`: `'fb'` (Wald / observed information), `'lrb'` (profile likelihood), `'npbb'` / `'pbb'` (non-parametric / parametric bootstrap, `n_boot`). Default is `None` (no bounds), matching `Analysis`.
+   - Predictions per covariate profile: `predict_median()`, `predict_quantile(q, ci=)`, `predict_time_ratio()` / `predict_hazard_ratio()`, `predict_survival(times=, ci=, simultaneous=)`.
+   - Accelerated life testing: `stress_model=` names a known life–stress (aging) law per raw column — `'arrhenius'`, `'eyring'`, `'inverse_power'`, `'coffin_manson'`, `'exponential'` (Peck = Arrhenius + inverse power); a bare law name is a shorthand for a single covariate. predictr applies the physical transform, reports the physical parameter (`Ea` in eV, exponent `n`, …) with CIs in `stress_params`, and accepts every prediction in raw stress units. Plus `acceleration_factor()`, `plot_stress_life()` and `check_shape()`.
+ - **Non-parametric estimators on `Analysis`**: `kaplan_meier(cl=None)` and `nelson_aalen(cl=None)` compute the empirical survival `S(t)` (product limit, Greenwood band on `ln(-ln S)`) and cumulative hazard `H(t)` (`Var = Σ k/n²`, band on `ln H`) straight from the `df` / `ds` lists — no `dist`, no `mle()`, no DataFrame. Each returns the life table as a DataFrame and, with `show=True`, draws the step plot with censoring ticks like `mle()`/`mrr()`.
+ - The same estimators on `Regression` as `kaplan_meier()` / `nelson_aalen()` / `plot_km()` / `plot_na()`, with `by=` to split (stratify) the curve by a covariate column or a label array — a model-free reference for checking the proportional-hazards / constant-shape assumptions.
+
+### Improved
+ - `PREDICTR_PALETTE`'s blue is slightly darker (`#008fd5` → `#0077b2`)
 
 ## [0.1.36] - 2026-08-20
 ### Fixed

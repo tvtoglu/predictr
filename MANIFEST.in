@@ -3,3 +3,5 @@ recursive-include docs *.png
 include *.md
 include *.yml
 recursive-include docs *.md
+exclude skill.md
+prune dev

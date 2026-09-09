@@ -52,6 +52,45 @@ from predictr import Analysis
 prototype_a = Analysis(...) # create an instance
 prototype_a.mrr() # use instance methods
 ```
+
+### Non-parametric descriptions: Kaplan–Meier / Nelson–Aalen
+
+`kaplan_meier(cl=None)` and `nelson_aalen(cl=None)` compute the empirical, **distribution-free** survival `S(t)` (product limit) and cumulative hazard `H(t)` straight from the `df` failures and `ds` suspensions — no `dist`, no `mle()`/`mrr()`, no DataFrame. Each returns the life table as a `pandas.DataFrame`: `time, n_risk, n_event, n_censor` plus `surv, surv_se, surv_lower, surv_upper` (Kaplan–Meier: Greenwood standard error, pointwise interval on `ln(-ln S)`) or `cumhaz, cumhaz_se, cumhaz_lower, cumhaz_upper` (Nelson–Aalen: `Var(H) = Σ k/n²`, interval on `ln H`); `cl` defaults to the constructor's `cl`. `show=True` (constructor) also draws the step plot with its pointwise band and censoring ticks, predictr style, exactly as `mle()`/`mrr()` do.
+
+```python
+from predictr import Analysis
+
+failures    = [0.45, 0.68, 0.77, 0.88, 1.48, 1.63, 2.10, 2.90]
+suspensions = [1.0, 1.2, 3.3]
+
+a = Analysis(df=failures, ds=suspensions, show=True)
+km = a.kaplan_meier()      # DataFrame + KM step plot
+na = a.nelson_aalen()      # DataFrame + NA step plot
+```
+
+```python
+# the returned life table (right-continuous step function)
+km = Analysis(df=failures, ds=suspensions).kaplan_meier()
+print(km[['time', 'n_risk', 'n_event', 'n_censor', 'surv',
+          'surv_lower', 'surv_upper']])
+#    time  n_risk  n_event  n_censor      surv  surv_lower  surv_upper
+# 0  0.45      11        1         0  0.909091    0.516...    0.987...
+# ...
+
+# a wider pointwise band
+km99 = Analysis(df=failures, ds=suspensions).kaplan_meier(cl=0.99)
+
+# uncensored data works too (no ds); surv reaches 0 at the last failure
+Analysis(df=failures).nelson_aalen()
+
+# model-free reference next to a parametric fit
+a = Analysis(df=failures, ds=suspensions, bounds='fb')
+a.mle()                                   # Weibull S(t) = exp(-(t/eta)**beta)
+km = a.kaplan_meier()                     # empirical S(t) — compare the two
+```
+
+The same estimators are available on a `Regression` object (`r.kaplan_meier(by=...)` / `r.nelson_aalen(by=...)` / `r.plot_km()` / `r.plot_na()`), where `by=` can additionally split the curve by a covariate (stratified KM/NA — see the `Regression` examples).
+
 ### Bias-correction methods
 Since parameter estimation methods are only asymptotically unbiased (sample sizes -> "infinity"), bias-correction methods are useful when you have only a few failures. These methods correct the Weibull shape and scale parameter.
 The following table provides possible configurations. Bias-corrections for mrr() are not supported, yet.<br>
@@ -532,3 +571,302 @@ PlotAll().compare(df=failures, criteria='aic', plot_pdf=True)
 | Ranked by AIC | PDF comparison |
 |:---:|:---:|
 | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal.png" alt="PlotAll().compare() ranked by AIC" width="260"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal_pdf.png" alt="PlotAll().compare() PDF comparison figure" width="260"> |
+
+## Regression
+
+`Regression` fits lifetime (survival) **regression** models with covariates, for uncensored and right-censored data:
+
+- **`model='weibull_aft'`** (default) — a parametric Weibull *accelerated failure time* model. In log-location-scale form `ln T = xᵀθ + σ·W` with `W` standard smallest-extreme-value distributed. The equivalent Weibull shape is `beta = 1 / sigma`; `exp(θⱼ)` is the *time ratio* (acceleration factor) for a one-unit increase in covariate *j*.
+- **`model='cox_ph'`** — a semiparametric *proportional hazards* model `h(t | x) = h₀(t)·exp(xᵀβ)` with an unspecified baseline hazard (no intercept). `β` is estimated from the partial likelihood; `exp(βⱼ)` is the *hazard ratio*. Tied event times use the Efron (default) or Breslow approximation. The cumulative baseline hazard is the Breslow estimator, taken at the mean covariate vector, so `baseline_surv` is the survival curve of an "average" unit.
+
+Both are derived and implemented from scratch (log-likelihood, score, observed information; Newton-Raphson with a quasi-Newton fallback). predictr conventions carry over from `Analysis`: the `df`/`ds` data split, `cl`/`bounds`/`bounds_type`, and the shared plot kwargs.
+
+### Default arguments and values
+
+| Parameter        | default        | type                       | description                                                                                     |
+|------------------|----------------|----------------------------|-------------------------------------------------------------------------------------------------|
+| df, ds           | None           | list of floats             | Failures / right-censored observations (predictr style). Use with x_df/x_ds.                    |
+| x_df, x_ds       | None           | DataFrame \| dict \| 2D array | Covariate rows aligned row-for-row with df / ds (same columns in both).                       |
+| data             | None           | DataFrame                  | One row per unit. Alternative to df/ds; needs duration_col and event_col.                       |
+| duration_col     | None           | str                        | Column in `data` with the observed time.                                                       |
+| event_col        | None           | str                        | Column in `data` with the event indicator (1 = failure, 0 = censored).                         |
+| covariate_cols   | None           | list of str                | Covariate columns in `data` (default: all columns except duration/event).                      |
+| feature_names    | None           | list of str                | Names for bare-array covariates.                                                               |
+| stress_model     | None           | dict or str                | `{raw_column: law}` to fit a named life-stress (aging) law: `'arrhenius'` (temp → `1/(k_B T)`, coef = `Ea` [eV]), `'eyring'` (temp), `'inverse_power'` (positive stress → `ln S`, `n = −coef`), `'coffin_manson'` (cycling range), `'exponential'` (stress as-is). Peck (temp–humidity) = `'arrhenius'` on T + `'inverse_power'` on RH. A bare law name (`stress_model='arrhenius'`) is shorthand when there is exactly one covariate column. |
+| stress_units     | None           | dict                       | `{raw_column: 'C' \| 'K'}` for the temperature laws. Default `'C'`.                             |
+| model            | 'weibull_aft'  | str                        | `'weibull_aft'` or `'cox_ph'`.                                                                  |
+| ties             | 'efron'        | str                        | Cox tie-handling: `'efron'` or `'breslow'`.                                                     |
+| fit_intercept    | True           | bool                       | AFT only.                                                                                      |
+| standardize      | True           | bool                       | Center/scale covariates internally; results reported on the original scale.                     |
+| cl               | 0.9            | float                      | Confidence level for the bounds.                                                               |
+| bounds           | None           | str                        | `None` no confidence bounds (the default, matching `Analysis`); `'fb'` Wald bounds (observed information), `'lrb'` profile-likelihood bounds, `'npbb'` non-parametric bootstrap (resample units), `'pbb'` parametric bootstrap (simulate the response from the fitted model). Bootstrap bounds are always two-sided percentiles (`bounds_type` is ignored) and drive both the coefficient table and the survival band. |
+| bounds_type      | '2s'           | str                        | `'2s'`, `'1sl'` or `'1su'`. Ignored by `'npbb'`/`'pbb'`.                                        |
+| max_iter, tol    | 100, 1e-8      | int, float                 | Newton-Raphson controls.                                                                       |
+| n_boot           | 1000           | int                        | Number of resamples for `bounds='npbb'`/`'pbb'`.                                                |
+| strata, entry_col| None           | –                          | Reserved for stratification / left-truncation (not supported yet).                             |
+| show, save, plot_style, unit, x_label, y_label, xy_fontsize, tick_fontsize, legend_fontsize, plot_title, plot_title_fontsize, fig_size, show_legend | | | as in `Analysis` (`fig_size` defaults to landscape `(9, 6)`). |
+| kwarg: path      |                | string                     | Figure path/format when save=True.                                                             |
+
+### Methods
+
+- **`fit()`** — estimate the model, fill the result attributes, return `self`.
+- **`summary(decimals=4, print_report=True)`** — print the full report (model, sample sizes, log-likelihood, AIC, likelihood-ratio test vs. the null model, concordance, plus `sigma`/shape for AFT) **and** return the coefficient table as a `pandas.DataFrame` (`coef`, `exp(coef)`, `se(coef)`, `z`, `p`, and the `cl`-level bounds on both scales).
+- **`predict_median(X)` / `predict_quantile(X, q, ci=False, cl=None, bounds=None)`** — AFT: predicted lifetime quantiles for covariate rows `X`. With `ci=True` also returns `(lower, upper)` confidence limits (delta method for `bounds='fb'`, profile likelihood for `bounds='lrb'`, resample percentiles for `bounds='npbb'`/`'pbb'`).
+- **`predict_time_ratio(X)`** / **`predict_hazard_ratio(X)`** — multiplicative effect on lifetime (AFT) / hazard (Cox), relative to a unit at the mean covariates.
+- **`predict_survival(X, times=None, ci=False, cl=None, bounds=None, simultaneous=False)`** — `S(t | x)`. With `ci=False` a DataFrame indexed by time; with `ci=True` a dict `{'surv', 'lower', 'upper', 'lower_sim', 'upper_sim', 'in_data_range', 'method', 'cl'}`. The band is the delta method (`'fb'`) or profile likelihood (AFT `'lrb'`) on the complementary-log-log scale, or pointwise resample percentiles (`'npbb'`/`'pbb'`); `simultaneous=True` adds a simultaneous band valid over the whole observed time range — the Monte-Carlo supremum of the estimated Gaussian process of `eta(t)`, with monotone-tightened edges (`'fb'`/`'lrb'` only).
+- **`plot(show=None)`** — forest plot of the coefficients with their confidence bounds.
+
+  Every `Regression` plot method (`plot`, `plot_survival`, `plot_gof`, `plot_stress_life`, `plot_km`, `plot_na`) takes `show=` and **defaults to `show=True`**: the figure is drawn and the method returns `None`, so in Jupyter it appears exactly once with no trailing `;` or `plt.show()`. Pass `show=False` to suppress the draw and get the `Figure` back for further composition.
+- **`plot_survival(profiles, times=None, labels=None, ci=False, cl=None, bounds=None, simultaneous=False, target_bq=None, km_overlay=False)`** — predicted survival curves for one or more covariate profiles. `ci=True` draws the confidence band (solid + filled up to the last observed time, dashed + hatched past it, with a dotted vertical line at the last observed time carrying a small vertical `t_max` label); the legend carries the bounds method predictr-style (`Fisher bounds @ 90%` / `Likelihood-ratio bounds @ 90%` / `Non-parametric bootstrap bounds @ 90%` / `Parametric bootstrap bounds @ 90%`). `simultaneous=True` overlays the wider simultaneous band (dotted). `target_bq=p` (e.g. `0.1` for B10) draws the horizontal line `S = 1 − p` and adds the B(100p) life to the legend as `B10: lower / median / upper` (just the median when `ci=False`). `km_overlay=True` adds the pooled Kaplan–Meier estimate as a grey step line.
+- **`residuals(kind=None)`** — per-unit residuals; `kind=None` returns a DataFrame with `cox_snell` (`H(t_i | x_i)`; with the event flag it is a censored Exp(1) sample under a correct model), `martingale` (`d_i − r_i`, plot against a covariate to check its functional form) and `deviance` (symmetrised, ≈ N(0,1); large `|·|` flags poorly-fit units). Both models.
+- **`goodness_of_fit(decimals=4, print_report=True)`** (alias **`gof`**) — a `pandas.Series` and a printed report grouped into **discrimination** / **relative fit** / **absolute fit**, each metric tagged `[ good ]` / `[ marg ]` / `[ POOR ]` and closed by a one-line `overall:` verdict (`GOOD FIT` / `MARGINAL FIT` / `POOR FIT`). Numeric keys: `concordance`, `loglik`, `aic`, the LR test, `cox_snell_slope` (slope through the origin of the Nelson–Aalen cumulative hazard of the Cox–Snell residuals on themselves over their lower 90 % — ≈ 1 for a good absolute fit; `|slope − 1| ≤ 0.10` good, `> 0.25` poor), `cox_snell_max_dev` (`≤ 0.15` good, `> 0.35` poor) and, for Cox, `ph_pvalue` (global proportional-hazards test). String keys: `discrimination` (`weak`/`modest`/`good`/`strong` from the concordance), `absolute_fit`, `proportional_hazards` (Cox) and `verdict`.
+- **`plot_gof()`** — two panels: the Cox–Snell residuals vs. their Nelson–Aalen cumulative hazard (should track the 45° line) and martingale residuals vs. the linear predictor with a running-mean smoother (should stay flat on 0). The overall verdict is the figure suptitle (green / amber / red).
+- **`check_ph(transform='km', decimals=4, print_report=True)`** — Cox only. Tests the proportional-hazards assumption per covariate by correlating the scaled Schoenfeld residuals with a function of time (`transform`: `'km'`, `'rank'`, `'log'` or `'identity'`). Returns a DataFrame (`test_stat` χ²₁, `p`, `rho_time`) with a `GLOBAL` row (χ² with p df); a small `p` means that covariate's effect changes over time.
+- **`kaplan_meier(by=None, cl=None)` / `nelson_aalen(by=None, cl=None)`** — the non-parametric, covariate-free descriptions of the data: Kaplan–Meier survival `S(t)` (product limit) and Nelson–Aalen cumulative hazard `H(t)`. No `fit()` needed — this is the model-free reference the fitted curves are compared against. `by=` splits into groups by a raw covariate column name (e.g. `'material'`) or a length-`n` array of labels. Returns a DataFrame `[group,] time, n_risk, n_event, n_censor` plus `surv, surv_se, surv_lower, surv_upper` (KM: Greenwood SE, band on `ln(-ln S)`) or `cumhaz, cumhaz_se, cumhaz_lower, cumhaz_upper` (NA: `Var(H) = Σ d/n²`, band on `ln H`); `cl` defaults to `self.cl`. Same estimator engine as `Analysis.kaplan_meier()` / `Analysis.nelson_aalen()`.
+- **`plot_km(by=None, ci=True, cl=None)` / `plot_na(by=None, ci=True, cl=None)`** — step plot of the Kaplan–Meier / Nelson–Aalen estimate (one line per `by=` group), pointwise band when `ci=True`, censoring shown as vertical ticks. A single curve is drawn in predictr's single-result blue; grouped curves use the categorical palette (with linestyle cycling past 6) as `plot_survival` and `PlotAll`, except that palette slots 2 and 3 are swapped so a two-group split reads teal vs. purple rather than teal vs. a blue close to the single-curve colour.
+- **`power_analysis(n=None, n_sim=500, alpha=None, coef=None, sigma=None, seed=0, print_report=True)`** — Monte-Carlo power for each covariate. The fitted model (or the `coef`/`sigma` overrides) is the ground truth; `n_sim` data sets of size `n` are simulated by resampling the covariate rows (and, if the data are censored, the censoring times), each is refitted, and a drop-one likelihood-ratio test is run per covariate. Returns a `pandas.Series` of rejection rates at level `alpha` (default `1 − cl`), indexed by covariate name with an extra `'(model)'` entry for the overall LR test.
+- **`sample_size(target_power=0.8, term=None, n_grid=None, n_sim=300, alpha=None, seed=0, print_report=True)`** — smallest `n` on a search grid at which `power_analysis` reaches `target_power` (for the weakest covariate, or the named `term`). Returns that `n`, or `None` if the grid tops out below the target.
+
+**With a `stress_model` (Weibull AFT):**
+
+- **`acceleration_factor(from_, to_, cl=None)`** — lifetime ratio `life(to_) / life(from_)` for two operating points given as raw-unit dicts (e.g. `{'temp': 55, 'volt': 3.3}`); `> 1` means `to_` lasts longer. Returns `(factor, lower, upper)` (delta method on the log ratio).
+- **`plot_stress_life(q=0.5)`** — the life–stress diagnostic: each tested stress level's marginal `B(100q)` life (log y) against its stress linear predictor, with the fitted AFT line. Collinear points support the aging law.
+- **`check_shape(decimals=4, print_report=True)`** — fits a separate Weibull per tested stress level and returns a table of shape estimates (with a `pooled` row); flags whether the shapes are consistent (the SAFT model assumes one common shape).
+- All `predict_*` and `plot_survival` accept the operating point in **raw stress units** (dict / DataFrame) and apply the same transform.
+
+### Result attributes
+
+`coef`, `se_coef`, `z_values`, `p_values`, `ci_lower`, `ci_upper`, `cov`, `params_`, `summary_`, `loglik`, `loglik_null`, `aic`, `lr_stat`, `lr_pvalue`, `concordance`, `n`, `n_events`, `feature_names`.
+AFT also: `intercept`, `sigma`, `se_sigma`, `beta` (Weibull shape).
+Cox also: `hazard_ratio`, `hazard_ratio_ci`, `baseline_cumhaz` (`(times, H0)`), `baseline_surv` (`(times, S0)`).
+With `stress_model` (AFT): `stress_params` — DataFrame `stress | law | parameter | value | se | ci_lower | ci_upper` (e.g. `Ea_eV`, `n`), honouring `bounds=`.
+
+### Examples
+
+#### Weibull AFT
+
+```python
+import pandas as pd
+from predictr import Regression
+
+data = pd.DataFrame({
+    'time':  [72.7, 28.0, 28.4, 37.4, 8.3, 17.6, 27.9, 16.4, 86.5, 19.8],
+    'event': [   0,    1,    1,    0,   0,    1,    0,    1,    1,    1],
+    'temp':  [  60,  100,   80,   80,  80,  100,   60,  100,   60,   60],
+    'load':  [ 1.0,  1.5,  2.0,  1.0, 2.0,  2.0,  1.0,  1.5,  1.0,  2.0],
+})
+
+aft = Regression(data=data, duration_col='time', event_col='event',
+                 covariate_cols=['temp', 'load'], model='weibull_aft', bounds='fb')
+aft.fit()
+aft.summary()
+
+print(aft.beta, aft.sigma)                 # Weibull shape / scale of the error
+aft.predict_median(pd.DataFrame({'temp': [60, 100], 'load': [1.0, 2.0]}))
+
+aft.plot()                                  # coefficient forest plot
+```
+![Regression coefficient forest plot](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Regression_forest.png){: width="500" }
+
+#### Cox PH (with separate failure / suspension lists)
+
+```python
+from predictr import Regression
+
+failures    = [28.0, 28.4, 17.6, 16.4, 86.5, 19.8]
+suspensions = [72.7, 37.4, 8.3, 27.9]
+x_failures    = [[100, 1.5], [80, 2.0], [100, 2.0], [100, 1.5], [60, 1.0], [60, 2.0]]
+x_suspensions = [[60, 1.0], [80, 1.0], [80, 2.0], [60, 1.0]]
+
+cox = Regression(df=failures, ds=suspensions, x_df=x_failures, x_ds=x_suspensions,
+                 feature_names=['temp', 'load'], model='cox_ph', ties='efron',
+                 bounds='lrb', cl=0.9)
+cox.fit()
+cox.summary()
+
+print(cox.hazard_ratio)                     # exp(coef) per covariate
+cox.plot_survival(pd.DataFrame({'temp': [60, 100], 'load': [1.0, 2.0]}))
+```
+
+#### Predictions per covariate profile
+
+```python
+aft = Regression(data=data, duration_col='time', event_col='event',
+                 covariate_cols=['temp', 'load'], model='weibull_aft',
+                 bounds='lrb', cl=0.9).fit()
+
+profiles = pd.DataFrame({'temp': [60, 80, 100], 'load': [1.0, 1.5, 2.0]},
+                        index=['mild', 'mid', 'harsh'])
+
+aft.predict_median(profiles)                       # B50 life, one per row
+aft.predict_quantile(profiles, q=0.1)              # B10 life
+tq, lo, hi = aft.predict_quantile(profiles, q=0.1, ci=True)   # + CI
+
+aft.predict_time_ratio(profiles)                   # AFT: life vs. mean-covariate unit
+# cox.predict_hazard_ratio(profiles)               # Cox: hazard vs. mean-covariate unit
+
+S = aft.predict_survival(profiles, times=[10, 25, 50, 100])   # DataFrame, times x profiles
+band = aft.predict_survival(profiles, ci=True)     # dict: surv / lower / upper / method / cl
+```
+
+#### Confidence bands and Bx life
+
+```python
+aft = Regression(data=data, duration_col='time', event_col='event',
+                 covariate_cols=['temp', 'load'], model='weibull_aft',
+                 bounds='lrb', cl=0.9).fit()
+
+# pointwise band, B10 marked, model-free KM overlaid
+aft.plot_survival(profiles, ci=True, target_bq=0.1, km_overlay=True)
+
+# add the simultaneous band (valid over the whole observed time range)
+aft.plot_survival(profiles, ci=True, simultaneous=True, target_bq=0.1)
+
+# B10 life with lower / point / upper, programmatically
+tq, lo, hi = aft.predict_quantile(profiles, q=0.1, ci=True)
+```
+![Predicted survival with confidence band, B10 marker and KM overlay](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Regression_survival_band.png){: width="640" }
+
+`bounds=` chosen at construction drives the band: `'fb'` = delta method,
+`'lrb'` = profile likelihood (AFT), `'npbb'`/`'pbb'` = resample percentiles.
+Past the last observed time the band switches to dashed + hatched and a
+vertical `t_max` marker flags the start of extrapolation.
+
+#### Bootstrap bounds
+
+```python
+aft = Regression(data=data, duration_col='time', event_col='event',
+                 covariate_cols=['temp', 'load'], model='weibull_aft',
+                 bounds='pbb', n_boot=2000, cl=0.9)      # or bounds='npbb'
+aft.fit()
+aft.summary()                                            # percentile CIs in the table
+
+band = aft.predict_survival(profiles, ci=True)           # pointwise resample band
+aft.plot_survival(profiles, ci=True, target_bq=0.1)
+```
+
+`'npbb'` resamples whole units with replacement; `'pbb'` keeps the covariates
+and simulates the response from the fitted model (censoring times are drawn
+from the observed censored units). Both feed the coefficient table **and** the
+survival band; there is no simultaneous variant.
+
+#### Goodness of fit
+
+```python
+r = Regression(data=data, duration_col='time', event_col='event',
+               covariate_cols=['temp', 'load'], model='cox_ph').fit()
+
+r.goodness_of_fit()          # tagged report + overall GOOD / MARGINAL / POOR verdict
+r.plot_gof()                 # Cox–Snell 45° check + martingale-vs-lp smoother (verdict as suptitle)
+
+res = r.residuals()          # cox_snell / martingale / deviance per unit
+r.check_ph()                 # Cox: proportional-hazards test per covariate
+
+r.kaplan_meier(by='material')    # model-free S(t) table, split by a covariate
+r.plot_na()                      # Nelson–Aalen cumulative hazard, pooled
+r.plot_survival(profiles, km_overlay=True)   # + pooled Kaplan–Meier reference
+```
+![Goodness-of-fit panels with overall verdict](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Regression_goodness_of_fit.png){: width="640" }
+
+`goodness_of_fit()` covers **discrimination** (concordance), **relative fit**
+(AIC, LR test) and **absolute fit** (`cox_snell_slope` ≈ 1, `cox_snell_max_dev`
+small), tags each metric `good` / `marginal` / `poor` against fixed thresholds,
+and prints a single `overall:` line — `GOOD FIT`, `MARGINAL FIT` or `POOR FIT` —
+so the read is immediate; the same string is in `s['verdict']`. `check_ph()` is
+Cox-only and flags covariates whose effect drifts over time (its global p-value
+also feeds the verdict). For a parametric AFT, `plot_gof()` plus
+`km_overlay=True` show whether the Weibull shape actually matches the data.
+
+#### Kaplan–Meier / Nelson–Aalen (pooled and stratified)
+
+Non-parametric, no `fit()` required — the model-free picture of the data.
+`by=` splits the curve by a covariate column, which `Analysis` cannot do.
+
+```python
+r = Regression(data=data, duration_col='time', event_col='event',
+               covariate_cols=['temp', 'load', 'material'], model='cox_ph')
+
+r.kaplan_meier()                       # pooled S(t) life table (DataFrame)
+r.nelson_aalen(cl=0.95)               # pooled H(t) at a wider level
+
+# stratified: one curve per material level, palette-coloured, with bands
+r.plot_km(by='material')
+r.plot_na(by='material', ci=False)
+
+# split on a derived label array (length n) instead of a column
+import numpy as np
+hot = np.where(data['temp'] >= 90, 'temp>=90', 'temp<90')
+km = r.kaplan_meier(by=hot)            # 'group' column: 'temp>=90' / 'temp<90'
+```
+![Stratified Kaplan–Meier by covariate level](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Regression_km_stratified.png){: width="560" }
+
+Parallel `ln(-ln S)` curves per stratum support the Cox PH assumption;
+straight, equally steep strata on Weibull paper support a common AFT shape.
+
+#### Power and required sample size
+
+```python
+aft = Regression(data=data, duration_col='time', event_col='event',
+                 covariate_cols=['temp', 'load'], model='weibull_aft').fit()
+
+aft.power_analysis(n_sim=1000)                    # power at the current design
+aft.power_analysis(n=120, coef=[-0.01, -0.7])    # a hypothetical effect size
+aft.sample_size(target_power=0.8)                 # smallest n reaching 80 % power
+```
+
+#### Accelerated life testing — named aging laws
+
+Parametric AFT extrapolation past the tested range is only trustworthy when the
+stress carries a **known life–stress law**. `stress_model` names the law per raw
+column; predictr applies the physical transform, reports the physical parameter,
+and lets every prediction be made at raw-unit operating points.
+
+```python
+import numpy as np, pandas as pd
+from predictr import Regression
+
+# df: hours, failed (1/0), temp_C, volt  — units tested at several temp/volt levels
+m = Regression(data=df, duration_col='hours', event_col='failed',
+               model='weibull_aft', bounds='lrb', cl=0.9,
+               stress_model={'temp_C': 'arrhenius', 'volt': 'inverse_power'},
+               stress_units={'temp_C': 'C'}).fit()
+
+m.summary()             # coef table + "life-stress model" block:
+                        #   temp_C  arrhenius       Ea_eV = 0.70  (0.62, 0.78)
+                        #   volt    inverse_power   n     = 2.50  (2.16, 2.86)
+m.stress_params         # the same as a DataFrame
+
+use = {'temp_C': 55, 'volt': 3.3}                 # field conditions, raw units
+m.predict_quantile(use, q=0.1, ci=True)           # B10 at field
+m.plot_survival(use, ci=True, target_bq=0.1, times=np.linspace(1, 3e5, 300))
+m.acceleration_factor(from_={'temp_C': 125, 'volt': 5.0}, to_=use)  # (AF, lo, hi)
+
+m.check_shape()         # one common Weibull shape across stress levels?
+m.plot_stress_life()    # life vs stress linear predictor + fitted line
+```
+![Life–stress relationship: marginal Bx life per level vs. the fitted AFT line](https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Regression_stress_life.png){: width="520" }
+
+Single stress — the bare law name is a shorthand, temperature straight in Kelvin:
+
+```python
+# df: hours, failed, temp_K  (one covariate)
+m = Regression(data=df, duration_col='hours', event_col='failed',
+               model='weibull_aft', bounds='lrb',
+               stress_model='arrhenius',            # == {'temp_K': 'arrhenius'}
+               stress_units={'temp_K': 'K'}).fit()
+m.stress_params                                     # Ea_eV with CI
+
+field = pd.DataFrame({'temp_K': [300., 320., 340.]}, index=['27C', '47C', '67C'])
+m.predict_quantile(field, q=0.1)                    # B10 per field temperature
+m.acceleration_factor(from_={'temp_K': 400.}, to_={'temp_K': 300.})
+```
+
+Other laws work the same way — e.g. thermal-cycling fatigue with
+`stress_model={'strain_range': 'coffin_manson'}` (term `ln(range)`,
+physical parameter `fatigue_exponent`), the time axis then in cycles.
+
+Manual transform (`df['inv_T'] = 1/(df.temp_C + 273.15)`, `covariate_cols=['inv_T', …]`)
+still works and is equivalent; `stress_model` just adds the physical relabelling,
+raw-unit predictions, and the two diagnostics. With `model='cox_ph'` the
+transformed columns still fit and `predict_hazard_ratio` accepts raw units, but
+`stress_params`/`acceleration_factor`/`plot_stress_life`/`check_shape` are AFT-only.

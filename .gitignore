@@ -184,3 +184,9 @@ src/tests/test_bounds.py
 .gitignore
 src/tests/test_mcp_bounds.py
 skill.md
+
+# local regression playground notebook
+playground.ipynb
+
+# local dev tools (not shipped)
+dev/

@@ -48,6 +48,10 @@ A few of predictr's capabilities, from bias-corrected estimates to comparing ent
 |:---:|:---:|
 | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal.png" alt="PlotAll().compare() ranked by AIC" width="260"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Compare_Normal_pdf.png" alt="PlotAll().compare() PDF comparison figure" width="260"> |
 
+| Regression: survival per covariate profile | Goodness of fit with verdict |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Regression_survival_band.png" alt="Weibull AFT survival curves with confidence band, B10 marker and Kaplan-Meier overlay" width="300"> | <img src="https://raw.githubusercontent.com/tvtoglu/predictr/main/docs/images/Regression_goodness_of_fit.png" alt="Cox-Snell and martingale residual panels with an overall GOOD/MARGINAL/POOR verdict" width="300"> |
+
 ## Main features
 
 **Parameter estimation**
@@ -55,6 +59,16 @@ A few of predictr's capabilities, from bias-corrected estimates to comparing ent
 - Maximum Likelihood Estimation (MLE) and Median Rank Regression (MRR)
 - Bx-life calculator
 - Normal, LogNormal and Exponential distributions, alongside Weibull
+- Non-parametric Kaplan–Meier `kaplan_meier()` and Nelson–Aalen `nelson_aalen()` from the failure / suspension lists (no DataFrame), with pointwise bands and step plots
+
+**Lifetime regression** (covariates)
+- Weibull accelerated failure time (AFT) and Cox proportional hazards (Cox PH) models
+- Uncensored and right-censored data, Efron/Breslow tie handling, Wald / profile-likelihood / bootstrap (parametric and non-parametric) bounds
+- `summary()`, coefficient forest plot, survival-curve prediction per covariate profile (with pointwise and simultaneous confidence bands)
+- Goodness of fit: `goodness_of_fit()` with a good / marginal / poor verdict (concordance, Cox–Snell slope, proportional-hazards test), Cox–Snell / martingale / deviance residuals, `plot_gof()`, `check_ph()`
+- Stratified Kaplan–Meier / Nelson–Aalen (`plot_km(by=...)` / `plot_na(by=...)`) as a model-free reference
+- Accelerated life testing: named aging laws (`stress_model=` — Arrhenius, inverse power, Eyring, Coffin–Manson), physical parameters (`Ea`, `n`) with CIs, `acceleration_factor()`, raw-unit predictions, `plot_stress_life()`, `check_shape()`
+- Monte-Carlo `power_analysis()` and `sample_size()`
 
 **Bias-correction**
 - C4 method (reduced bias adjustment)

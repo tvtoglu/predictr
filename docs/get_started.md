@@ -13,6 +13,6 @@ Anaconda comes with a bunch of pre-installed packages. Spyder is a very good IDE
 - Open Spyder and create a new file
 - Import predictr in Spyder using:
 ```python
-from predictr import Analysis, PlotAll
+from predictr import Analysis, PlotAll, Regression
 ```
-Now you're able to use the Analysis and PlotAll classes from predictr. For now, these are the only classes you can import. However, I will add new classes to predictr in the future.
+Now you're able to use the `Analysis`, `PlotAll` and `Regression` classes from predictr. `Analysis` fits a single distribution (Weibull/Normal/LogNormal/Exponential) to one dataset; `PlotAll` overlays several `Analysis` fits in one figure; `Regression` fits lifetime regression models (Weibull AFT, Cox PH) with covariates.

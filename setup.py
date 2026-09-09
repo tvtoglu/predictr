@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
       name='predictr',
-      version='0.1.36',
+      version='0.1.37',
       description='Life Data Analysis for Reliability Engineers - Weibull Analysis, Detailed Plots, Compute Statistics',
       author='Tamer Tevetoglu',
       author_email="predictr@outlook.com",
@@ -18,7 +18,7 @@ setup(
       package_dir={'': 'src'},
       long_description=long_description,
       long_description_content_type='text/markdown',
-      keywords = 'reliability, weibull, bias, life data analysis, engineering, confidence, bootstrap, monte-carlo, fisher bounds, likelihood ratio, unreliability, survival analysis, lifelines, testing',
+      keywords = 'reliability, weibull, bias, life data analysis, engineering, confidence, bootstrap, monte-carlo, fisher bounds, likelihood ratio, unreliability, survival analysis, lifelines, testing, regression, accelerated failure time, cox proportional hazards, kaplan-meier, nelson-aalen, accelerated life testing, arrhenius',
       classifiers=[
           "Programming Language :: Python :: 3",
           "Programming Language :: Python :: 3.6",
